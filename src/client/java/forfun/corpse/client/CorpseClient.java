@@ -20,19 +20,16 @@ public class CorpseClient implements ClientModInitializer {
     public void onInitializeClient() {
         LOGGER.info("[CorpseClient] Initializing Corpse ESP Mod");
 
-        // Register tick event to update corpse detection
         ClientTickEvents.END_CLIENT_TICK.register(client -> {
             if (client.world != null && client.player != null) {
                 CorpseESP.tick();
             }
         });
 
-        // Register render event to draw waypoints LAST so we can control render state
         WorldRenderEvents.LAST.register(context -> {
             CorpseESP.render(context.matrixStack(), context.camera());
         });
 
-        // Register chat message event to detect claimed corpses
         ClientReceiveMessageEvents.GAME.register((message, overlay) -> {
             if (overlay) return;
             String messageText = message.getString();
@@ -42,7 +39,6 @@ public class CorpseClient implements ClientModInitializer {
             }
         });
 
-        // Register world unload event to clear data
         net.fabricmc.fabric.api.client.event.lifecycle.v1.ClientLifecycleEvents.CLIENT_STOPPING.register(client -> {
             CorpseESP.onWorldUnload();
         });

@@ -71,11 +71,9 @@ public class CorpseESP {
         if (stack.isEmpty()) return null;
 
         try {
-            // Try to get NBT data
             var customDataComponent = stack.getComponents().get(net.minecraft.component.DataComponentTypes.CUSTOM_DATA);
             if (customDataComponent == null) return null;
 
-            // Get the NbtCompound - ID is directly at root level
             net.minecraft.nbt.NbtCompound customData = customDataComponent.copyNbt();
             if (!customData.contains("id")) return null;
 
@@ -97,16 +95,13 @@ public class CorpseESP {
 
         if (sidebarObjective != null) {
             String objectiveName = sidebarObjective.getDisplayName().getString();
-            // Check for Hypixel SkyBlock scoreboard
             if (objectiveName.contains("SKYBLOCK") || objectiveName.contains("SKY BLOCK")) {
-                // Check scoreboard lines specifically for "Mineshaft"
                 Collection<Team> teams = scoreboard.getTeams();
                 for (Team team : teams) {
                     for (String member : team.getPlayerList()) {
                         String line = team.getPrefix().getString() + member + team.getSuffix().getString();
                         String cleanLine = line.replaceAll("§.", "").trim();
 
-                        // Only activate in mineshafts (Glacite Mineshafts, etc.)
                         if (cleanLine.contains("Mineshaft")) {
                             return true;
                         }
@@ -124,22 +119,17 @@ public class CorpseESP {
 
         if (world == null || client.player == null) return;
 
-        // Check location every 20 ticks (1 second)
         locationCheckCooldown--;
         if (locationCheckCooldown <= 0) {
             isInMines = checkIfInMineshaft();
             locationCheckCooldown = 20;
         }
 
-        // Clear old waypoints
         activeWaypoints.clear();
 
-        // Skip if not in a mineshaft
         if (!isInMines) {
             return;
         }
-
-        // DEBUG: Find ALL armor stands with no custom name
         List<ArmorStandEntity> allArmorStands = world.getEntitiesByClass(
             ArmorStandEntity.class,
             client.player.getBoundingBox().expand(100),
@@ -162,30 +152,24 @@ public class CorpseESP {
             }
         }
 
-        // Find armor stands matching our criteria (like Skyblocker does)
         List<ArmorStandEntity> armorStands = world.getEntitiesByClass(
             ArmorStandEntity.class,
             client.player.getBoundingBox().expand(800),
             armorStand -> {
-                // Filter: NO custom name, NOT invisible, NO base plate (Skyblocker's criteria)
-                if (armorStand.hasCustomName()) return false;  // Must NOT have custom name
-                if (armorStand.isInvisible()) return false;    // Must NOT be invisible
-                if (armorStand.shouldShowBasePlate()) return false;  // Must NOT show base plate
+                if (armorStand.hasCustomName()) return false;
+                if (armorStand.isInvisible()) return false;
+                if (armorStand.shouldShowBasePlate()) return false;
                 return true;
             }
         );
-
-        // Process each armor stand
         for (ArmorStandEntity armorStand : armorStands) {
             Vec3d pos = armorStand.getPos();
             BlockPos blockPos = BlockPos.ofFloored(pos);
 
-            // Get helmet
             ItemStack helmet = armorStand.getEquippedStack(net.minecraft.entity.EquipmentSlot.HEAD);
 
             if (helmet.isEmpty()) continue;
 
-            // Check if already claimed
             boolean isClaimed = false;
             for (Vec3d claimedPos : claimedPositions) {
                 if (pos.distanceTo(claimedPos) < 5.0) {
@@ -199,7 +183,6 @@ public class CorpseESP {
             CorpseType corpseType = CorpseType.fromSkyblockId(skyblockId);
 
             if (corpseType != null) {
-                // Offset upward by 2 blocks so waypoint is visible above ground/walls
                 BlockPos waypointPos = blockPos.up(2);
                 NamedWaypoint waypoint = new NamedWaypoint(
                     waypointPos,
@@ -231,16 +214,13 @@ public class CorpseESP {
         MinecraftClient client = MinecraftClient.getInstance();
         if (client.world == null) return;
 
-        // Render each waypoint individually with fresh GL state
         for (NamedWaypoint waypoint : activeWaypoints) {
-            // Set GL state before each waypoint
             GL11.glDisable(GL11.GL_DEPTH_TEST);
             GL11.glDisable(GL11.GL_CULL_FACE);
             GL11.glEnable(GL11.GL_BLEND);
 
             waypoint.render(matrices, camera);
 
-            // Reset GL state after each waypoint
             GL11.glEnable(GL11.GL_DEPTH_TEST);
             GL11.glEnable(GL11.GL_CULL_FACE);
         }

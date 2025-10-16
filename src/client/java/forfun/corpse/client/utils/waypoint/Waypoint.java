@@ -56,7 +56,6 @@ public class Waypoint {
         double centerZ = pos.getZ() - cameraPos.z + 0.5;
 
         try {
-            // Draw main box (1x1 block)
             double minX = pos.getX() - cameraPos.x;
             double minY = pos.getY() - cameraPos.y;
             double minZ = pos.getZ() - cameraPos.z;
@@ -64,7 +63,6 @@ public class Waypoint {
             double maxY = minY + 1.0;
             double maxZ = minZ + 1.0;
 
-            // Set GL state before main box
             if (throughWalls) {
                 GL11.glDisable(GL11.GL_DEPTH_TEST);
                 GL11.glDisable(GL11.GL_CULL_FACE);
@@ -76,19 +74,15 @@ public class Waypoint {
                 maxX, maxY, maxZ,
                 colorComponents[0], colorComponents[1], colorComponents[2], alpha);
 
-            // Draw immediately to force render with current GL state
             immediate.draw();
 
-            // Reset GL state after main box
             if (throughWalls) {
                 GL11.glEnable(GL11.GL_DEPTH_TEST);
                 GL11.glEnable(GL11.GL_CULL_FACE);
             }
 
-            // Draw vertical beacon line (thin column going up 20 blocks)
             double beaconWidth = 0.3;
             for (int i = 0; i < 20; i++) {
-                // Set GL state before each beacon segment
                 if (throughWalls) {
                     GL11.glDisable(GL11.GL_DEPTH_TEST);
                     GL11.glDisable(GL11.GL_CULL_FACE);
@@ -101,17 +95,14 @@ public class Waypoint {
                     centerX + beaconWidth, y + 1.0, centerZ + beaconWidth,
                     colorComponents[0], colorComponents[1], colorComponents[2], alpha * 0.6f);
 
-                // Draw each beacon segment immediately
                 immediate.draw();
 
-                // Reset GL state after each beacon segment
                 if (throughWalls) {
                     GL11.glEnable(GL11.GL_DEPTH_TEST);
                     GL11.glEnable(GL11.GL_CULL_FACE);
                 }
             }
         } catch (Exception e) {
-            // Silent fail
         }
     }
 }

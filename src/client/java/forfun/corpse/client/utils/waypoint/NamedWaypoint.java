@@ -23,7 +23,6 @@ public class NamedWaypoint extends Waypoint {
 
     @Override
     public void render(MatrixStack matrices, Camera camera) {
-        // Render the box first (with depth test control)
         super.render(matrices, camera);
     }
 }
