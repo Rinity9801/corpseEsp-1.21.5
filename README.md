@@ -39,7 +39,7 @@ A Fabric mod for Hypixel SkyBlock that highlights corpses in Glacite Mineshafts 
 The mod works automatically when you enter a Glacite Mineshaft on Hypixel SkyBlock:
 
 1. Join Hypixel SkyBlock
-2. Enter the Crystal Hollows and find a Glacite Mineshaft
+2. Enter a mineshaft
 3. Corpses will be highlighted with colored boxes and vertical beacon lines
 4. When you loot a corpse, it will automatically be hidden from the ESP
 
