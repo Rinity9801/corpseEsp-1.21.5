@@ -1,0 +1,35 @@
+{
+  "schemaVersion": 1,
+  "id": "corpse",
+  "version": "${version}",
+  "name": "corpse",
+  "description": "",
+  "authors": [],
+  "contact": {},
+  "license": "All-Rights-Reserved",
+  "icon": "assets/corpse/icon.png",
+  "environment": "*",
+  "entrypoints": {
+    "fabric-datagen": [
+      "forfun.corpse.client.CorpseDataGenerator"
+    ],
+    "client": [
+      "forfun.corpse.client.CorpseClient"
+    ],
+    "main": [
+      "forfun.corpse.Corpse"
+    ]
+  },
+  "mixins": [
+    "corpse.mixins.json",
+    {
+      "config": "corpse.client.mixins.json",
+      "environment": "client"
+    }
+  ],
+  "depends": {
+    "fabricloader": ">=${loader_version}",
+    "fabric": "*",
+    "minecraft": "${minecraft_version}"
+  }
+}
