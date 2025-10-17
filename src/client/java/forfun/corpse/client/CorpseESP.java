@@ -5,6 +5,7 @@ import net.minecraft.client.MinecraftClient;
 import net.minecraft.client.network.ClientPlayerEntity;
 import net.minecraft.client.render.Camera;
 import net.minecraft.client.util.math.MatrixStack;
+import net.minecraft.entity.Entity;
 import net.minecraft.entity.decoration.ArmorStandEntity;
 import net.minecraft.item.ItemStack;
 import net.minecraft.scoreboard.Scoreboard;
@@ -12,6 +13,8 @@ import net.minecraft.scoreboard.ScoreboardDisplaySlot;
 import net.minecraft.scoreboard.ScoreboardObjective;
 import net.minecraft.scoreboard.Team;
 import net.minecraft.text.Text;
+import net.minecraft.util.hit.EntityHitResult;
+import net.minecraft.util.hit.HitResult;
 import net.minecraft.util.math.BlockPos;
 import net.minecraft.util.math.Vec3d;
 import net.minecraft.world.World;
@@ -239,5 +242,77 @@ public class CorpseESP {
         loggedArmorStands.clear();
         loggedWaypoints.clear();
         lastWaypointCount = -1;
+    }
+
+    public static void getCorpseInfo() {
+        MinecraftClient client = MinecraftClient.getInstance();
+        if (client.player == null || client.world == null) {
+            return;
+        }
+
+        HitResult hitResult = client.crosshairTarget;
+        if (hitResult == null || hitResult.getType() != HitResult.Type.ENTITY) {
+            client.player.sendMessage(Text.literal("§c[Corpse ESP] You must be looking at an entity!"), false);
+            return;
+        }
+
+        EntityHitResult entityHit = (EntityHitResult) hitResult;
+        Entity entity = entityHit.getEntity();
+
+        if (!(entity instanceof ArmorStandEntity)) {
+            client.player.sendMessage(Text.literal("§c[Corpse ESP] You must be looking at an armor stand!"), false);
+            return;
+        }
+
+        ArmorStandEntity armorStand = (ArmorStandEntity) entity;
+        Vec3d pos = armorStand.getPos();
+        BlockPos blockPos = BlockPos.ofFloored(pos);
+
+        ItemStack helmet = armorStand.getEquippedStack(net.minecraft.entity.EquipmentSlot.HEAD);
+        ItemStack chestplate = armorStand.getEquippedStack(net.minecraft.entity.EquipmentSlot.CHEST);
+        ItemStack leggings = armorStand.getEquippedStack(net.minecraft.entity.EquipmentSlot.LEGS);
+        ItemStack boots = armorStand.getEquippedStack(net.minecraft.entity.EquipmentSlot.FEET);
+
+        String helmetName = helmet.isEmpty() ? "NONE" : helmet.getName().getString();
+        String helmetId = getSkyblockId(helmet);
+        String chestplateName = chestplate.isEmpty() ? "NONE" : chestplate.getName().getString();
+        String chestplateId = getSkyblockId(chestplate);
+        String leggingsName = leggings.isEmpty() ? "NONE" : leggings.getName().getString();
+        String leggingsId = getSkyblockId(leggings);
+        String bootsName = boots.isEmpty() ? "NONE" : boots.getName().getString();
+        String bootsId = getSkyblockId(boots);
+
+        boolean hasCustomName = armorStand.hasCustomName();
+        String customName = hasCustomName ? armorStand.getCustomName().getString() : "NONE";
+        boolean isInvisible = armorStand.isInvisible();
+        boolean hasBasePlate = armorStand.shouldShowBasePlate();
+
+        client.player.sendMessage(Text.literal("§e========== ARMOR STAND INFO =========="), false);
+        client.player.sendMessage(Text.literal("§6Position: §f" + blockPos), false);
+        client.player.sendMessage(Text.literal("§6Has Custom Name: §f" + hasCustomName + " §7(" + customName + ")"), false);
+        client.player.sendMessage(Text.literal("§6Invisible: §f" + isInvisible), false);
+        client.player.sendMessage(Text.literal("§6Has Base Plate: §f" + hasBasePlate), false);
+        client.player.sendMessage(Text.literal("§e------- EQUIPMENT -------"), false);
+        client.player.sendMessage(Text.literal("§6Helmet: §f" + helmetName), false);
+        client.player.sendMessage(Text.literal("§6  Skyblock ID: §f" + (helmetId != null ? helmetId : "NONE")), false);
+        client.player.sendMessage(Text.literal("§6Chestplate: §f" + chestplateName), false);
+        client.player.sendMessage(Text.literal("§6  Skyblock ID: §f" + (chestplateId != null ? chestplateId : "NONE")), false);
+        client.player.sendMessage(Text.literal("§6Leggings: §f" + leggingsName), false);
+        client.player.sendMessage(Text.literal("§6  Skyblock ID: §f" + (leggingsId != null ? leggingsId : "NONE")), false);
+        client.player.sendMessage(Text.literal("§6Boots: §f" + bootsName), false);
+        client.player.sendMessage(Text.literal("§6  Skyblock ID: §f" + (bootsId != null ? bootsId : "NONE")), false);
+        client.player.sendMessage(Text.literal("§e===================================="), false);
+
+        if (!helmet.isEmpty()) {
+            try {
+                var customDataComponent = helmet.getComponents().get(net.minecraft.component.DataComponentTypes.CUSTOM_DATA);
+                if (customDataComponent != null) {
+                    net.minecraft.nbt.NbtCompound customData = customDataComponent.copyNbt();
+                    client.player.sendMessage(Text.literal("§6Helmet NBT: §f" + customData.toString()), false);
+                }
+            } catch (Exception e) {
+                client.player.sendMessage(Text.literal("§cError reading helmet NBT: " + e.getMessage()), false);
+            }
+        }
     }
 }
