@@ -82,25 +82,24 @@ public class Waypoint {
             }
 
             double beaconWidth = 0.3;
-            for (int i = 0; i < 20; i++) {
-                if (throughWalls) {
-                    GL11.glDisable(GL11.GL_DEPTH_TEST);
-                    GL11.glDisable(GL11.GL_CULL_FACE);
-                    GL11.glEnable(GL11.GL_BLEND);
-                }
+            double beaconHeight = 20.0;
 
-                double y = minY + (i * 1.0);
-                DebugRenderer.drawBox(matrices, immediate,
-                    centerX - beaconWidth, y, centerZ - beaconWidth,
-                    centerX + beaconWidth, y + 1.0, centerZ + beaconWidth,
-                    colorComponents[0], colorComponents[1], colorComponents[2], alpha * 0.6f);
+            if (throughWalls) {
+                GL11.glDisable(GL11.GL_DEPTH_TEST);
+                GL11.glDisable(GL11.GL_CULL_FACE);
+                GL11.glEnable(GL11.GL_BLEND);
+            }
 
-                immediate.draw();
+            DebugRenderer.drawBox(matrices, immediate,
+                centerX - beaconWidth, minY, centerZ - beaconWidth,
+                centerX + beaconWidth, minY + beaconHeight, centerZ + beaconWidth,
+                colorComponents[0], colorComponents[1], colorComponents[2], alpha * 0.6f);
 
-                if (throughWalls) {
-                    GL11.glEnable(GL11.GL_DEPTH_TEST);
-                    GL11.glEnable(GL11.GL_CULL_FACE);
-                }
+            immediate.draw();
+
+            if (throughWalls) {
+                GL11.glEnable(GL11.GL_DEPTH_TEST);
+                GL11.glEnable(GL11.GL_CULL_FACE);
             }
         } catch (Exception e) {
         }
