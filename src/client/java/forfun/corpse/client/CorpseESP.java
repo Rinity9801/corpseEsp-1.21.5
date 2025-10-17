@@ -27,11 +27,8 @@ import java.util.List;
 public class CorpseESP {
     private static final List<NamedWaypoint> activeWaypoints = new ArrayList<>();
     private static final List<Vec3d> claimedPositions = new ArrayList<>();
-    private static final List<BlockPos> loggedArmorStands = new ArrayList<>();
-    private static final List<BlockPos> loggedWaypoints = new ArrayList<>();
     private static boolean isInMines = false;
     private static int locationCheckCooldown = 0;
-    private static int lastWaypointCount = -1;
 
     public enum CorpseType {
         LAPIS(new String[]{"LAPIS_ARMOR_HELMET"}, "Lapis", new float[]{0.0f, 0.0f, 1.0f}),
@@ -122,37 +119,21 @@ public class CorpseESP {
 
         if (world == null || client.player == null) return;
 
+        boolean wasInMines = isInMines;
         locationCheckCooldown--;
         if (locationCheckCooldown <= 0) {
             isInMines = checkIfInMineshaft();
             locationCheckCooldown = 20;
         }
 
+        if (wasInMines && !isInMines) {
+            claimedPositions.clear();
+        }
+
         activeWaypoints.clear();
 
         if (!isInMines) {
             return;
-        }
-        List<ArmorStandEntity> allArmorStands = world.getEntitiesByClass(
-            ArmorStandEntity.class,
-            client.player.getBoundingBox().expand(100),
-            armorStand -> !armorStand.hasCustomName()
-        );
-
-        MinecraftClient client2 = MinecraftClient.getInstance();
-        for (ArmorStandEntity armorStand : allArmorStands) {
-            Vec3d pos = armorStand.getPos();
-            BlockPos blockPos = BlockPos.ofFloored(pos);
-
-            if (client2.player != null && !loggedArmorStands.contains(blockPos)) {
-                ItemStack helmet = armorStand.getEquippedStack(net.minecraft.entity.EquipmentSlot.HEAD);
-                String displayName = helmet.isEmpty() ? "NO HELMET" : helmet.getName().getString();
-                String skyblockId = getSkyblockId(helmet);
-                String invisible = armorStand.isInvisible() ? "INVISIBLE" : "VISIBLE";
-                String basePlate = armorStand.shouldShowBasePlate() ? "HAS_BASEPLATE" : "NO_BASEPLATE";
-                client2.player.sendMessage(Text.literal("§e[DEBUG] ArmorStand: " + blockPos + " | " + invisible + " | " + basePlate + " | Display: " + displayName + " | SkyblockID: " + skyblockId), false);
-                loggedArmorStands.add(blockPos);
-            }
         }
 
         List<ArmorStandEntity> armorStands = world.getEntitiesByClass(
@@ -194,22 +175,7 @@ public class CorpseESP {
                     true
                 );
                 activeWaypoints.add(waypoint);
-
-                if (client.player != null && !loggedWaypoints.contains(blockPos)) {
-                    client.player.sendMessage(Text.literal("§a[DEBUG] Created waypoint for " + corpseType.getDisplayName() + " at " + waypointPos), false);
-                    loggedWaypoints.add(blockPos);
-                }
-            } else if (skyblockId != null) {
-                if (client.player != null && !loggedWaypoints.contains(blockPos)) {
-                    client.player.sendMessage(Text.literal("§c[DEBUG] Unknown Skyblock ID: " + skyblockId), false);
-                    loggedWaypoints.add(blockPos);
-                }
             }
-        }
-
-        if (client.player != null && activeWaypoints.size() > 0 && lastWaypointCount != activeWaypoints.size()) {
-            client.player.sendMessage(Text.literal("§d[DEBUG] Total active waypoints: " + activeWaypoints.size()), false);
-            lastWaypointCount = activeWaypoints.size();
         }
     }
 
@@ -239,9 +205,6 @@ public class CorpseESP {
     public static void onWorldUnload() {
         activeWaypoints.clear();
         claimedPositions.clear();
-        loggedArmorStands.clear();
-        loggedWaypoints.clear();
-        lastWaypointCount = -1;
     }
 
     public static void getCorpseInfo() {
