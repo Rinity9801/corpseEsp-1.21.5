@@ -1,0 +1,24 @@
+# Build outputs
+build/
+.gradle/
+
+# IDE files
+.idea/
+*.iml
+*.ipr
+*.iws
+.vscode/
+.project
+.classpath
+.settings/
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Fabric/Minecraft
+run/
+logs/
+
+# HTML reports
+*.html
