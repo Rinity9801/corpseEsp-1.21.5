@@ -30,6 +30,11 @@ public class CorpseESP {
     private static boolean isInMines = false;
     private static int locationCheckCooldown = 0;
 
+    private static boolean lapisEnabled = true;
+    private static boolean tungstenEnabled = true;
+    private static boolean umberEnabled = true;
+    private static boolean vanguardEnabled = true;
+
     public enum CorpseType {
         LAPIS(new String[]{"LAPIS_ARMOR_HELMET"}, "Lapis", new float[]{0.0f, 0.0f, 1.0f}),
         TUNGSTEN(new String[]{"MINERAL_HELMET"}, "Tungsten", new float[]{1.0f, 1.0f, 1.0f}),
@@ -166,7 +171,7 @@ public class CorpseESP {
             String skyblockId = getSkyblockId(helmet);
             CorpseType corpseType = CorpseType.fromSkyblockId(skyblockId);
 
-            if (corpseType != null) {
+            if (corpseType != null && isCorpseTypeEnabled(corpseType)) {
                 BlockPos waypointPos = blockPos.up(2);
                 NamedWaypoint waypoint = new NamedWaypoint(
                     waypointPos,
@@ -205,6 +210,48 @@ public class CorpseESP {
     public static void onWorldUnload() {
         activeWaypoints.clear();
         claimedPositions.clear();
+    }
+
+    private static boolean isCorpseTypeEnabled(CorpseType type) {
+        switch (type) {
+            case LAPIS: return lapisEnabled;
+            case TUNGSTEN: return tungstenEnabled;
+            case UMBER: return umberEnabled;
+            case VANGUARD: return vanguardEnabled;
+            default: return true;
+        }
+    }
+
+    public static void toggleLapis() {
+        lapisEnabled = !lapisEnabled;
+    }
+
+    public static void toggleTungsten() {
+        tungstenEnabled = !tungstenEnabled;
+    }
+
+    public static void toggleUmber() {
+        umberEnabled = !umberEnabled;
+    }
+
+    public static void toggleVanguard() {
+        vanguardEnabled = !vanguardEnabled;
+    }
+
+    public static boolean isLapisEnabled() {
+        return lapisEnabled;
+    }
+
+    public static boolean isTungstenEnabled() {
+        return tungstenEnabled;
+    }
+
+    public static boolean isUmberEnabled() {
+        return umberEnabled;
+    }
+
+    public static boolean isVanguardEnabled() {
+        return vanguardEnabled;
     }
 
     public static void getCorpseInfo() {

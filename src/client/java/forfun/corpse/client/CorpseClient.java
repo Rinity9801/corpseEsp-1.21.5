@@ -1,5 +1,6 @@
 package forfun.corpse.client;
 
+import forfun.corpse.client.gui.CorpseConfigScreen;
 import net.fabricmc.api.ClientModInitializer;
 import net.fabricmc.fabric.api.client.command.v2.ClientCommandManager;
 import net.fabricmc.fabric.api.client.command.v2.ClientCommandRegistrationCallback;
@@ -26,6 +27,12 @@ public class CorpseClient implements ClientModInitializer {
             dispatcher.register(ClientCommandManager.literal("getcorpse")
                 .executes(context -> {
                     CorpseESP.getCorpseInfo();
+                    return 1;
+                }));
+            dispatcher.register(ClientCommandManager.literal("corpseesp")
+                .executes(context -> {
+                    MinecraftClient client = MinecraftClient.getInstance();
+                    client.execute(() -> client.setScreen(new CorpseConfigScreen(client.currentScreen)));
                     return 1;
                 }));
         });
