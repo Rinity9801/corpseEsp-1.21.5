@@ -1,0 +1,39 @@
+{
+  "schemaVersion": 1,
+  "id": "miningqol",
+  "version": "${version}",
+  "name": "MiningQOL",
+  "description": "Quality of life features for mining in Hypixel Skyblock - Corpse ESP, profit tracking, and efficient mining overlays",
+  "authors": ["alexdong"],
+  "contact": {
+    "homepage": "https://github.com/alexdong/miningqol",
+    "sources": "https://github.com/alexdong/miningqol"
+  },
+  "license": "All-Rights-Reserved",
+  "icon": "assets/miningqol/icon.png",
+  "environment": "*",
+  "entrypoints": {
+    "fabric-datagen": [
+      "forfun.miningqol.client.MiningqolDataGenerator"
+    ],
+    "client": [
+      "forfun.miningqol.client.MiningqolClient"
+    ],
+    "main": [
+      "forfun.miningqol.Miningqol"
+    ]
+  },
+  "mixins": [
+    "miningqol.mixins.json",
+    {
+      "config": "miningqol.client.mixins.json",
+      "environment": "client"
+    }
+  ],
+  "depends": {
+    "fabricloader": ">=${loader_version}",
+    "fabric": "*",
+    "minecraft": "${minecraft_version}",
+    "fabric-language-kotlin": ">=1.13.0+kotlin.2.1.0"
+  }
+}
