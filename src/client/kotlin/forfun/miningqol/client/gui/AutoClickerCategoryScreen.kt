@@ -39,7 +39,7 @@ class AutoClickerCategoryScreen(private val parentScreen: Screen) : VexelScreen(
             borderRadius = 16f,
             borderThickness = 1f
         )
-            .setSizing(550f, Size.Pixels, 720f, Size.Pixels)
+            .setSizing(550f, Size.Pixels, 580f, Size.Pixels)
             .childOf(window)
             .apply {
                 dropShadow = true
@@ -52,7 +52,7 @@ class AutoClickerCategoryScreen(private val parentScreen: Screen) : VexelScreen(
         mainPanel.xPositionConstraint = Pos.ScreenPixels
         mainPanel.yPositionConstraint = Pos.ScreenPixels
         mainPanel.xConstraint = (mainPanel.screenWidth - 550f) / 2f
-        mainPanel.yConstraint = (mainPanel.screenHeight - 720f) / 2f
+        mainPanel.yConstraint = (mainPanel.screenHeight - 580f) / 2f
         mainPanel.fadeIn(500, EasingType.EASE_OUT)
 
         // Title bar background
@@ -86,14 +86,12 @@ class AutoClickerCategoryScreen(private val parentScreen: Screen) : VexelScreen(
         // Toggles
         val toggles = listOf(
             Triple("Show HUD", 0xFFFF4444.toInt()) { AutoClickerHUD.isEnabled() },
-            Triple("Use Tab Cooldown", 0xFFFF4444.toInt()) { AutoClickerManager.isUsingTabCooldown() },
             Triple("Enable Rod Swap", 0xFFFF4444.toInt()) { AutoClickerManager.isRodSwapEnabled() },
             Triple("Enable Second Drill", 0xFFFF4444.toInt()) { AutoClickerManager.isSecondDrillEnabled() }
         )
 
         val toggleActions = listOf<() -> Unit>(
             { AutoClickerHUD.setEnabled(!AutoClickerHUD.isEnabled()) },
-            { AutoClickerManager.setUseTabCooldown(!AutoClickerManager.isUsingTabCooldown()) },
             { AutoClickerManager.setEnableRodSwap(!AutoClickerManager.isRodSwapEnabled()) },
             { AutoClickerManager.setEnableSecondDrill(!AutoClickerManager.isSecondDrillEnabled()) }
         )
@@ -126,8 +124,8 @@ class AutoClickerCategoryScreen(private val parentScreen: Screen) : VexelScreen(
             "Mining Slot",
             1f,
             9f,
-            AutoClickerManager.getMiningSlot().toFloat(),
-            { value -> AutoClickerManager.setMiningSlot(value.toInt()) },
+            (AutoClickerManager.getMiningSlot() + 1).toFloat(),
+            { value -> AutoClickerManager.setMiningSlot(value.toInt() - 1) },
             "",
             (mainPanel.width - toggleWidth) / 2f,
             sliderStartY,
@@ -138,33 +136,18 @@ class AutoClickerCategoryScreen(private val parentScreen: Screen) : VexelScreen(
         )
 
         createSliderCard(
-            "Maniac Miner Cooldown",
-            60f,
-            150f,
-            AutoClickerManager.getManiacMinerCooldown().toFloat(),
-            { value -> AutoClickerManager.setManiacMinerCooldown(value.toInt()) },
-            "s",
+            "Second Drill Slot",
+            1f,
+            9f,
+            (AutoClickerManager.getSecondDrillSlot() + 1).toFloat(),
+            { value -> AutoClickerManager.setSecondDrillSlot(value.toInt() - 1) },
+            "",
             (mainPanel.width - toggleWidth) / 2f,
             sliderStartY + 85f,
             toggleWidth,
             75f,
             mainPanel,
             700L
-        )
-
-        createSliderCard(
-            "Second Drill Slot",
-            1f,
-            9f,
-            AutoClickerManager.getSecondDrillSlot().toFloat(),
-            { value -> AutoClickerManager.setSecondDrillSlot(value.toInt()) },
-            "",
-            (mainPanel.width - toggleWidth) / 2f,
-            sliderStartY + 170f,
-            toggleWidth,
-            75f,
-            mainPanel,
-            800L
         )
 
         // Back button at bottom

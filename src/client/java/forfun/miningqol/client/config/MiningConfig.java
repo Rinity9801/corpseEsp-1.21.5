@@ -13,6 +13,7 @@ import forfun.miningqol.client.PickaxeCooldownHUD;
 import forfun.miningqol.client.profit.BazaarPriceManager;
 import forfun.miningqol.client.profit.GemstoneTracker;
 import forfun.miningqol.client.profit.ProfitTrackerHUD;
+import forfun.miningqol.client.waypoints.OrderedWaypointManager;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -68,12 +69,10 @@ public class MiningConfig {
 
     public boolean autoClickerEnabled = false;
     public int autoClickerMiningSlot = 0;
-    public int autoClickerCooldown = 102;
     public boolean autoClickerRodSwap = true;
     public boolean autoClickerSecondDrill = false;
     public int autoClickerSecondDrillSlot = 3;
     public boolean autoClickerHudEnabled = true;
-    public boolean autoClickerUseTab = true;
 
     public Map<String, String> commandKeybinds = new HashMap<>();
 
@@ -82,6 +81,30 @@ public class MiningConfig {
     public boolean glassSyncEnabled = false;
 
     public java.util.List<String> lobbyFinderBlocks = new java.util.ArrayList<>();
+
+    // Ordered Waypoints
+    public boolean orderedWaypointsEnabled = true;
+    public float[] orderedWaypointCurrentColor = {85f/255f, 1f, 85f/255f};
+    public float[] orderedWaypointNextColor = {1f, 1f, 85f/255f};
+    public float[] orderedWaypointPreviousColor = {85f/255f, 85f/255f, 1f};
+    public float orderedWaypointCurrentAlpha = 0.6f;
+    public float orderedWaypointNextAlpha = 0.6f;
+    public float orderedWaypointPreviousAlpha = 0.6f;
+    public int orderedWaypointNextCount = 2;
+    public boolean orderedWaypointTraceLine = true;
+    public float[] orderedWaypointTraceLineColor = {85f/255f, 1f, 85f/255f};
+    public float orderedWaypointTraceLineAlpha = 1f;
+    public boolean orderedWaypointShowDistance = true;
+    public boolean orderedWaypointShowName = true;
+    public float orderedWaypointRange = 4.5f;
+    public boolean orderedWaypointLobbyCheckEnabled = false;
+    public String orderedWaypointLobbyCheckBlock = "minecraft:coal_ore";
+    public int orderedWaypointLobbyCheckInterval = 10;
+    public int orderedWaypointLobbyCheckRadius = 2;
+    public boolean orderedWaypointBlockOutline = false;
+    public int orderedWaypointBlockOutlineRadius = 3;
+    public float[] orderedWaypointBlockOutlineColor = {1f, 1f, 1f};
+    public float orderedWaypointBlockOutlineAlpha = 0.8f;
 
     public static MiningConfig load() {
         if (!CONFIG_FILE.exists()) {
@@ -158,12 +181,10 @@ public class MiningConfig {
 
         AutoClickerManager.setEnabled(autoClickerEnabled);
         AutoClickerManager.setMiningSlot(autoClickerMiningSlot);
-        AutoClickerManager.setManiacMinerCooldown(autoClickerCooldown);
         AutoClickerManager.setEnableRodSwap(autoClickerRodSwap);
         AutoClickerManager.setEnableSecondDrill(autoClickerSecondDrill);
         AutoClickerManager.setSecondDrillSlot(autoClickerSecondDrillSlot);
         AutoClickerHUD.setEnabled(autoClickerHudEnabled);
-        AutoClickerManager.setUseTabCooldown(autoClickerUseTab);
 
         forfun.miningqol.client.CommandKeybindManager.clearAll();
         for (Map.Entry<String, String> entry : commandKeybinds.entrySet()) {
@@ -189,6 +210,30 @@ public class MiningConfig {
         forfun.miningqol.client.LobbyFinder.setTrackedBlocks(blocks);
 
         GlassSync.setEnabled(glassSyncEnabled);
+
+        // Ordered Waypoints
+        OrderedWaypointManager.setEnabled(orderedWaypointsEnabled);
+        OrderedWaypointManager.setCurrentWaypointColor(orderedWaypointCurrentColor[0], orderedWaypointCurrentColor[1], orderedWaypointCurrentColor[2]);
+        OrderedWaypointManager.setNextWaypointColor(orderedWaypointNextColor[0], orderedWaypointNextColor[1], orderedWaypointNextColor[2]);
+        OrderedWaypointManager.setPreviousWaypointColor(orderedWaypointPreviousColor[0], orderedWaypointPreviousColor[1], orderedWaypointPreviousColor[2]);
+        OrderedWaypointManager.setCurrentWaypointAlpha(orderedWaypointCurrentAlpha);
+        OrderedWaypointManager.setNextWaypointAlpha(orderedWaypointNextAlpha);
+        OrderedWaypointManager.setPreviousWaypointAlpha(orderedWaypointPreviousAlpha);
+        OrderedWaypointManager.setNextCount(orderedWaypointNextCount);
+        OrderedWaypointManager.setTraceLineEnabled(orderedWaypointTraceLine);
+        OrderedWaypointManager.setTraceLineColor(orderedWaypointTraceLineColor[0], orderedWaypointTraceLineColor[1], orderedWaypointTraceLineColor[2]);
+        OrderedWaypointManager.setTraceLineAlpha(orderedWaypointTraceLineAlpha);
+        OrderedWaypointManager.setShowDistance(orderedWaypointShowDistance);
+        OrderedWaypointManager.setShowName(orderedWaypointShowName);
+        OrderedWaypointManager.setWaypointRange(orderedWaypointRange);
+        OrderedWaypointManager.setLobbyCheckEnabled(orderedWaypointLobbyCheckEnabled);
+        OrderedWaypointManager.setLobbyCheckBlock(orderedWaypointLobbyCheckBlock);
+        OrderedWaypointManager.setLobbyCheckInterval(orderedWaypointLobbyCheckInterval);
+        OrderedWaypointManager.setLobbyCheckRadius(orderedWaypointLobbyCheckRadius);
+        OrderedWaypointManager.setBlockOutlineAroundWaypoint(orderedWaypointBlockOutline);
+        OrderedWaypointManager.setBlockOutlineRadius(orderedWaypointBlockOutlineRadius);
+        OrderedWaypointManager.setBlockOutlineColor(orderedWaypointBlockOutlineColor[0], orderedWaypointBlockOutlineColor[1], orderedWaypointBlockOutlineColor[2]);
+        OrderedWaypointManager.setBlockOutlineAlpha(orderedWaypointBlockOutlineAlpha);
     }
 
     public void loadFromGame() {
@@ -233,12 +278,10 @@ public class MiningConfig {
 
         autoClickerEnabled = AutoClickerManager.isEnabled();
         autoClickerMiningSlot = AutoClickerManager.getMiningSlot();
-        autoClickerCooldown = AutoClickerManager.getManiacMinerCooldown();
         autoClickerRodSwap = AutoClickerManager.isRodSwapEnabled();
         autoClickerSecondDrill = AutoClickerManager.isSecondDrillEnabled();
         autoClickerSecondDrillSlot = AutoClickerManager.getSecondDrillSlot();
         autoClickerHudEnabled = AutoClickerHUD.isEnabled();
-        autoClickerUseTab = AutoClickerManager.isUsingTabCooldown();
 
         commandKeybinds.clear();
         for (Map.Entry<Integer, String> entry : forfun.miningqol.client.CommandKeybindManager.getAllKeybinds().entrySet()) {
@@ -252,5 +295,29 @@ public class MiningConfig {
         }
 
         glassSyncEnabled = GlassSync.isEnabled();
+
+        // Ordered Waypoints
+        orderedWaypointsEnabled = OrderedWaypointManager.isEnabledRaw();
+        orderedWaypointCurrentColor = OrderedWaypointManager.getCurrentWaypointColor();
+        orderedWaypointNextColor = OrderedWaypointManager.getNextWaypointColor();
+        orderedWaypointPreviousColor = OrderedWaypointManager.getPreviousWaypointColor();
+        orderedWaypointCurrentAlpha = OrderedWaypointManager.getCurrentWaypointAlpha();
+        orderedWaypointNextAlpha = OrderedWaypointManager.getNextWaypointAlpha();
+        orderedWaypointPreviousAlpha = OrderedWaypointManager.getPreviousWaypointAlpha();
+        orderedWaypointNextCount = OrderedWaypointManager.getNextCount();
+        orderedWaypointTraceLine = OrderedWaypointManager.isTraceLineEnabled();
+        orderedWaypointTraceLineColor = OrderedWaypointManager.getTraceLineColor();
+        orderedWaypointTraceLineAlpha = OrderedWaypointManager.getTraceLineAlpha();
+        orderedWaypointShowDistance = OrderedWaypointManager.isShowDistance();
+        orderedWaypointShowName = OrderedWaypointManager.isShowName();
+        orderedWaypointRange = OrderedWaypointManager.getWaypointRange();
+        orderedWaypointLobbyCheckEnabled = OrderedWaypointManager.isLobbyCheckEnabled();
+        orderedWaypointLobbyCheckBlock = OrderedWaypointManager.getLobbyCheckBlock();
+        orderedWaypointLobbyCheckInterval = OrderedWaypointManager.getLobbyCheckInterval();
+        orderedWaypointLobbyCheckRadius = OrderedWaypointManager.getLobbyCheckRadius();
+        orderedWaypointBlockOutline = OrderedWaypointManager.isBlockOutlineAroundWaypoint();
+        orderedWaypointBlockOutlineRadius = OrderedWaypointManager.getBlockOutlineRadius();
+        orderedWaypointBlockOutlineColor = OrderedWaypointManager.getBlockOutlineColor();
+        orderedWaypointBlockOutlineAlpha = OrderedWaypointManager.getBlockOutlineAlpha();
     }
 }

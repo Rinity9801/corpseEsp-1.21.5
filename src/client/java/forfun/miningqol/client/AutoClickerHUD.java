@@ -11,20 +11,20 @@ public class AutoClickerHUD {
             return;
         }
 
-        int remainingTicks = AutoClickerManager.getRemainingTicks();
+        double remainingSeconds = AutoClickerManager.getRemainingSeconds();
 
         String timerText;
         int color;
 
-        if (remainingTicks <= 0) {
+        if (remainingSeconds <= 0) {
             timerText = "READY";
             color = 0xFF00FF00;
         } else {
-            int remainingSeconds = remainingTicks / 20;
-            int minutes = remainingSeconds / 60;
-            int seconds = remainingSeconds % 60;
+            int totalSeconds = (int) remainingSeconds;
+            int minutes = totalSeconds / 60;
+            int seconds = totalSeconds % 60;
             timerText = String.format("%d:%02d", minutes, seconds);
-            color = 0xFFFFFFFF; 
+            color = 0xFFFFFFFF;
         }
 
         

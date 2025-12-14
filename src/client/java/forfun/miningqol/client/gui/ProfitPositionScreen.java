@@ -24,9 +24,9 @@ public class ProfitPositionScreen extends Screen {
 
     @Override
     public void render(DrawContext context, int mouseX, int mouseY, float delta) {
-        this.renderBackground(context, mouseX, mouseY, delta);
+        // Call super.render first which handles background
+        super.render(context, mouseX, mouseY, delta);
 
-        
         context.drawCenteredTextWithShadow(this.textRenderer,
             "§eDrag the profit tracker to reposition it",
             this.width / 2, 20, 0xFFFFFF);
@@ -34,15 +34,11 @@ public class ProfitPositionScreen extends Screen {
             "§7Press ESC when done",
             this.width / 2, 35, 0xFFFFFF);
 
-        
         if (dragging) {
             ProfitTrackerHUD.setPosition(mouseX - dragOffsetX, mouseY - dragOffsetY);
         }
 
-        
         ProfitTrackerHUD.render(context);
-
-        super.render(context, mouseX, mouseY, delta);
     }
 
     @Override

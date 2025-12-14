@@ -1,8 +1,10 @@
 package forfun.miningqol.client;
 
+import net.minecraft.block.Block;
 import net.minecraft.block.BlockState;
 import net.minecraft.block.PaneBlock;
-import net.minecraft.util.math.BlockPos;
+import net.minecraft.block.StainedGlassBlock;
+import net.minecraft.block.StainedGlassPaneBlock;
 import net.minecraft.util.math.Direction;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -10,8 +12,6 @@ import org.slf4j.LoggerFactory;
 public class GlassSync {
     private static final Logger LOGGER = LoggerFactory.getLogger("GlassSync");
     private static boolean enabled = false;
-
-    public static BlockPos latestGemBreaking = null;
 
     public static void setEnabled(boolean enabled) {
         GlassSync.enabled = enabled;
@@ -22,26 +22,30 @@ public class GlassSync {
         return enabled;
     }
 
-    public static boolean posEquals(BlockPos pos1, BlockPos pos2) {
-        if (pos1 == null || pos2 == null) return false;
-        return pos1.getX() == pos2.getX() && pos1.getY() == pos2.getY() && pos1.getZ() == pos2.getZ();
+    public static boolean isStainedGlass(BlockState state) {
+        Block block = state.getBlock();
+        return block instanceof StainedGlassBlock || block instanceof StainedGlassPaneBlock;
     }
 
-    public static boolean isDisconnectedPane(BlockState state, Direction toIgnore) {
-        for (Direction direction : Direction.Type.HORIZONTAL) {
-            if (direction == toIgnore) continue;
-            if (state.get(PaneBlock.FACING_PROPERTIES.get(direction))) {
-                return false;
+    public static boolean isConnectedPane(BlockState state) {
+        if (!(state.getBlock() instanceof PaneBlock)) return false;
+        for (Direction dir : Direction.Type.HORIZONTAL) {
+            if (state.get(PaneBlock.FACING_PROPERTIES.get(dir))) {
+                return true;
             }
         }
-        return true;
+        return false;
     }
 
-    public static BlockState createFullConnectedPane(BlockState state) {
-        BlockState newState = state;
-        for (Direction direction : Direction.Type.HORIZONTAL) {
-            newState = newState.with(PaneBlock.FACING_PROPERTIES.get(direction), true);
+    public static BlockState withoutConnection(BlockState state, Direction dir) {
+        return state.with(PaneBlock.FACING_PROPERTIES.get(dir), false);
+    }
+
+    public static BlockState asFullyConnected(BlockState state) {
+        BlockState result = state;
+        for (Direction dir : Direction.Type.HORIZONTAL) {
+            result = result.with(PaneBlock.FACING_PROPERTIES.get(dir), true);
         }
-        return newState;
+        return result;
     }
 }

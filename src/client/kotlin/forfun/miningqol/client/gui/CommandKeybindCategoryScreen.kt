@@ -4,21 +4,24 @@ import forfun.miningqol.client.CommandKeybindManager
 import forfun.miningqol.client.MiningqolClient
 import net.minecraft.client.MinecraftClient
 import net.minecraft.client.gui.screen.Screen
+import net.minecraft.client.util.InputUtil
 import xyz.meowing.knit.api.input.KnitKeys
 import xyz.meowing.vexel.core.VexelScreen
 import xyz.meowing.vexel.components.core.Rectangle
 import xyz.meowing.vexel.components.core.Text
 import xyz.meowing.vexel.elements.Button
 import xyz.meowing.vexel.elements.TextInput
-import xyz.meowing.vexel.elements.Keybind
 import xyz.meowing.vexel.components.base.Pos
 import xyz.meowing.vexel.components.base.Size
 import xyz.meowing.vexel.animations.*
+import org.lwjgl.glfw.GLFW
 
 data class KeybindEntry(
     var keyCode: Int,
     var command: String,
-    var card: Rectangle? = null
+    var card: Rectangle? = null,
+    var keyText: Text? = null,
+    var keyBox: Rectangle? = null
 )
 
 class CommandKeybindCategoryScreen(private val parentScreen: Screen) : VexelScreen("Command Keybinds") {
@@ -27,6 +30,8 @@ class CommandKeybindCategoryScreen(private val parentScreen: Screen) : VexelScre
     private lateinit var scrollContainer: Rectangle
     private lateinit var entriesContainer: Rectangle
     private val entries = mutableListOf<KeybindEntry>()
+    private var capturingEntry: KeybindEntry? = null
+    private val mc = MinecraftClient.getInstance()
 
     override fun afterInitialization() {
         // Semi-transparent dark overlay background
@@ -224,30 +229,43 @@ class CommandKeybindCategoryScreen(private val parentScreen: Screen) : VexelScre
             .setPositioning(30f, Pos.ParentPixels, 22f, Pos.ParentPixels)
             .childOf(card)
 
-        // Keybind component
-        val keybind = Keybind()
+        // Custom keybind box (Rectangle + Text for dynamic updates)
+        val keyBox = Rectangle(
+            backgroundColor = 0xFF252525.toInt(),
+            borderColor = 0xFF404040.toInt(),
+            borderRadius = 6f,
+            borderThickness = 1f,
+            hoverColor = 0xFF303030.toInt()
+        )
             .setSizing(180f, Size.Pixels, 36f, Size.Pixels)
             .setPositioning(30f, Pos.ParentPixels, 48f, Pos.ParentPixels)
-            .backgroundColor(0xFF252525.toInt())
-            .borderColor(0xFF404040.toInt())
-            .borderRadius(6f)
-            .borderThickness(1f)
             .childOf(card)
 
-        // Set initial key if exists
-        if (entry.keyCode != -1) {
-            keybind.selectedKeyId = entry.keyCode
-        }
+        val keyText = Text(getKeyDisplayName(entry.keyCode), 0xFFFFFFFF.toInt(), 13f, false)
+            .setPositioning(0f, Pos.ParentCenter, 0f, Pos.ParentCenter)
+            .childOf(keyBox)
 
-        keybind.onValueChange { keyId ->
-            entry.keyCode = keyId as Int
-            // Save immediately after key selection
-            Thread {
-                Thread.sleep(100) // Small delay to ensure value is set
-                MinecraftClient.getInstance().execute {
-                    saveKeybinds()
-                }
-            }.start()
+        entry.keyText = keyText
+        entry.keyBox = keyBox
+
+        keyBox.onClick { _, _, mouseButton ->
+            if (capturingEntry == entry) {
+                // Already capturing for this entry - this click is the new binding
+                val mouseCode = GLFW.GLFW_KEY_LAST + mouseButton + 1
+                entry.keyCode = mouseCode
+                keyText.text = getKeyDisplayName(mouseCode)
+                keyBox.backgroundColor = 0xFF252525.toInt()
+                keyBox.borderColor = 0xFF404040.toInt()
+                capturingEntry = null
+                saveKeybinds()
+            } else {
+                // Start capturing
+                capturingEntry = entry
+                keyText.text = "Press a key..."
+                keyBox.backgroundColor = 0xFF3A3A1A.toInt()
+                keyBox.borderColor = 0xFFAAAA40.toInt()
+            }
+            true
         }
 
         // "Command:" label
@@ -367,18 +385,61 @@ class CommandKeybindCategoryScreen(private val parentScreen: Screen) : VexelScre
     }
 
     override fun keyPressed(keyCode: Int, scanCode: Int, modifiers: Int): Boolean {
+        // If we're capturing a key for a keybind
+        val entry = capturingEntry
+        if (entry != null) {
+            if (keyCode == GLFW.GLFW_KEY_ESCAPE) {
+                // Cancel capturing on ESC
+                entry.keyText?.text = getKeyDisplayName(entry.keyCode)
+                entry.keyBox?.backgroundColor = 0xFF252525.toInt()
+                entry.keyBox?.borderColor = 0xFF404040.toInt()
+                capturingEntry = null
+                return true
+            }
+            // Bind this key
+            entry.keyCode = keyCode
+            entry.keyText?.text = getKeyDisplayName(keyCode)
+            entry.keyBox?.backgroundColor = 0xFF252525.toInt()
+            entry.keyBox?.borderColor = 0xFF404040.toInt()
+            saveKeybinds()
+            capturingEntry = null
+            return true
+        }
+
         if (keyCode == KnitKeys.KEY_ESCAPE.code) {
             closeWithAnimation()
-            return true  // Consume the event to prevent pause menu
+            return true
         }
         return super.keyPressed(keyCode, scanCode, modifiers)
     }
 
     override fun onKeyType(typedChar: Char, keyCode: Int, scanCode: Int) {
+        if (capturingEntry != null) {
+            return // Don't process key types while capturing
+        }
         if (keyCode == KnitKeys.KEY_ESCAPE.code) {
             closeWithAnimation()
         } else {
             super.onKeyType(typedChar, keyCode, scanCode)
+        }
+    }
+
+    private fun getKeyDisplayName(keyCode: Int): String {
+        if (keyCode == -1) return "Click to bind"
+        if (keyCode > GLFW.GLFW_KEY_LAST) {
+            val mouseButton = keyCode - GLFW.GLFW_KEY_LAST - 1
+            return when (mouseButton) {
+                0 -> "Mouse Left"
+                1 -> "Mouse Right"
+                2 -> "Mouse Middle"
+                else -> "Mouse ${mouseButton + 1}"
+            }
+        }
+        return try {
+            val key = InputUtil.Type.KEYSYM.createFromCode(keyCode)
+            key.localizedText.string
+        } catch (e: Exception) {
+            "Key $keyCode"
         }
     }
 

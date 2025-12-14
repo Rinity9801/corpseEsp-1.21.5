@@ -8,7 +8,6 @@
     "ChatHudMixin",
     "PlayerListHudMixin",
     "ItemStackMixin",
-    "MinecraftClientGlassSyncMixin",
     "ClientConnectionGlassSyncMixin"
   ],
   "injectors": {

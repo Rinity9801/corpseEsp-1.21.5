@@ -6,9 +6,6 @@ import net.minecraft.item.ItemStack;
 
 public class AutoClickerManager {
     private static boolean enabled = false;
-    private static int tickCounter = 0;
-    private static int cycleDuration = 102 * 20;
-    private static int baseCycleDuration = 102 * 20;
     private static boolean inSequence = false;
     private static int sequenceStep = 0;
     private static int sequenceTickCounter = 0;
@@ -17,10 +14,12 @@ public class AutoClickerManager {
     private static boolean enableRodSwap = true;
     private static boolean enableSecondDrill = false;
     private static int secondDrillSlot = 3;
-    private static boolean cooldownBuffActive = false;
-    private static int cooldownBuffTicksRemaining = 0;
-    private static boolean useTabCooldown = true;
-    private static boolean wasOnCooldown = false;
+    private static boolean wasOnCooldown = true;
+
+    // Internal timer for more responsive triggering
+    private static int internalTickCounter = 0;
+    private static int targetCooldownTicks = 0;
+    private static boolean timerActive = false;
 
     public static void toggle() {
         enabled = !enabled;
@@ -36,21 +35,15 @@ public class AutoClickerManager {
             }
         } else {
             // Check if ability is currently ready
-            boolean abilityIsReady = !PickaxeCooldownHUD.isOnCooldown() && PickaxeCooldownHUD.getCurrentCooldown() <= 0;
+            boolean abilityIsReady = !PickaxeCooldownHUD.isOnCooldown();
 
             if (firstEnable || abilityIsReady) {
                 // If first enable OR ability is ready, trigger immediately
                 inSequence = true;
                 sequenceStep = 0;
                 sequenceTickCounter = 0;
-                tickCounter = 0;
                 firstEnable = false;
-            } else {
-                // If ability is on cooldown, just sync the state
-                tickCounter = 0;
             }
-
-            // Set wasOnCooldown to current state to avoid immediate re-trigger after sequence
             wasOnCooldown = PickaxeCooldownHUD.isOnCooldown();
         }
     }
@@ -65,21 +58,17 @@ public class AutoClickerManager {
         return enabled;
     }
 
-    public static int getRemainingTicks() {
+    public static double getRemainingSeconds() {
         if (firstEnable) {
             return 0;
         }
-        if (useTabCooldown && PickaxeCooldownHUD.isOnCooldown()) {
-            double tabCooldown = PickaxeCooldownHUD.getCurrentCooldown();
-            if (tabCooldown > 0) {
-                return (int) (tabCooldown * 20);
-            }
+        // Use internal timer when active
+        if (timerActive && targetCooldownTicks > 0) {
+            int remainingTicks = targetCooldownTicks - internalTickCounter;
+            return Math.max(0, remainingTicks / 20.0);
         }
-        return Math.max(0, cycleDuration - tickCounter);
-    }
-
-    public static int getTotalCycleDuration() {
-        return cycleDuration;
+        // Fall back to scoreboard when timer not active
+        return PickaxeCooldownHUD.getInterpolatedCooldown();
     }
 
     public static void setMiningSlot(int slot) {
@@ -88,15 +77,6 @@ public class AutoClickerManager {
 
     public static int getMiningSlot() {
         return expectedSlot;
-    }
-
-    public static void setManiacMinerCooldown(int seconds) {
-        baseCycleDuration = seconds * 20;
-        updateCycleDuration();
-    }
-
-    public static int getManiacMinerCooldown() {
-        return baseCycleDuration / 20;
     }
 
     public static void setEnableRodSwap(boolean value) {
@@ -121,20 +101,6 @@ public class AutoClickerManager {
 
     public static int getSecondDrillSlot() {
         return secondDrillSlot;
-    }
-
-    public static void activateCooldownBuff() {
-        cooldownBuffActive = true;
-        cooldownBuffTicksRemaining = 20 * 60 * 20;
-        updateCycleDuration();
-    }
-
-    private static void updateCycleDuration() {
-        if (cooldownBuffActive) {
-            cycleDuration = (int) (baseCycleDuration * 0.8);
-        } else {
-            cycleDuration = baseCycleDuration;
-        }
     }
 
     private static int findFishingRodSlot(MinecraftClient client) {
@@ -165,63 +131,48 @@ public class AutoClickerManager {
             return;
         }
 
-        if (cooldownBuffActive) {
-            cooldownBuffTicksRemaining--;
-            if (cooldownBuffTicksRemaining <= 0) {
-                cooldownBuffActive = false;
-                updateCycleDuration();
+        // Get scoreboard cooldown info
+        boolean currentlyOnCooldown = PickaxeCooldownHUD.isOnCooldown();
+        double scoreboardCooldown = PickaxeCooldownHUD.getCurrentCooldown();
+        double interpolatedCooldown = PickaxeCooldownHUD.getInterpolatedCooldown();
+
+        // When cooldown starts, capture the duration and start our internal timer
+        if (currentlyOnCooldown && !wasOnCooldown) {
+            targetCooldownTicks = (int) (scoreboardCooldown * 20);
+            internalTickCounter = 0;
+            timerActive = true;
+        }
+
+        // Fallback: if on cooldown but timer not active, sync it
+        if (currentlyOnCooldown && !timerActive && !inSequence && scoreboardCooldown > 0) {
+            targetCooldownTicks = (int) (scoreboardCooldown * 20);
+            internalTickCounter = 0;
+            timerActive = true;
+        }
+
+        // Update internal timer
+        if (timerActive && !inSequence) {
+            internalTickCounter++;
+        }
+
+        // Trigger based on our internal timer (more responsive)
+        if (!inSequence && enabled && timerActive) {
+            if (internalTickCounter >= targetCooldownTicks) {
+                inSequence = true;
+                sequenceStep = 0;
+                sequenceTickCounter = 0;
+                timerActive = false;
             }
         }
 
-        if (useTabCooldown) {
-            boolean currentlyOnCooldown = PickaxeCooldownHUD.isOnCooldown();
-
-            // Check interpolated cooldown to fill gaps when tab doesn't update
-            double tabCooldown = PickaxeCooldownHUD.getCurrentCooldown();
-            boolean interpolatedReady = tabCooldown <= 0;
-
-            if (!inSequence) {
-                boolean shouldTrigger = false;
-
-                // Trigger on transition from cooldown to ready (tab-based)
-                if (wasOnCooldown && !currentlyOnCooldown) {
-                    shouldTrigger = true;
-                }
-
-                // Also trigger if interpolated cooldown shows ready and we're not on cooldown
-                if (!currentlyOnCooldown && interpolatedReady && tickCounter >= cycleDuration) {
-                    shouldTrigger = true;
-                }
-
-                if (shouldTrigger && enabled) {
-                    inSequence = true;
-                    sequenceStep = 0;
-                    sequenceTickCounter = 0;
-                    tickCounter = 0;
-                }
-            }
-
-            wasOnCooldown = currentlyOnCooldown;
-
-            // Increment tickCounter even when using tab cooldown for fallback timing
-            if (!inSequence && !currentlyOnCooldown) {
-                tickCounter++;
-            } else if (currentlyOnCooldown) {
-                tickCounter = 0;
-            }
-        } else {
-            if (!inSequence) {
-                tickCounter++;
-                if (tickCounter >= cycleDuration) {
-                    if (enabled) {
-                        inSequence = true;
-                        sequenceStep = 0;
-                        sequenceTickCounter = 0;
-                        tickCounter = 0;
-                    }
-                }
-            }
+        // Fallback trigger: if scoreboard says ready and no timer active, trigger
+        if (!inSequence && enabled && !timerActive && !currentlyOnCooldown && interpolatedCooldown <= 0 && wasOnCooldown) {
+            inSequence = true;
+            sequenceStep = 0;
+            sequenceTickCounter = 0;
         }
+
+        wasOnCooldown = currentlyOnCooldown;
 
         if (!enabled) {
             return;
@@ -299,7 +250,6 @@ public class AutoClickerManager {
                 inSequence = false;
                 sequenceStep = 0;
                 sequenceTickCounter = 0;
-                tickCounter = 0;
                 break;
         }
     }
@@ -310,13 +260,5 @@ public class AutoClickerManager {
             client.options.attackKey.setPressed(false);
             client.options.useKey.setPressed(false);
         }
-    }
-
-    public static boolean isUsingTabCooldown() {
-        return useTabCooldown;
-    }
-
-    public static void setUseTabCooldown(boolean value) {
-        useTabCooldown = value;
     }
 }

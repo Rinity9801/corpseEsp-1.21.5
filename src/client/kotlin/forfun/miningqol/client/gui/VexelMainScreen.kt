@@ -44,7 +44,7 @@ class VexelMainScreen : VexelScreen("MiningQOL Settings") {
             borderRadius = 16f,
             borderThickness = 1f
         )
-            .setSizing(750f, Size.Pixels, 580f, Size.Pixels)
+            .setSizing(750f, Size.Pixels, 660f, Size.Pixels)
             .childOf(window)
             .apply {
                 dropShadow = true
@@ -59,7 +59,7 @@ class VexelMainScreen : VexelScreen("MiningQOL Settings") {
 
         // Calculate center position (must be done after setting size)
         mainPanel.xConstraint = (mainPanel.screenWidth - 750f) / 2f
-        mainPanel.yConstraint = (mainPanel.screenHeight - 580f) / 2f
+        mainPanel.yConstraint = (mainPanel.screenHeight - 660f) / 2f
 
         // Fade in animation
         mainPanel.fadeIn(500, EasingType.EASE_OUT)
@@ -153,6 +153,12 @@ class VexelMainScreen : VexelScreen("MiningQOL Settings") {
                 "HUD for ability cooldown tracking",
                 0xFF5BFFFF.toInt(),
                 listOf("pickaxe", "cooldown", "ability", "hud", "display", "almost ready", "title", "threshold", "mining speed")
+            ),
+            CardInfo(
+                "Ordered Waypoints",
+                "Create and follow waypoint routes",
+                0xFF55FF55.toInt(),
+                listOf("ordered", "waypoints", "route", "path", "navigation", "mqo", "waypoint", "trace", "line")
             )
         )
 
@@ -187,7 +193,8 @@ class VexelMainScreen : VexelScreen("MiningQOL Settings") {
             { MiningProfitCategoryScreen(this) },
             { MinerOverlayCategoryScreen(this) },
             { CorpseESPCategoryScreen(this) },
-            { PickaxeCooldownCategoryScreen(this) }
+            { PickaxeCooldownCategoryScreen(this) },
+            { OrderedWaypointsCategoryScreen(this) }
         )
 
         val rightScreens = listOf(

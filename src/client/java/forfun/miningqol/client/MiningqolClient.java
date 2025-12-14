@@ -5,6 +5,10 @@ import forfun.miningqol.client.gui.VexelMainScreen;
 import forfun.miningqol.client.profit.GemstoneTracker;
 import forfun.miningqol.client.profit.ProfitTrackerHUD;
 import forfun.miningqol.client.profit.ProfitDebugger;
+import forfun.miningqol.client.waypoints.OrderedWaypointManager;
+import forfun.miningqol.client.waypoints.OrderedWaypointRenderer;
+import com.mojang.brigadier.arguments.IntegerArgumentType;
+import com.mojang.brigadier.arguments.StringArgumentType;
 import net.fabricmc.api.ClientModInitializer;
 import net.fabricmc.fabric.api.client.command.v2.ClientCommandManager;
 import net.fabricmc.fabric.api.client.command.v2.ClientCommandRegistrationCallback;
@@ -39,7 +43,8 @@ public class MiningqolClient implements ClientModInitializer {
         config = MiningConfig.load();
         config.applyToGame();
 
-        
+        OrderedWaypointManager.init();
+
         toggleAutoClickerKey = KeyBindingHelper.registerKeyBinding(new KeyBinding(
             "key.miningqol.toggle_coalclick",
             InputUtil.Type.KEYSYM,
@@ -157,7 +162,131 @@ public class MiningqolClient implements ClientModInitializer {
                         LobbyFinder.listBlocks();
                         return 1;
                     })));
-        });
+            dispatcher.register(ClientCommandManager.literal("sblines")
+                .executes(context -> {
+                    MinecraftClient client = MinecraftClient.getInstance();
+                    if (client.player == null || client.world == null) return 0;
+
+                    net.minecraft.scoreboard.Scoreboard scoreboard = client.world.getScoreboard();
+                    net.minecraft.scoreboard.ScoreboardObjective sidebar = scoreboard.getObjectiveForSlot(net.minecraft.scoreboard.ScoreboardDisplaySlot.SIDEBAR);
+
+                    if (sidebar == null) {
+                        client.player.sendMessage(Text.literal("§cNo sidebar scoreboard found!"), false);
+                        return 0;
+                    }
+
+                    client.player.sendMessage(Text.literal("§6=== Scoreboard: " + sidebar.getDisplayName().getString() + " ==="), false);
+
+                    java.util.List<net.minecraft.scoreboard.ScoreboardEntry> entries = new java.util.ArrayList<>(scoreboard.getScoreboardEntries(sidebar));
+                    entries.sort((a, b) -> Integer.compare(b.value(), a.value()));
+
+                    for (int i = 0; i < entries.size(); i++) {
+                        net.minecraft.scoreboard.ScoreboardEntry entry = entries.get(i);
+                        String name = entry.owner();
+
+                        // Try to get the display text from the team
+                        net.minecraft.scoreboard.Team team = scoreboard.getScoreHolderTeam(name);
+                        String displayText;
+                        if (team != null) {
+                            displayText = team.getPrefix().getString() + name + team.getSuffix().getString();
+                        } else {
+                            displayText = name;
+                        }
+
+                        client.player.sendMessage(Text.literal("§7[" + i + "] §f" + displayText), false);
+                    }
+
+                    return 1;
+                }));
+            dispatcher.register(ClientCommandManager.literal("mqo")
+                .then(ClientCommandManager.literal("add")
+                    .executes(context -> {
+                        OrderedWaypointManager.add();
+                        return 1;
+                    }))
+                .then(ClientCommandManager.literal("insert")
+                    .then(ClientCommandManager.argument("number", IntegerArgumentType.integer(1))
+                        .executes(context -> {
+                            int num = IntegerArgumentType.getInteger(context, "number");
+                            OrderedWaypointManager.insert(num);
+                            return 1;
+                        })))
+                .then(ClientCommandManager.literal("remove")
+                    .then(ClientCommandManager.argument("number", IntegerArgumentType.integer(1))
+                        .executes(context -> {
+                            int num = IntegerArgumentType.getInteger(context, "number");
+                            OrderedWaypointManager.remove(num);
+                            return 1;
+                        })))
+                .then(ClientCommandManager.literal("skip")
+                    .executes(context -> {
+                        OrderedWaypointManager.skip(1);
+                        return 1;
+                    })
+                    .then(ClientCommandManager.argument("amount", IntegerArgumentType.integer())
+                        .executes(context -> {
+                            int amount = IntegerArgumentType.getInteger(context, "amount");
+                            OrderedWaypointManager.skip(amount);
+                            return 1;
+                        })))
+                .then(ClientCommandManager.literal("skipto")
+                    .then(ClientCommandManager.argument("number", IntegerArgumentType.integer(1))
+                        .executes(context -> {
+                            int num = IntegerArgumentType.getInteger(context, "number");
+                            OrderedWaypointManager.skipTo(num);
+                            return 1;
+                        })))
+                .then(ClientCommandManager.literal("save")
+                    .then(ClientCommandManager.argument("name", StringArgumentType.word())
+                        .executes(context -> {
+                            String name = StringArgumentType.getString(context, "name");
+                            OrderedWaypointManager.save(name);
+                            return 1;
+                        })))
+                .then(ClientCommandManager.literal("load")
+                    .executes(context -> {
+                        OrderedWaypointManager.loadFromClipboard();
+                        return 1;
+                    })
+                    .then(ClientCommandManager.argument("name", StringArgumentType.word())
+                        .executes(context -> {
+                            String name = StringArgumentType.getString(context, "name");
+                            OrderedWaypointManager.load(name);
+                            return 1;
+                        })))
+                .then(ClientCommandManager.literal("unload")
+                    .executes(context -> {
+                        OrderedWaypointManager.unload();
+                        return 1;
+                    }))
+                .then(ClientCommandManager.literal("export")
+                    .executes(context -> {
+                        OrderedWaypointManager.exportToClipboard();
+                        return 1;
+                    }))
+                .then(ClientCommandManager.literal("delete")
+                    .then(ClientCommandManager.argument("name", StringArgumentType.word())
+                        .executes(context -> {
+                            String name = StringArgumentType.getString(context, "name");
+                            OrderedWaypointManager.deleteRoute(name);
+                            return 1;
+                        })))
+                .then(ClientCommandManager.literal("list")
+                    .executes(context -> {
+                        OrderedWaypointManager.listRoutes();
+                        return 1;
+                    }))
+                .then(ClientCommandManager.literal("info")
+                    .executes(context -> {
+                        OrderedWaypointManager.info();
+                        return 1;
+                    }))
+                .then(ClientCommandManager.literal("toggle")
+                    .executes(context -> {
+                        OrderedWaypointManager.toggle();
+                        return 1;
+                    })));
+            });
 
         ClientTickEvents.END_CLIENT_TICK.register(client -> {
 
@@ -173,6 +302,7 @@ public class MiningqolClient implements ClientModInitializer {
                 AutoClickerManager.tick();
                 CommandKeybindManager.tick(client);
                 LobbyFinder.tick();
+                OrderedWaypointManager.tick();
             }
         });
 
@@ -184,6 +314,7 @@ public class MiningqolClient implements ClientModInitializer {
             CorpseESP.render(context.matrixStack(), context.camera());
             BlockOutlineRenderer.render(context.matrixStack(), context.camera());
             EfficientMinerOverlay.render(context.matrixStack(), context.camera());
+            OrderedWaypointRenderer.render(context.matrixStack(), context.camera());
         });
 
         ClientReceiveMessageEvents.GAME.register((message, overlay) -> {
@@ -200,10 +331,6 @@ public class MiningqolClient implements ClientModInitializer {
                 String gemType = pristineMatcher.group(1);
                 int amount = Integer.parseInt(pristineMatcher.group(2));
                 GemstoneTracker.onPristineGem(gemType, amount);
-            }
-
-            if (messageText.contains("New buff: -20% Pickaxe Ability cooldowns.")) {
-                AutoClickerManager.activateCooldownBuff();
             }
         });
 

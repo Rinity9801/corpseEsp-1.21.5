@@ -24,9 +24,9 @@ public class PickaxeCooldownPositionScreen extends Screen {
 
     @Override
     public void render(DrawContext context, int mouseX, int mouseY, float delta) {
-        this.renderBackground(context, mouseX, mouseY, delta);
+        // Call super.render first which handles background
+        super.render(context, mouseX, mouseY, delta);
 
-        
         context.drawCenteredTextWithShadow(this.textRenderer,
             "§eDrag the pickaxe cooldown display to reposition it",
             this.width / 2, 20, 0xFFFFFFFF);
@@ -34,20 +34,15 @@ public class PickaxeCooldownPositionScreen extends Screen {
             "§7Press ESC when done",
             this.width / 2, 35, 0xFFFFFFFF);
 
-        
         if (dragging) {
             PickaxeCooldownHUD.setPosition(mouseX - dragOffsetX, mouseY - dragOffsetY);
         }
-
 
         String cooldownText = "§6Pickobulus: §c30s";
         int x = PickaxeCooldownHUD.getX();
         int y = PickaxeCooldownHUD.getY();
 
-
         context.drawTextWithShadow(this.textRenderer, cooldownText, x, y, 0xFFFFFFFF);
-
-        super.render(context, mouseX, mouseY, delta);
     }
 
     @Override

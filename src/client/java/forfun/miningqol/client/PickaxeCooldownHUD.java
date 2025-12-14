@@ -149,6 +149,16 @@ public class PickaxeCooldownHUD {
         return lastKnownCooldownSeconds;
     }
 
+    public static double getInterpolatedCooldown() {
+        if (!isOnCooldown || lastCooldownUpdateTime <= 0) {
+            return 0;
+        }
+        long elapsedMs = System.currentTimeMillis() - lastCooldownUpdateTime;
+        double elapsedSeconds = elapsedMs / 1000.0;
+        double interpolated = lastKnownCooldownSeconds - elapsedSeconds;
+        return Math.max(0, interpolated);
+    }
+
     public static boolean isOnCooldown() {
         return isOnCooldown;
     }
