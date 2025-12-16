@@ -8,7 +8,8 @@
     "ChatHudMixin",
     "PlayerListHudMixin",
     "ItemStackMixin",
-    "ClientConnectionGlassSyncMixin"
+    "ClientConnectionGlassSyncMixin",
+    "GenericContainerScreenMixin"
   ],
   "injectors": {
     "defaultRequire": 1

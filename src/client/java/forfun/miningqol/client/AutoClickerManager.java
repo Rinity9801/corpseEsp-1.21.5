@@ -20,6 +20,11 @@ public class AutoClickerManager {
     private static int internalTickCounter = 0;
     private static int targetCooldownTicks = 0;
     private static boolean timerActive = false;
+    private static boolean waitingForCooldownStart = false; // Wait for next cooldown cycle
+
+    // Prevent double triggering
+    private static long lastSequenceEndTime = 0;
+    private static final long MIN_SEQUENCE_INTERVAL_MS = 5000; // 5 seconds minimum between sequences
 
     public static void toggle() {
         enabled = !enabled;
@@ -27,6 +32,8 @@ public class AutoClickerManager {
             inSequence = false;
             sequenceStep = 0;
             sequenceTickCounter = 0;
+            timerActive = false;
+            waitingForCooldownStart = false;
 
             MinecraftClient client = MinecraftClient.getInstance();
             if (client != null) {
@@ -43,8 +50,10 @@ public class AutoClickerManager {
                 sequenceStep = 0;
                 sequenceTickCounter = 0;
                 firstEnable = false;
+                waitingForCooldownStart = false;
             }
             wasOnCooldown = PickaxeCooldownHUD.isOnCooldown();
+            timerActive = false;
         }
     }
 
@@ -134,18 +143,33 @@ public class AutoClickerManager {
         // Get scoreboard cooldown info
         boolean currentlyOnCooldown = PickaxeCooldownHUD.isOnCooldown();
         double scoreboardCooldown = PickaxeCooldownHUD.getCurrentCooldown();
-        double interpolatedCooldown = PickaxeCooldownHUD.getInterpolatedCooldown();
 
-        // When cooldown starts, capture the duration and start our internal timer
-        if (currentlyOnCooldown && !wasOnCooldown) {
-            targetCooldownTicks = (int) (scoreboardCooldown * 20);
-            internalTickCounter = 0;
-            timerActive = true;
+        // Check if enough time has passed since last sequence
+        long currentTime = System.currentTimeMillis();
+        boolean canStartNewSequence = (currentTime - lastSequenceEndTime) >= MIN_SEQUENCE_INTERVAL_MS;
+
+        // After sequence ends, we wait for a NEW cooldown to start before tracking again
+        if (waitingForCooldownStart) {
+            if (currentlyOnCooldown && scoreboardCooldown > 10.0) {
+                // New cooldown started, begin tracking
+                waitingForCooldownStart = false;
+                targetCooldownTicks = (int) (scoreboardCooldown * 20) + 20; // Add 1 second buffer
+                internalTickCounter = 0;
+                timerActive = true;
+            }
+            wasOnCooldown = currentlyOnCooldown;
+
+            // Still allow mining while waiting for next cooldown
+            if (enabled) {
+                int currentSlot = getSelectedSlot(client);
+                client.options.attackKey.setPressed(currentSlot == expectedSlot);
+            }
+            return;
         }
 
-        // Fallback: if on cooldown but timer not active, sync it
-        if (currentlyOnCooldown && !timerActive && !inSequence && scoreboardCooldown > 0) {
-            targetCooldownTicks = (int) (scoreboardCooldown * 20);
+        // When cooldown starts, capture the duration and start our internal timer
+        if (currentlyOnCooldown && !wasOnCooldown && !timerActive && canStartNewSequence) {
+            targetCooldownTicks = (int) (scoreboardCooldown * 20) + 20; // Add 1 second buffer
             internalTickCounter = 0;
             timerActive = true;
         }
@@ -156,20 +180,13 @@ public class AutoClickerManager {
         }
 
         // Trigger based on our internal timer (more responsive)
-        if (!inSequence && enabled && timerActive) {
+        if (!inSequence && enabled && timerActive && canStartNewSequence) {
             if (internalTickCounter >= targetCooldownTicks) {
                 inSequence = true;
                 sequenceStep = 0;
                 sequenceTickCounter = 0;
                 timerActive = false;
             }
-        }
-
-        // Fallback trigger: if scoreboard says ready and no timer active, trigger
-        if (!inSequence && enabled && !timerActive && !currentlyOnCooldown && interpolatedCooldown <= 0 && wasOnCooldown) {
-            inSequence = true;
-            sequenceStep = 0;
-            sequenceTickCounter = 0;
         }
 
         wasOnCooldown = currentlyOnCooldown;
@@ -191,13 +208,30 @@ public class AutoClickerManager {
     private static void handleManiacMinerSequence(MinecraftClient client) {
         sequenceTickCounter++;
 
+        // Sequence:
+        // 0: Switch to rod (or skip to 5 if no rod swap)
+        // 1: Wait 2 ticks
+        // 2: Right click rod (3 ticks)
+        // 3: Wait 3 ticks
+        // 4: Switch to second drill (or skip to 10 if no second drill)
+        // 5: Wait 2 ticks
+        // 6: Left click second drill (2 ticks) - mine first
+        // 7: Right click second drill (3 ticks)
+        // 8: Wait 3 ticks
+        // 9: Switch to main drill
+        // 10: Wait 3 ticks
+        // 11: Left click main drill (2 ticks) - mine first
+        // 12: Right click main drill (3 ticks)
+        // 13: End
+
         switch (sequenceStep) {
             case 0:
+                // Switch to rod or skip
                 if (enableRodSwap) {
                     int rodSlot = findFishingRodSlot(client);
                     if (rodSlot != -1) {
                         setSelectedSlot(client, rodSlot);
-                        sequenceStep++;
+                        sequenceStep = 1;
                     } else {
                         sequenceStep = 4;
                     }
@@ -207,49 +241,97 @@ public class AutoClickerManager {
                 sequenceTickCounter = 0;
                 break;
 
-            case 1, 5:
+            case 1: // Wait before rod right click
                 if (sequenceTickCounter >= 2) {
-                    sequenceStep++;
+                    sequenceStep = 2;
                     sequenceTickCounter = 0;
                 }
                 break;
 
-            case 2, 6, 10:
+            case 2: // Right click rod
                 client.options.useKey.setPressed(true);
-                if (sequenceTickCounter >= 3) {
+                if (sequenceTickCounter >= 2) {
                     client.options.useKey.setPressed(false);
-                    sequenceStep++;
+                    sequenceStep = 3;
                     sequenceTickCounter = 0;
                 }
                 break;
 
-            case 3, 7, 9:
-                if (sequenceTickCounter >= 3) {
-                    sequenceStep++;
+            case 3: // Wait after rod
+                if (sequenceTickCounter >= 2) {
+                    sequenceStep = 4;
                     sequenceTickCounter = 0;
                 }
                 break;
 
-            case 4:
+            case 4: // Switch to second drill or skip
                 if (enableSecondDrill) {
                     setSelectedSlot(client, secondDrillSlot);
-                    sequenceStep++;
+                    sequenceStep = 5;
                 } else {
                     sequenceStep = 8;
                 }
                 sequenceTickCounter = 0;
                 break;
 
-            case 8:
+            case 5: // Wait before second drill actions
+                if (sequenceTickCounter >= 3) {
+                    sequenceStep = 6;
+                    sequenceTickCounter = 0;
+                }
+                break;
+
+            case 6: // Right click second drill
+                client.options.useKey.setPressed(true);
+                if (sequenceTickCounter >= 2) {
+                    client.options.useKey.setPressed(false);
+                    sequenceStep = 7;
+                    sequenceTickCounter = 0;
+                }
+                break;
+
+            case 7: // Wait after second drill
+                if (sequenceTickCounter >= 2) {
+                    sequenceStep = 8;
+                    sequenceTickCounter = 0;
+                }
+                break;
+
+            case 8: // Switch to main drill
                 setSelectedSlot(client, expectedSlot);
-                sequenceStep++;
+                if (enableSecondDrill) {
+                    // Second drill mode: just switch back to main, no right click needed
+                    sequenceStep = 11;
+                } else {
+                    // Normal mode: need to right click main drill
+                    sequenceStep = 9;
+                }
                 sequenceTickCounter = 0;
                 break;
 
-            case 11:
+            case 9: // Wait before main drill actions (only when second drill OFF)
+                if (sequenceTickCounter >= 3) {
+                    sequenceStep = 10;
+                    sequenceTickCounter = 0;
+                }
+                break;
+
+            case 10: // Right click main drill (only when second drill OFF)
+                client.options.useKey.setPressed(true);
+                if (sequenceTickCounter >= 2) {
+                    client.options.useKey.setPressed(false);
+                    sequenceStep = 11;
+                    sequenceTickCounter = 0;
+                }
+                break;
+
+            case 11: // End sequence
                 inSequence = false;
                 sequenceStep = 0;
                 sequenceTickCounter = 0;
+                lastSequenceEndTime = System.currentTimeMillis();
+                timerActive = false;
+                waitingForCooldownStart = true; // Wait for next cooldown cycle
                 break;
         }
     }
