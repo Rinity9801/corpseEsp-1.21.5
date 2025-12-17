@@ -66,6 +66,7 @@ public class CoalValueCommand {
         double sulphuricSellPrice = getPrice(products, "SULPHURIC_COAL", method);
         double crudeGabaBuyPrice = getBuyPrice(products, "CRUDE_GABAGOOL", method);
         double fuelGabaSellPrice = getPrice(products, "FUEL_GABAGOOL", method);
+        double fuelGabaBuyPrice = getBuyPrice(products, "FUEL_GABAGOOL", method);
         double heavyGabaBuyPrice = getBuyPrice(products, "HEAVY_GABAGOOL", method);
         double heavyGabaInstaBuyPrice = getInstaBuyPrice(products, "HEAVY_GABAGOOL");
         double hyperGabaSellPrice = getPrice(products, "HYPERGOLIC_GABAGOOL", method);
@@ -142,10 +143,32 @@ public class CoalValueCommand {
             option5Profit
         ));
 
+        // Option 6: Full craft chain - Crude → Fuel → Heavy → Hypergolic
+        // Sulphuric Coal allocation: 1 per Fuel, 1 per Heavy, 1 per Hypergolic
+        // For H Hypergolic: need 12*H Heavy, need 24*12*H = 288*H Fuel
+        // Sulphuric needed: 288*H (for Fuel) + 12*H (for Heavy) + H (for Hypergolic) = 301*H
+        // So H = sulphuricCoalOutput / 301
+        long option6Hypergolic = sulphuricCoalOutput / 301;
+        long option6Heavy = option6Hypergolic * 12;
+        long option6Fuel = option6Heavy * 24; // 288 * H
+        long option6CrudeNeeded = option6Fuel * 24; // 24 Crude per Fuel
+        double option6CrudeCost = option6CrudeNeeded * crudeGabaBuyPrice;
+        double option6Revenue = option6Hypergolic * hyperGabaSellPrice;
+        double option6Profit = option6Revenue - sulphurCost - option6CrudeCost;
+        options.add(new CoalValueScreen.CraftingOption(
+            "Craft Hypergolic (full chain)",
+            COUNT_FORMAT.format(option6Hypergolic) + " Hypergolic Gabagool",
+            List.of(
+                COUNT_FORMAT.format(sulphuricCoalCrafts) + " Sulphur (-" + COIN_FORMAT.format(sulphurCost) + ")",
+                COUNT_FORMAT.format(option6CrudeNeeded) + " Crude Gaba (-" + COIN_FORMAT.format(option6CrudeCost) + ")"
+            ),
+            option6Profit
+        ));
+
         // Find best option index
         int bestIndex = 0;
         double bestProfit = option1Profit;
-        double[] profits = {option1Profit, option2Profit, option3Profit, option4Profit, option5Profit};
+        double[] profits = {option1Profit, option2Profit, option3Profit, option4Profit, option5Profit, option6Profit};
         for (int i = 1; i < profits.length; i++) {
             if (profits[i] > bestProfit) {
                 bestProfit = profits[i];

@@ -43,6 +43,7 @@ public class AutoClickerManager {
         } else {
             // Check if ability is currently ready
             boolean abilityIsReady = !PickaxeCooldownHUD.isOnCooldown();
+            double currentCooldown = PickaxeCooldownHUD.getCurrentCooldown();
 
             if (firstEnable || abilityIsReady) {
                 // If first enable OR ability is ready, trigger immediately
@@ -51,9 +52,15 @@ public class AutoClickerManager {
                 sequenceTickCounter = 0;
                 firstEnable = false;
                 waitingForCooldownStart = false;
+                timerActive = false;
+            } else if (currentCooldown > 0) {
+                // Ability is on cooldown, start tracking it
+                targetCooldownTicks = (int) (currentCooldown * 20) + 20; // Add 1 second buffer
+                internalTickCounter = 0;
+                timerActive = true;
+                waitingForCooldownStart = false;
             }
             wasOnCooldown = PickaxeCooldownHUD.isOnCooldown();
-            timerActive = false;
         }
     }
 

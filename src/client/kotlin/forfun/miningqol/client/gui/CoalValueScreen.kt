@@ -52,7 +52,7 @@ class CoalValueScreen(
             borderRadius = 16f,
             borderThickness = 1f
         )
-            .setSizing(500f, Size.Pixels, 565f, Size.Pixels)
+            .setSizing(500f, Size.Pixels, 650f, Size.Pixels)
             .childOf(window)
             .apply {
                 dropShadow = true
@@ -64,7 +64,7 @@ class CoalValueScreen(
         mainPanel.xPositionConstraint = Pos.ScreenPixels
         mainPanel.yPositionConstraint = Pos.ScreenPixels
         mainPanel.xConstraint = (mainPanel.screenWidth - 500f) / 2f
-        mainPanel.yConstraint = (mainPanel.screenHeight - 565f) / 2f
+        mainPanel.yConstraint = (mainPanel.screenHeight - 650f) / 2f
         mainPanel.fadeIn(400, EasingType.EASE_OUT)
 
         // Title bar

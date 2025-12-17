@@ -2,9 +2,12 @@ package forfun.miningqol.client;
 
 import forfun.miningqol.client.config.MiningConfig;
 import forfun.miningqol.client.gui.VexelMainScreen;
+import forfun.miningqol.client.gui.UpdateScreen;
 import forfun.miningqol.client.profit.GemstoneTracker;
 import forfun.miningqol.client.profit.ProfitTrackerHUD;
 import forfun.miningqol.client.profit.ProfitDebugger;
+import forfun.miningqol.client.sacks.CoalValueCommand;
+import forfun.miningqol.client.update.UpdateChecker;
 import forfun.miningqol.client.waypoints.OrderedWaypointManager;
 import forfun.miningqol.client.waypoints.OrderedWaypointRenderer;
 import com.mojang.brigadier.arguments.IntegerArgumentType;
@@ -35,6 +38,7 @@ public class MiningqolClient implements ClientModInitializer {
     private static final Pattern PRISTINE_PATTERN = Pattern.compile("PRISTINE! You found . Flawed (.+) Gemstone x(\\d+)!");
     private static MiningConfig config;
     private static KeyBinding toggleAutoClickerKey;
+    private static boolean updateScreenShown = false;
 
     @Override
     public void onInitializeClient() {
@@ -44,6 +48,9 @@ public class MiningqolClient implements ClientModInitializer {
         config.applyToGame();
 
         OrderedWaypointManager.init();
+
+        // Check for updates
+        UpdateChecker.checkForUpdates();
 
         toggleAutoClickerKey = KeyBindingHelper.registerKeyBinding(new KeyBinding(
             "key.miningqol.toggle_coalclick",
@@ -74,6 +81,24 @@ public class MiningqolClient implements ClientModInitializer {
             dispatcher.register(ClientCommandManager.literal("profitdebug")
                 .executes(context -> {
                     ProfitDebugger.showCalculationDetails();
+                    return 1;
+                }));
+            dispatcher.register(ClientCommandManager.literal("coalvalue")
+                .then(ClientCommandManager.literal("instasell")
+                    .executes(context -> {
+                        CoalValueCommand.execute(CoalValueCommand.SellMethod.INSTASELL);
+                        return 1;
+                    }))
+                .then(ClientCommandManager.literal("selloffer")
+                    .executes(context -> {
+                        CoalValueCommand.execute(CoalValueCommand.SellMethod.SELLOFFER);
+                        return 1;
+                    }))
+                .executes(context -> {
+                    MinecraftClient client = MinecraftClient.getInstance();
+                    if (client.player != null) {
+                        client.player.sendMessage(Text.literal("§6[CoalValue] Usage: /coalvalue <instasell|selloffer>"), false);
+                    }
                     return 1;
                 }));
             dispatcher.register(ClientCommandManager.literal("getplayerhead")
@@ -303,6 +328,12 @@ public class MiningqolClient implements ClientModInitializer {
                 CommandKeybindManager.tick(client);
                 LobbyFinder.tick();
                 OrderedWaypointManager.tick();
+
+                // Show update screen once when update is available
+                if (!updateScreenShown && UpdateChecker.isCheckComplete() && UpdateChecker.isUpdateAvailable()) {
+                    updateScreenShown = true;
+                    client.send(() -> client.setScreen(new UpdateScreen()));
+                }
             }
         });
 
