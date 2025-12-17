@@ -329,10 +329,13 @@ public class MiningqolClient implements ClientModInitializer {
                 LobbyFinder.tick();
                 OrderedWaypointManager.tick();
 
-                // Show update screen once when update is available
+                // Show update screen once when update is available (unless dismissed)
                 if (!updateScreenShown && UpdateChecker.isCheckComplete() && UpdateChecker.isUpdateAvailable()) {
-                    updateScreenShown = true;
-                    client.send(() -> client.setScreen(new UpdateScreen()));
+                    String latestVersion = UpdateChecker.getLatestVersion();
+                    if (latestVersion != null && !latestVersion.equals(config.dismissedUpdateVersion)) {
+                        updateScreenShown = true;
+                        client.send(() -> client.setScreen(new UpdateScreen()));
+                    }
                 }
             }
         });

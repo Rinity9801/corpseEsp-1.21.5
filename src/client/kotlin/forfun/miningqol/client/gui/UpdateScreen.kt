@@ -1,5 +1,6 @@
 package forfun.miningqol.client.gui
 
+import forfun.miningqol.client.MiningqolClient
 import forfun.miningqol.client.update.UpdateChecker
 import net.fabricmc.loader.api.FabricLoader
 import net.minecraft.client.MinecraftClient
@@ -102,15 +103,25 @@ class UpdateScreen : VexelScreen("MiningQOL Update Available") {
             .setPositioning(25f, Pos.ParentPixels, 105f, Pos.ParentPixels)
             .childOf(mainPanel)
 
-        // Release notes (truncated)
+        // Release notes - display as bullet points
         val releaseNotes = UpdateChecker.getReleaseNotes() ?: "No release notes available."
-        val truncatedNotes = if (releaseNotes.length > 200) releaseNotes.substring(0, 200) + "..." else releaseNotes
-        val cleanNotes = truncatedNotes.replace("\r\n", " ").replace("\n", " ").replace("  ", " ")
+        val lines = releaseNotes.split("\n", "\r\n")
+            .map { it.trim() }
+            .filter { it.isNotEmpty() }
+            .take(4) // Max 4 lines
+            .map { line ->
+                // Truncate long lines
+                val cleanLine = line.removePrefix("-").removePrefix("*").trim()
+                if (cleanLine.length > 50) cleanLine.substring(0, 47) + "..." else cleanLine
+            }
 
-        Text(cleanNotes, 0xFF888888.toInt(), 12f, false)
-            .setSizing(400f, Size.Pixels, 60f, Size.Pixels)
-            .setPositioning(25f, Pos.ParentPixels, 125f, Pos.ParentPixels)
-            .childOf(mainPanel)
+        var yOffset = 125f
+        for (line in lines) {
+            Text("• $line", 0xFF888888.toInt(), 11f, false)
+                .setPositioning(25f, Pos.ParentPixels, yOffset, Pos.ParentPixels)
+                .childOf(mainPanel)
+            yOffset += 14f
+        }
 
         // Status text
         statusText = Text("", 0xFFFFD700.toInt(), 12f, false)
@@ -170,6 +181,32 @@ class UpdateScreen : VexelScreen("MiningQOL Update Available") {
                 true
             }
             .childOf(mainPanel)
+
+        // Don't Show Again button
+        Button("Don't Show Again", 0xFF666666.toInt(), fontSize = 11f)
+            .setSizing(120f, Size.Pixels, 28f, Size.Pixels)
+            .setPositioning(0f, Pos.ParentPixels, 0f, Pos.ParentPixels)
+            .alignRight()
+            .alignBottom()
+            .setOffset(-15f, -18f)
+            .backgroundColor(0xFF1A1A1A.toInt())
+            .borderColor(0xFF333333.toInt())
+            .borderRadius(6f)
+            .borderThickness(1f)
+            .hoverColors(0xFF252525.toInt(), 0xFFAAAAAA.toInt())
+            .pressedColors(0xFF151515.toInt(), 0xFF888888.toInt())
+            .onClick { _, _, _ ->
+                dismissUpdate()
+                close()
+                true
+            }
+            .childOf(mainPanel)
+    }
+
+    private fun dismissUpdate() {
+        val config = MiningqolClient.getConfig()
+        config.dismissedUpdateVersion = UpdateChecker.getLatestVersion() ?: ""
+        config.save()
     }
 
     private fun downloadUpdate() {
@@ -181,8 +218,9 @@ class UpdateScreen : VexelScreen("MiningQOL Update Available") {
         UpdateChecker.downloadUpdate(modsFolder).thenAccept { success ->
             MinecraftClient.getInstance().execute {
                 if (success) {
-                    statusText.text = "Downloaded! Delete old version & restart."
+                    statusText.text = "Downloaded! Delete old jar & restart."
                     statusText.color(0xFF4CAF50.toInt())
+                    dismissUpdate() // Don't show again after successful download
                 } else {
                     statusText.text = "Download failed. Try browser instead."
                     statusText.color(0xFFFF6B6B.toInt())

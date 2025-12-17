@@ -106,6 +106,9 @@ public class MiningConfig {
     public float[] orderedWaypointBlockOutlineColor = {1f, 1f, 1f};
     public float orderedWaypointBlockOutlineAlpha = 0.8f;
 
+    // Update checker - remember dismissed version
+    public String dismissedUpdateVersion = "";
+
     public static MiningConfig load() {
         if (!CONFIG_FILE.exists()) {
             LOGGER.info("[MiningConfig] Config file not found, creating default");
