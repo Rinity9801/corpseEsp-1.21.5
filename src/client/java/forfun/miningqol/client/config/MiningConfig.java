@@ -109,6 +109,14 @@ public class MiningConfig {
     // Update checker - remember dismissed version
     public String dismissedUpdateVersion = "";
 
+    // Coal value calculator settings
+    public String coalValueSellMethod = "SELLOFFER"; // INSTASELL or SELLOFFER
+    public String coalValueSulphurBuy = "BUY_ORDER"; // BUY_ORDER or INSTA_BUY
+    public String coalValueCrudeBuy = "BUY_ORDER";
+    public String coalValueFuelBuy = "BUY_ORDER";
+    public String coalValueHeavyBuy = "BUY_ORDER";
+    public boolean coalValueShowSettings = true; // Show settings first time, then go to results
+
     public static MiningConfig load() {
         if (!CONFIG_FILE.exists()) {
             LOGGER.info("[MiningConfig] Config file not found, creating default");

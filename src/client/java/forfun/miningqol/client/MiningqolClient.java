@@ -84,21 +84,8 @@ public class MiningqolClient implements ClientModInitializer {
                     return 1;
                 }));
             dispatcher.register(ClientCommandManager.literal("coalvalue")
-                .then(ClientCommandManager.literal("instasell")
-                    .executes(context -> {
-                        CoalValueCommand.execute(CoalValueCommand.SellMethod.INSTASELL);
-                        return 1;
-                    }))
-                .then(ClientCommandManager.literal("selloffer")
-                    .executes(context -> {
-                        CoalValueCommand.execute(CoalValueCommand.SellMethod.SELLOFFER);
-                        return 1;
-                    }))
                 .executes(context -> {
-                    MinecraftClient client = MinecraftClient.getInstance();
-                    if (client.player != null) {
-                        client.player.sendMessage(Text.literal("§6[CoalValue] Usage: /coalvalue <instasell|selloffer>"), false);
-                    }
+                    CoalValueCommand.execute();
                     return 1;
                 }));
             dispatcher.register(ClientCommandManager.literal("getplayerhead")

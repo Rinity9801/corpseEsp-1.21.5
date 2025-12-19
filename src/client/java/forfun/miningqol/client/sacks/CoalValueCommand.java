@@ -1,5 +1,6 @@
 package forfun.miningqol.client.sacks;
 
+import forfun.miningqol.client.MiningqolClient;
 import forfun.miningqol.client.gui.CoalValueScreen;
 import net.minecraft.client.MinecraftClient;
 import net.minecraft.text.Text;
@@ -21,13 +22,12 @@ public class CoalValueCommand {
         SELLOFFER
     }
 
-    // Recipes:
-    // 16 Enchanted Coal + 1 Enchanted Sulphur → 4 Sulphuric Coal
-    // 24 Crude Gabagool + 1 Sulphuric Coal → 1 Fuel Gabagool
-    // 24 Fuel Gabagool + 1 Sulphuric Coal → 1 Heavy Gabagool
-    // 12 Heavy Gabagool + 1 Sulphuric Coal → 1 Hypergolic Gabagool
+    public enum BuyMethod {
+        BUY_ORDER,
+        INSTA_BUY
+    }
 
-    public static void execute(SellMethod method) {
+    public static void execute() {
         MinecraftClient client = MinecraftClient.getInstance();
         if (client.player == null) return;
 
@@ -44,40 +44,55 @@ public class CoalValueCommand {
             return;
         }
 
-        client.player.sendMessage(Text.literal("§6[CoalValue] Fetching Bazaar prices..."), false);
+        var config = MiningqolClient.getConfig();
 
+        // If settings should be shown, open with settings panel
+        // Otherwise fetch prices and go straight to results
+        if (config.coalValueShowSettings) {
+            client.send(() -> client.setScreen(new CoalValueScreen(enchantedCoal)));
+        } else {
+            client.player.sendMessage(Text.literal("§6[CoalValue] Fetching Bazaar prices..."), false);
+            fetchAndShowResults(client, enchantedCoal);
+        }
+    }
+
+    public static void fetchAndShowResults(MinecraftClient client, long enchantedCoal) {
         BazaarAPI.fetchPrices().thenAccept(products -> {
-            client.execute(() -> calculateCraftingOptions(client, method, products, enchantedCoal));
+            client.execute(() -> {
+                if (products.isEmpty()) {
+                    if (client.player != null) {
+                        client.player.sendMessage(Text.literal("§c[CoalValue] Failed to fetch Bazaar prices!"), false);
+                    }
+                    return;
+                }
+                List<CraftingOption> options = calculateOptions(products, enchantedCoal);
+                int bestIndex = findBestOption(options);
+                client.setScreen(new CoalValueScreen(enchantedCoal, options, bestIndex));
+            });
         });
     }
 
-    private static void calculateCraftingOptions(MinecraftClient client, SellMethod method,
-                                                  Map<String, BazaarAPI.BazaarProduct> products, long enchantedCoal) {
-        if (client.player == null) return;
+    public static List<CraftingOption> calculateOptions(Map<String, BazaarAPI.BazaarProduct> products, long enchantedCoal) {
+        var config = MiningqolClient.getConfig();
+        SellMethod sellMethod = SellMethod.valueOf(config.coalValueSellMethod);
+        BuyMethod sulphurBuy = BuyMethod.valueOf(config.coalValueSulphurBuy);
+        BuyMethod crudeBuy = BuyMethod.valueOf(config.coalValueCrudeBuy);
+        BuyMethod heavyBuy = BuyMethod.valueOf(config.coalValueHeavyBuy);
 
-        if (products.isEmpty()) {
-            client.player.sendMessage(Text.literal("§c[CoalValue] Failed to fetch Bazaar prices!"), false);
-            return;
-        }
+        // Get prices based on configured methods
+        double ecoalSellPrice = getSellPrice(products, "ENCHANTED_COAL", sellMethod);
+        double sulphurBuyPrice = getBuyPrice(products, "ENCHANTED_SULPHUR", sulphurBuy);
+        double sulphuricSellPrice = getSellPrice(products, "SULPHURIC_COAL", sellMethod);
+        double crudeGabaBuyPrice = getBuyPrice(products, "CRUDE_GABAGOOL", crudeBuy);
+        double fuelGabaSellPrice = getSellPrice(products, "FUEL_GABAGOOL", sellMethod);
+        double heavyGabaBuyPrice = getBuyPrice(products, "HEAVY_GABAGOOL", heavyBuy);
+        double hyperGabaSellPrice = getSellPrice(products, "HYPERGOLIC_GABAGOOL", sellMethod);
 
-        // Get prices based on sell method
-        double ecoalSellPrice = getPrice(products, "ENCHANTED_COAL", method);
-        double sulphurBuyPrice = getBuyPrice(products, "ENCHANTED_SULPHUR", method);
-        double sulphuricSellPrice = getPrice(products, "SULPHURIC_COAL", method);
-        double crudeGabaBuyPrice = getBuyPrice(products, "CRUDE_GABAGOOL", method);
-        double fuelGabaSellPrice = getPrice(products, "FUEL_GABAGOOL", method);
-        double fuelGabaBuyPrice = getBuyPrice(products, "FUEL_GABAGOOL", method);
-        double heavyGabaBuyPrice = getBuyPrice(products, "HEAVY_GABAGOOL", method);
-        double heavyGabaInstaBuyPrice = getInstaBuyPrice(products, "HEAVY_GABAGOOL");
-        double hyperGabaSellPrice = getPrice(products, "HYPERGOLIC_GABAGOOL", method);
-
-        String methodName = (method == SellMethod.INSTASELL) ? "Insta-Sell" : "Sell Offer";
-
-        List<CoalValueScreen.CraftingOption> options = new ArrayList<>();
+        List<CraftingOption> options = new ArrayList<>();
 
         // Option 1: Sell Enchanted Coal directly
         double option1Profit = enchantedCoal * ecoalSellPrice;
-        options.add(new CoalValueScreen.CraftingOption(
+        options.add(new CraftingOption(
             "Sell Enchanted Coal",
             "",
             List.of(),
@@ -90,7 +105,7 @@ public class CoalValueCommand {
         double sulphurCost = sulphuricCoalCrafts * sulphurBuyPrice;
         double option2Revenue = sulphuricCoalOutput * sulphuricSellPrice;
         double option2Profit = option2Revenue - sulphurCost;
-        options.add(new CoalValueScreen.CraftingOption(
+        options.add(new CraftingOption(
             "Craft Sulphuric Coal",
             COUNT_FORMAT.format(sulphuricCoalOutput) + " Sulphuric Coal",
             List.of(COUNT_FORMAT.format(sulphuricCoalCrafts) + " Sulphur (-" + COIN_FORMAT.format(sulphurCost) + ")"),
@@ -103,7 +118,7 @@ public class CoalValueCommand {
         double crudeGabaCost = crudeGabaNeeded * crudeGabaBuyPrice;
         double option3Revenue = fuelGabaCrafts * fuelGabaSellPrice;
         double option3Profit = option3Revenue - sulphurCost - crudeGabaCost;
-        options.add(new CoalValueScreen.CraftingOption(
+        options.add(new CraftingOption(
             "Craft Fuel Gabagool",
             COUNT_FORMAT.format(fuelGabaCrafts) + " Fuel Gabagool",
             List.of(
@@ -113,14 +128,14 @@ public class CoalValueCommand {
             option3Profit
         ));
 
-        // Option 4: Craft to Hypergolic Gabagool (buy order Heavy)
+        // Option 4: Craft to Hypergolic Gabagool (buying Heavy)
         long hyperGabaCrafts = sulphuricCoalOutput;
         long heavyGabaNeeded = hyperGabaCrafts * 12;
         double heavyGabaCost = heavyGabaNeeded * heavyGabaBuyPrice;
         double option4Revenue = hyperGabaCrafts * hyperGabaSellPrice;
         double option4Profit = option4Revenue - sulphurCost - heavyGabaCost;
-        options.add(new CoalValueScreen.CraftingOption(
-            "Craft Hypergolic (buy order Heavy)",
+        options.add(new CraftingOption(
+            "Craft Hypergolic (buy Heavy)",
             COUNT_FORMAT.format(hyperGabaCrafts) + " Hypergolic Gabagool",
             List.of(
                 COUNT_FORMAT.format(sulphuricCoalCrafts) + " Sulphur (-" + COIN_FORMAT.format(sulphurCost) + ")",
@@ -129,78 +144,62 @@ public class CoalValueCommand {
             option4Profit
         ));
 
-        // Option 5: Craft to Hypergolic Gabagool (insta-buy Heavy)
-        double heavyGabaInstaCost = heavyGabaNeeded * heavyGabaInstaBuyPrice;
-        double option5Revenue = hyperGabaCrafts * hyperGabaSellPrice;
-        double option5Profit = option5Revenue - sulphurCost - heavyGabaInstaCost;
-        options.add(new CoalValueScreen.CraftingOption(
-            "Craft Hypergolic (insta-buy Heavy)",
-            COUNT_FORMAT.format(hyperGabaCrafts) + " Hypergolic Gabagool",
+        // Option 5: Full craft chain - Crude → Fuel → Heavy → Hypergolic
+        long option5Hypergolic = sulphuricCoalOutput / 301;
+        long option5Heavy = option5Hypergolic * 12;
+        long option5Fuel = option5Heavy * 24;
+        long option5CrudeNeeded = option5Fuel * 24;
+        double option5CrudeCost = option5CrudeNeeded * crudeGabaBuyPrice;
+        double option5Revenue = option5Hypergolic * hyperGabaSellPrice;
+        double option5Profit = option5Revenue - sulphurCost - option5CrudeCost;
+        options.add(new CraftingOption(
+            "Craft Hypergolic (full chain)",
+            COUNT_FORMAT.format(option5Hypergolic) + " Hypergolic Gabagool",
             List.of(
                 COUNT_FORMAT.format(sulphuricCoalCrafts) + " Sulphur (-" + COIN_FORMAT.format(sulphurCost) + ")",
-                COUNT_FORMAT.format(heavyGabaNeeded) + " Heavy Gaba (-" + COIN_FORMAT.format(heavyGabaInstaCost) + ")"
+                COUNT_FORMAT.format(option5CrudeNeeded) + " Crude Gaba (-" + COIN_FORMAT.format(option5CrudeCost) + ")"
             ),
             option5Profit
         ));
 
-        // Option 6: Full craft chain - Crude → Fuel → Heavy → Hypergolic
-        // Sulphuric Coal allocation: 1 per Fuel, 1 per Heavy, 1 per Hypergolic
-        // For H Hypergolic: need 12*H Heavy, need 24*12*H = 288*H Fuel
-        // Sulphuric needed: 288*H (for Fuel) + 12*H (for Heavy) + H (for Hypergolic) = 301*H
-        // So H = sulphuricCoalOutput / 301
-        long option6Hypergolic = sulphuricCoalOutput / 301;
-        long option6Heavy = option6Hypergolic * 12;
-        long option6Fuel = option6Heavy * 24; // 288 * H
-        long option6CrudeNeeded = option6Fuel * 24; // 24 Crude per Fuel
-        double option6CrudeCost = option6CrudeNeeded * crudeGabaBuyPrice;
-        double option6Revenue = option6Hypergolic * hyperGabaSellPrice;
-        double option6Profit = option6Revenue - sulphurCost - option6CrudeCost;
-        options.add(new CoalValueScreen.CraftingOption(
-            "Craft Hypergolic (full chain)",
-            COUNT_FORMAT.format(option6Hypergolic) + " Hypergolic Gabagool",
-            List.of(
-                COUNT_FORMAT.format(sulphuricCoalCrafts) + " Sulphur (-" + COIN_FORMAT.format(sulphurCost) + ")",
-                COUNT_FORMAT.format(option6CrudeNeeded) + " Crude Gaba (-" + COIN_FORMAT.format(option6CrudeCost) + ")"
-            ),
-            option6Profit
-        ));
+        return options;
+    }
 
-        // Find best option index
+    public static int findBestOption(List<CraftingOption> options) {
         int bestIndex = 0;
-        double bestProfit = option1Profit;
-        double[] profits = {option1Profit, option2Profit, option3Profit, option4Profit, option5Profit, option6Profit};
-        for (int i = 1; i < profits.length; i++) {
-            if (profits[i] > bestProfit) {
-                bestProfit = profits[i];
+        double bestProfit = options.get(0).profit;
+        for (int i = 1; i < options.size(); i++) {
+            if (options.get(i).profit > bestProfit) {
+                bestProfit = options.get(i).profit;
                 bestIndex = i;
             }
         }
-
-        // Open the GUI
-        client.setScreen(new CoalValueScreen(enchantedCoal, methodName, options, bestIndex));
+        return bestIndex;
     }
 
-    private static double getPrice(Map<String, BazaarAPI.BazaarProduct> products, String productId, SellMethod method) {
-        // For selling products:
-        // INSTASELL = sell to buy orders = topSellPrice (lower, instant)
-        // SELLOFFER = create sell order = topBuyPrice (higher, wait)
+    private static double getSellPrice(Map<String, BazaarAPI.BazaarProduct> products, String productId, SellMethod method) {
         BazaarAPI.BazaarProduct product = products.get(productId);
         if (product == null) return 0;
         return (method == SellMethod.INSTASELL) ? product.topSellPrice : product.topBuyPrice;
     }
 
-    private static double getBuyPrice(Map<String, BazaarAPI.BazaarProduct> products, String productId, SellMethod method) {
-        // For buying materials: always use buy orders (cheaper)
-        // topSellPrice = buy order price (lower cost)
+    private static double getBuyPrice(Map<String, BazaarAPI.BazaarProduct> products, String productId, BuyMethod method) {
         BazaarAPI.BazaarProduct product = products.get(productId);
         if (product == null) return 0;
-        return product.topSellPrice;
+        return (method == BuyMethod.BUY_ORDER) ? product.topSellPrice : product.topBuyPrice;
     }
 
-    private static double getInstaBuyPrice(Map<String, BazaarAPI.BazaarProduct> products, String productId) {
-        // For insta-buying: use topBuyPrice (higher cost, instant)
-        BazaarAPI.BazaarProduct product = products.get(productId);
-        if (product == null) return 0;
-        return product.topBuyPrice;
+    public static class CraftingOption {
+        public final String name;
+        public final String output;
+        public final List<String> costs;
+        public final double profit;
+
+        public CraftingOption(String name, String output, List<String> costs, double profit) {
+            this.name = name;
+            this.output = output;
+            this.costs = costs;
+            this.profit = profit;
+        }
     }
 }
