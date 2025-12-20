@@ -364,9 +364,10 @@ class MiningProfitCategoryScreen(private val parentScreen: Screen) : VexelScreen
             .borderThickness(1f)
             .onClick { _, _, _ ->
                 if (isBlockMode) {
-                    isBlockMode = false
                     ProfitTrackerHUD.setMode("GEMSTONES")
-                    rebuildContent()
+                    MiningqolClient.getConfig()?.loadFromGame()
+                    MiningqolClient.getConfig()?.save()
+                    MinecraftClient.getInstance().setScreen(MiningProfitCategoryScreen(parentScreen))
                 }
                 true
             }
@@ -383,9 +384,10 @@ class MiningProfitCategoryScreen(private val parentScreen: Screen) : VexelScreen
             .borderThickness(1f)
             .onClick { _, _, _ ->
                 if (!isBlockMode) {
-                    isBlockMode = true
                     ProfitTrackerHUD.setMode("BLOCKS")
-                    rebuildContent()
+                    MiningqolClient.getConfig()?.loadFromGame()
+                    MiningqolClient.getConfig()?.save()
+                    MinecraftClient.getInstance().setScreen(MiningProfitCategoryScreen(parentScreen))
                 }
                 true
             }
@@ -398,11 +400,6 @@ class MiningProfitCategoryScreen(private val parentScreen: Screen) : VexelScreen
                 card.fadeIn(400, EasingType.EASE_OUT)
             }
         }.start()
-    }
-
-    private fun rebuildContent() {
-        contentPanel.children.clear()
-        buildContent()
     }
 
     private fun createToggleCard(

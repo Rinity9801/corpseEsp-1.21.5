@@ -19,7 +19,9 @@ class UpdateScreen : VexelScreen("MiningQOL Update Available") {
 
     private lateinit var mainPanel: Rectangle
     private lateinit var statusText: Text
+    private lateinit var downloadButton: Button
     private var isDownloading = false
+    private var downloadComplete = false
 
     override fun afterInitialization() {
         // Semi-transparent overlay
@@ -129,7 +131,7 @@ class UpdateScreen : VexelScreen("MiningQOL Update Available") {
             .childOf(mainPanel) as Text
 
         // Download button
-        Button("Download Update", 0xFFFFFFFF.toInt(), fontSize = 14f)
+        downloadButton = Button("Download Update", 0xFFFFFFFF.toInt(), fontSize = 14f)
             .setSizing(180f, Size.Pixels, 40f, Size.Pixels)
             .setPositioning(25f, Pos.ParentPixels, 220f, Pos.ParentPixels)
             .backgroundColor(0xFF4CAF50.toInt())
@@ -139,12 +141,14 @@ class UpdateScreen : VexelScreen("MiningQOL Update Available") {
             .hoverColors(0xFF45A049.toInt(), 0xFFFFFFFF.toInt())
             .pressedColors(0xFF388E3C.toInt(), 0xFFAAAAAA.toInt())
             .onClick { _, _, _ ->
-                if (!isDownloading) {
+                if (downloadComplete) {
+                    close()
+                } else if (!isDownloading) {
                     downloadUpdate()
                 }
                 true
             }
-            .childOf(mainPanel)
+            .childOf(mainPanel) as Button
 
         // Open in Browser button
         Button("Open in Browser", 0xFFFFFFFF.toInt(), fontSize = 14f)
@@ -212,6 +216,7 @@ class UpdateScreen : VexelScreen("MiningQOL Update Available") {
     private fun downloadUpdate() {
         isDownloading = true
         statusText.text = "Downloading..."
+        downloadButton.text = "Downloading..."
 
         val modsFolder = FabricLoader.getInstance().gameDir.resolve("mods")
 
@@ -220,10 +225,14 @@ class UpdateScreen : VexelScreen("MiningQOL Update Available") {
                 if (success) {
                     statusText.text = "Downloaded! Delete old jar & restart."
                     statusText.color(0xFF4CAF50.toInt())
+                    downloadButton.text = "Done"
+                    downloadComplete = true
+                    isDownloading = false
                     dismissUpdate() // Don't show again after successful download
                 } else {
                     statusText.text = "Download failed. Try browser instead."
                     statusText.color(0xFFFF6B6B.toInt())
+                    downloadButton.text = "Download Update"
                     isDownloading = false
                 }
             }
