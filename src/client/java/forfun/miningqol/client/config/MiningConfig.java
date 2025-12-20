@@ -37,6 +37,7 @@ public class MiningConfig {
     public boolean profitTrackerEnabled = false;
     public int profitTrackerX = 10;
     public int profitTrackerY = 10;
+    public float profitTrackerScale = 1.0f;
     public int pristineChance = 20;
     public boolean includeRough = false;
     public boolean useNPCPrices = false;
@@ -59,6 +60,7 @@ public class MiningConfig {
     public boolean pickaxeCooldownEnabled = true;
     public int pickaxeCooldownX = 10;
     public int pickaxeCooldownY = 50;
+    public float pickaxeCooldownScale = 1.0f;
     public boolean pickaxeCooldownTitleEnabled = true;
     public int pickaxeCooldownTitleThreshold = 5;
 
@@ -168,6 +170,7 @@ public class MiningConfig {
 
         ProfitTrackerHUD.setEnabled(profitTrackerEnabled);
         ProfitTrackerHUD.setPosition(profitTrackerX, profitTrackerY);
+        ProfitTrackerHUD.setScale(profitTrackerScale);
         ProfitTrackerHUD.setMode(profitTrackerMode);
         GemstoneTracker.setPristineChance(pristineChance);
         GemstoneTracker.setIncludeRough(includeRough);
@@ -180,6 +183,7 @@ public class MiningConfig {
 
         PickaxeCooldownHUD.setEnabled(pickaxeCooldownEnabled);
         PickaxeCooldownHUD.setPosition(pickaxeCooldownX, pickaxeCooldownY);
+        PickaxeCooldownHUD.setScale(pickaxeCooldownScale);
         PickaxeCooldownHUD.setTitleEnabled(pickaxeCooldownTitleEnabled);
         PickaxeCooldownHUD.setTitleThreshold(pickaxeCooldownTitleThreshold);
 
@@ -263,6 +267,7 @@ public class MiningConfig {
         profitTrackerEnabled = ProfitTrackerHUD.isEnabled();
         profitTrackerX = ProfitTrackerHUD.getX();
         profitTrackerY = ProfitTrackerHUD.getY();
+        profitTrackerScale = ProfitTrackerHUD.getScale();
         profitTrackerMode = ProfitTrackerHUD.getMode();
         pristineChance = GemstoneTracker.getPristineChance();
         includeRough = GemstoneTracker.isIncludingRough();
@@ -276,6 +281,7 @@ public class MiningConfig {
         pickaxeCooldownEnabled = PickaxeCooldownHUD.isEnabled();
         pickaxeCooldownX = PickaxeCooldownHUD.getX();
         pickaxeCooldownY = PickaxeCooldownHUD.getY();
+        pickaxeCooldownScale = PickaxeCooldownHUD.getScale();
         pickaxeCooldownTitleEnabled = PickaxeCooldownHUD.isTitleEnabled();
         pickaxeCooldownTitleThreshold = PickaxeCooldownHUD.getTitleThreshold();
 

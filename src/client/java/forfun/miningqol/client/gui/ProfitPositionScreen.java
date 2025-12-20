@@ -19,19 +19,18 @@ public class ProfitPositionScreen extends Screen {
 
     @Override
     protected void init() {
-        
+
     }
 
     @Override
     public void render(DrawContext context, int mouseX, int mouseY, float delta) {
-        // Call super.render first which handles background
         super.render(context, mouseX, mouseY, delta);
 
         context.drawCenteredTextWithShadow(this.textRenderer,
-            "§eDrag the profit tracker to reposition it",
+            "§eDrag to reposition, scroll to resize",
             this.width / 2, 20, 0xFFFFFF);
         context.drawCenteredTextWithShadow(this.textRenderer,
-            "§7Press ESC when done",
+            "§7Scale: " + String.format("%.1fx", ProfitTrackerHUD.getScale()) + " §8| §7Press ESC when done",
             this.width / 2, 35, 0xFFFFFF);
 
         if (dragging) {
@@ -39,18 +38,31 @@ public class ProfitPositionScreen extends Screen {
         }
 
         ProfitTrackerHUD.render(context);
+
+        // Draw resize indicator border around HUD
+        int hudX = ProfitTrackerHUD.getX();
+        int hudY = ProfitTrackerHUD.getY();
+        int hudWidth = ProfitTrackerHUD.getWidth();
+        int hudHeight = ProfitTrackerHUD.getHeight();
+
+        // Draw dashed border
+        int borderColor = 0x80FFFFFF;
+        context.drawHorizontalLine(hudX - 2, hudX + hudWidth + 1, hudY - 2, borderColor);
+        context.drawHorizontalLine(hudX - 2, hudX + hudWidth + 1, hudY + hudHeight + 1, borderColor);
+        context.drawVerticalLine(hudX - 2, hudY - 2, hudY + hudHeight + 1, borderColor);
+        context.drawVerticalLine(hudX + hudWidth + 1, hudY - 2, hudY + hudHeight + 1, borderColor);
     }
 
     @Override
     public boolean mouseClicked(double mouseX, double mouseY, int button) {
-        if (button == 0) { 
+        if (button == 0) {
             int hudX = ProfitTrackerHUD.getX();
             int hudY = ProfitTrackerHUD.getY();
-            int hudWidth = 120;
-            int hudHeight = 30;
+            int hudWidth = ProfitTrackerHUD.getWidth();
+            int hudHeight = ProfitTrackerHUD.getHeight();
 
-            if (mouseX >= hudX && mouseX <= hudX + hudWidth &&
-                mouseY >= hudY && mouseY <= hudY + hudHeight) {
+            if (mouseX >= hudX - 5 && mouseX <= hudX + hudWidth + 5 &&
+                mouseY >= hudY - 5 && mouseY <= hudY + hudHeight + 5) {
                 dragging = true;
                 dragOffsetX = (int)mouseX - hudX;
                 dragOffsetY = (int)mouseY - hudY;
@@ -66,6 +78,14 @@ public class ProfitPositionScreen extends Screen {
             dragging = false;
         }
         return super.mouseReleased(mouseX, mouseY, button);
+    }
+
+    @Override
+    public boolean mouseScrolled(double mouseX, double mouseY, double horizontalAmount, double verticalAmount) {
+        float currentScale = ProfitTrackerHUD.getScale();
+        float newScale = currentScale + (float)(verticalAmount * 0.1);
+        ProfitTrackerHUD.setScale(newScale);
+        return true;
     }
 
     @Override

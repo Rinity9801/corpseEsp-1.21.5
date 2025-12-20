@@ -7,6 +7,7 @@ import net.minecraft.client.gui.DrawContext;
 public class ProfitTrackerHUD {
     private static int hudX = 10;
     private static int hudY = 10;
+    private static float scale = 1.0f;
     private static boolean enabled = false;
     private static String mode = "GEMSTONES"; // GEMSTONES or BLOCKS
 
@@ -31,6 +32,14 @@ public class ProfitTrackerHUD {
         return hudY;
     }
 
+    public static void setScale(float newScale) {
+        scale = Math.max(0.5f, Math.min(3.0f, newScale)); // Clamp between 0.5 and 3.0
+    }
+
+    public static float getScale() {
+        return scale;
+    }
+
     public static void setMode(String newMode) {
         mode = newMode;
     }
@@ -41,6 +50,14 @@ public class ProfitTrackerHUD {
 
     public static boolean isBlockMode() {
         return "BLOCKS".equals(mode);
+    }
+
+    public static int getWidth() {
+        return (int)(120 * scale);
+    }
+
+    public static int getHeight() {
+        return isBlockMode() ? (int)(40 * scale) : (int)(30 * scale);
     }
 
     public static void render(DrawContext context) {
@@ -76,12 +93,13 @@ public class ProfitTrackerHUD {
             coinsPerHour += " §7npc";
         }
 
+        int lineHeight = (int)(10 * scale);
         int y = hudY;
-        context.drawTextWithShadow(textRenderer, uptime, hudX, y, 0xFFFFFFFF);
-        y += 10;
-        context.drawTextWithShadow(textRenderer, coinsPerHour, hudX, y, 0xFFFFFFFF);
-        y += 10;
-        context.drawTextWithShadow(textRenderer, flawlessPerHour, hudX, y, 0xFFFFFFFF);
+        drawScaledText(context, textRenderer, uptime, hudX, y);
+        y += lineHeight;
+        drawScaledText(context, textRenderer, coinsPerHour, hudX, y);
+        y += lineHeight;
+        drawScaledText(context, textRenderer, flawlessPerHour, hudX, y);
     }
 
     private static void renderBlockMode(DrawContext context, TextRenderer textRenderer) {
@@ -91,13 +109,20 @@ public class ProfitTrackerHUD {
         String coinsPerHour = "§e$/hr: §a" + BlockTracker.formatCoins(BlockTracker.getCoinsPerHour());
         String totalValue = "§eTotal: §a" + BlockTracker.formatCoins(BlockTracker.getTotalValue());
 
+        int lineHeight = (int)(10 * scale);
         int y = hudY;
-        context.drawTextWithShadow(textRenderer, uptime, hudX, y, 0xFFFFFFFF);
-        y += 10;
-        context.drawTextWithShadow(textRenderer, blocks, hudX, y, 0xFFFFFFFF);
-        y += 10;
-        context.drawTextWithShadow(textRenderer, coinsPerHour, hudX, y, 0xFFFFFFFF);
-        y += 10;
-        context.drawTextWithShadow(textRenderer, totalValue, hudX, y, 0xFFFFFFFF);
+        drawScaledText(context, textRenderer, uptime, hudX, y);
+        y += lineHeight;
+        drawScaledText(context, textRenderer, blocks, hudX, y);
+        y += lineHeight;
+        drawScaledText(context, textRenderer, coinsPerHour, hudX, y);
+        y += lineHeight;
+        drawScaledText(context, textRenderer, totalValue, hudX, y);
+    }
+
+    private static void drawScaledText(DrawContext context, TextRenderer textRenderer, String text, int x, int y) {
+        // For now, just draw at 1x scale - the line spacing is adjusted
+        // Full text scaling would require matrix transforms which have API differences
+        context.drawTextWithShadow(textRenderer, text, x, y, 0xFFFFFFFF);
     }
 }

@@ -26,11 +26,10 @@ public class PickaxeCooldownHUD {
     private static long lastCooldownUpdateTime = 0;
     private static boolean isOnCooldown = false;
 
-    
     private static int hudX = 10;
     private static int hudY = 50;
+    private static float scale = 1.0f;
 
-    
     private static boolean titleEnabled = true;
     private static int titleThreshold = 5; 
     private static long lastTitleSetTime = 0;
@@ -136,11 +135,9 @@ public class PickaxeCooldownHUD {
             }
         }
 
-        
         String displayText = displayCooldown.equals("Ready")
             ? "§a" + abilityName + ": §2✔ Ready"
             : "§6" + abilityName + ": §c" + displayCooldown;
-
 
         context.drawTextWithShadow(textRenderer, displayText, hudX, hudY, 0xFFFFFFFF);
     }
@@ -182,6 +179,22 @@ public class PickaxeCooldownHUD {
     public static void setPosition(int x, int y) {
         hudX = x;
         hudY = y;
+    }
+
+    public static float getScale() {
+        return scale;
+    }
+
+    public static void setScale(float newScale) {
+        scale = Math.max(0.5f, Math.min(3.0f, newScale));
+    }
+
+    public static int getWidth() {
+        return (int)(100 * scale);
+    }
+
+    public static int getHeight() {
+        return (int)(12 * scale);
     }
 
     public static boolean isTitleEnabled() {

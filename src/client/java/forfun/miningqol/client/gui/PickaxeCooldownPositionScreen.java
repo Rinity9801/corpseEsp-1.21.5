@@ -19,42 +19,50 @@ public class PickaxeCooldownPositionScreen extends Screen {
 
     @Override
     protected void init() {
-        
+
     }
 
     @Override
     public void render(DrawContext context, int mouseX, int mouseY, float delta) {
-        // Call super.render first which handles background
         super.render(context, mouseX, mouseY, delta);
 
         context.drawCenteredTextWithShadow(this.textRenderer,
-            "§eDrag the pickaxe cooldown display to reposition it",
-            this.width / 2, 20, 0xFFFFFFFF);
+            "§eDrag to reposition, scroll to resize",
+            this.width / 2, 20, 0xFFFFFF);
         context.drawCenteredTextWithShadow(this.textRenderer,
-            "§7Press ESC when done",
-            this.width / 2, 35, 0xFFFFFFFF);
+            "§7Scale: " + String.format("%.1fx", PickaxeCooldownHUD.getScale()) + " §8| §7Press ESC when done",
+            this.width / 2, 35, 0xFFFFFF);
 
         if (dragging) {
             PickaxeCooldownHUD.setPosition(mouseX - dragOffsetX, mouseY - dragOffsetY);
         }
 
-        String cooldownText = "§6Pickobulus: §c30s";
         int x = PickaxeCooldownHUD.getX();
         int y = PickaxeCooldownHUD.getY();
 
+        String cooldownText = "§6Pickobulus: §c30s";
         context.drawTextWithShadow(this.textRenderer, cooldownText, x, y, 0xFFFFFFFF);
+
+        // Draw border around HUD
+        int hudWidth = PickaxeCooldownHUD.getWidth();
+        int hudHeight = PickaxeCooldownHUD.getHeight();
+        int borderColor = 0x80FFFFFF;
+        context.drawHorizontalLine(x - 2, x + hudWidth + 1, y - 2, borderColor);
+        context.drawHorizontalLine(x - 2, x + hudWidth + 1, y + hudHeight + 1, borderColor);
+        context.drawVerticalLine(x - 2, y - 2, y + hudHeight + 1, borderColor);
+        context.drawVerticalLine(x + hudWidth + 1, y - 2, y + hudHeight + 1, borderColor);
     }
 
     @Override
     public boolean mouseClicked(double mouseX, double mouseY, int button) {
-        if (button == 0) { 
+        if (button == 0) {
             int hudX = PickaxeCooldownHUD.getX();
             int hudY = PickaxeCooldownHUD.getY();
-            int hudWidth = 100;
-            int hudHeight = 20;
+            int hudWidth = PickaxeCooldownHUD.getWidth();
+            int hudHeight = PickaxeCooldownHUD.getHeight();
 
-            if (mouseX >= hudX - 2 && mouseX <= hudX + hudWidth &&
-                mouseY >= hudY - 2 && mouseY <= hudY + hudHeight) {
+            if (mouseX >= hudX - 5 && mouseX <= hudX + hudWidth + 5 &&
+                mouseY >= hudY - 5 && mouseY <= hudY + hudHeight + 5) {
                 dragging = true;
                 dragOffsetX = (int)mouseX - hudX;
                 dragOffsetY = (int)mouseY - hudY;
@@ -70,6 +78,14 @@ public class PickaxeCooldownPositionScreen extends Screen {
             dragging = false;
         }
         return super.mouseReleased(mouseX, mouseY, button);
+    }
+
+    @Override
+    public boolean mouseScrolled(double mouseX, double mouseY, double horizontalAmount, double verticalAmount) {
+        float currentScale = PickaxeCooldownHUD.getScale();
+        float newScale = currentScale + (float)(verticalAmount * 0.1);
+        PickaxeCooldownHUD.setScale(newScale);
+        return true;
     }
 
     @Override

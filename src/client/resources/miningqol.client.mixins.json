@@ -9,7 +9,8 @@
     "PlayerListHudMixin",
     "ItemStackMixin",
     "ClientConnectionGlassSyncMixin",
-    "GenericContainerScreenMixin"
+    "GenericContainerScreenMixin",
+    "MouseScrollMixin"
   ],
   "injectors": {
     "defaultRequire": 1

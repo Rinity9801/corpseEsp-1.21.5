@@ -435,6 +435,7 @@ class MiningProfitCategoryScreen(private val parentScreen: Screen) : VexelScreen
     }
 
     private fun createModeSelector(x: Float, y: Float, width: Float, height: Float, parent: Rectangle, animDelay: Long) {
+        // Card is just a visual background - ignores mouse events
         val card = Rectangle(
             backgroundColor = 0xF01E1E1E.toInt(),
             borderColor = 0xFF2A2A2A.toInt(),
@@ -467,20 +468,23 @@ class MiningProfitCategoryScreen(private val parentScreen: Screen) : VexelScreen
             }
 
         Text("Tracking Mode", 0xFFFFFFFF.toInt(), 20f, true)
-            .setPositioning(20f, Pos.ParentPixels, 18f, Pos.ParentPixels)
-            .childOf(card)
+            .setPositioning(x + 20f, Pos.ParentPixels, y + 18f, Pos.ParentPixels)
+            .childOf(parent)
 
-        // Mode buttons
+        // Mode buttons - added directly to parent for proper click handling
         val gemBg = if (!isBlockMode) 0xFF4CAF50.toInt() else 0xFF2A2A2A.toInt()
         val blockBg = if (isBlockMode) 0xFF4CAF50.toInt() else 0xFF2A2A2A.toInt()
         val gemHover = if (!isBlockMode) 0xFF45A049.toInt() else 0xFF353535.toInt()
         val blockHover = if (isBlockMode) 0xFF45A049.toInt() else 0xFF353535.toInt()
 
+        // Calculate button positions relative to parent
+        val buttonY = y + 17f
+        val gemstonesX = x + width - 130f - 100f  // 130f offset from right, 100f button width
+        val blocksX = x + width - 20f - 100f      // 20f offset from right, 100f button width
+
         Button("Gemstones", 0xFFFFFFFF.toInt(), fontSize = 12f)
             .setSizing(100f, Size.Pixels, 30f, Size.Pixels)
-            .setPositioning(0f, Pos.ParentPixels, 17f, Pos.ParentPixels)
-            .alignRight()
-            .setOffset(-130f, 0f)
+            .setPositioning(gemstonesX, Pos.ParentPixels, buttonY, Pos.ParentPixels)
             .backgroundColor(gemBg)
             .borderColor(0xFF45A049.toInt())
             .borderRadius(6f)
@@ -494,13 +498,11 @@ class MiningProfitCategoryScreen(private val parentScreen: Screen) : VexelScreen
                 }
                 true
             }
-            .childOf(card)
+            .childOf(parent)
 
         Button("Blocks", 0xFFFFFFFF.toInt(), fontSize = 12f)
             .setSizing(100f, Size.Pixels, 30f, Size.Pixels)
-            .setPositioning(0f, Pos.ParentPixels, 17f, Pos.ParentPixels)
-            .alignRight()
-            .setOffset(-20f, 0f)
+            .setPositioning(blocksX, Pos.ParentPixels, buttonY, Pos.ParentPixels)
             .backgroundColor(blockBg)
             .borderColor(0xFF45A049.toInt())
             .borderRadius(6f)
@@ -514,7 +516,7 @@ class MiningProfitCategoryScreen(private val parentScreen: Screen) : VexelScreen
                 }
                 true
             }
-            .childOf(card)
+            .childOf(parent)
 
         card.visible = false
         Thread {
