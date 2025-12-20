@@ -21,6 +21,7 @@ class UpdateScreen : VexelScreen("MiningQOL Update Available") {
     private lateinit var statusText: Text
     private lateinit var downloadButton: Button
     private lateinit var laterButton: Button
+    private lateinit var doneButton: Button
     private var isDownloading = false
     private var downloadComplete = false
 
@@ -169,7 +170,7 @@ class UpdateScreen : VexelScreen("MiningQOL Update Available") {
             }
             .childOf(mainPanel)
 
-        // Later button (becomes Done button after download)
+        // Later button (hidden after download)
         laterButton = Button("Remind Me Later", 0xFFAAAAAA.toInt(), fontSize = 13f)
             .setSizing(140f, Size.Pixels, 36f, Size.Pixels)
             .setPositioning(0f, Pos.ParentCenter, 0f, Pos.ParentPixels)
@@ -186,6 +187,25 @@ class UpdateScreen : VexelScreen("MiningQOL Update Available") {
                 true
             }
             .childOf(mainPanel) as Button
+
+        // Done button (shown after download completes)
+        doneButton = Button("Done", 0xFFFFFFFF.toInt(), fontSize = 13f)
+            .setSizing(140f, Size.Pixels, 36f, Size.Pixels)
+            .setPositioning(0f, Pos.ParentCenter, 0f, Pos.ParentPixels)
+            .alignBottom()
+            .setOffset(0f, -15f)
+            .backgroundColor(0xFF4CAF50.toInt())
+            .borderColor(0xFF45A049.toInt())
+            .borderRadius(8f)
+            .borderThickness(1f)
+            .hoverColors(0xFF45A049.toInt(), 0xFFFFFFFF.toInt())
+            .pressedColors(0xFF388E3C.toInt(), 0xFFFFFFFF.toInt())
+            .onClick { _, _, _ ->
+                close()
+                true
+            }
+            .childOf(mainPanel) as Button
+        doneButton.visible = false
 
         // Don't Show Again button
         Button("Don't Show Again", 0xFF666666.toInt(), fontSize = 11f)
@@ -226,14 +246,12 @@ class UpdateScreen : VexelScreen("MiningQOL Update Available") {
                 if (success) {
                     statusText.text = "Updated! Restart the game to apply."
                     statusText.color(0xFF4CAF50.toInt())
-                    downloadButton.text = "Done"
+                    downloadButton.visible = false
                     downloadComplete = true
                     isDownloading = false
-                    // Change Later button to green Done button
-                    laterButton.text = "Done"
-                    laterButton.textColor = 0xFFFFFFFF.toInt()
-                    laterButton.backgroundColor(0xFF4CAF50.toInt())
-                    laterButton.borderColor(0xFF45A049.toInt())
+                    // Hide Later button and show Done button
+                    laterButton.visible = false
+                    doneButton.visible = true
                     dismissUpdate() // Don't show again after successful download
                 } else {
                     statusText.text = "Download failed. Try browser instead."
