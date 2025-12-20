@@ -11,6 +11,7 @@ import forfun.miningqol.client.GlassSync;
 import forfun.miningqol.client.NameHider;
 import forfun.miningqol.client.PickaxeCooldownHUD;
 import forfun.miningqol.client.profit.BazaarPriceManager;
+import forfun.miningqol.client.profit.BlockTracker;
 import forfun.miningqol.client.profit.GemstoneTracker;
 import forfun.miningqol.client.profit.ProfitTrackerHUD;
 import forfun.miningqol.client.waypoints.OrderedWaypointManager;
@@ -40,6 +41,10 @@ public class MiningConfig {
     public boolean includeRough = false;
     public boolean useNPCPrices = false;
     public int gemTier = 1;
+
+    // Block profit tracking (Gemstones vs Blocks mode)
+    public String profitTrackerMode = "GEMSTONES"; // GEMSTONES or BLOCKS
+    public String blockTrackerMaterial = "COAL"; // COAL, DIAMOND, GOLD, MYCELIUM, RED_SAND, OBSIDIAN, QUARTZ, EMERALD
 
     public boolean efficientMinerEnabled = false;
     public boolean useOldHeatmap = false;
@@ -163,10 +168,12 @@ public class MiningConfig {
 
         ProfitTrackerHUD.setEnabled(profitTrackerEnabled);
         ProfitTrackerHUD.setPosition(profitTrackerX, profitTrackerY);
+        ProfitTrackerHUD.setMode(profitTrackerMode);
         GemstoneTracker.setPristineChance(pristineChance);
         GemstoneTracker.setIncludeRough(includeRough);
         GemstoneTracker.setGemTier(gemTier);
         BazaarPriceManager.setUseNPCPrices(useNPCPrices);
+        BlockTracker.setMaterial(blockTrackerMaterial);
 
         EfficientMinerOverlay.setEnabled(efficientMinerEnabled);
         EfficientMinerOverlay.setUseOldHeatmap(useOldHeatmap);
@@ -256,10 +263,12 @@ public class MiningConfig {
         profitTrackerEnabled = ProfitTrackerHUD.isEnabled();
         profitTrackerX = ProfitTrackerHUD.getX();
         profitTrackerY = ProfitTrackerHUD.getY();
+        profitTrackerMode = ProfitTrackerHUD.getMode();
         pristineChance = GemstoneTracker.getPristineChance();
         includeRough = GemstoneTracker.isIncludingRough();
         gemTier = GemstoneTracker.getGemTier();
         useNPCPrices = BazaarPriceManager.isUsingNPCPrices();
+        blockTrackerMaterial = BlockTracker.getMaterial();
 
         efficientMinerEnabled = EfficientMinerOverlay.isEnabled();
         useOldHeatmap = EfficientMinerOverlay.isUsingOldHeatmap();

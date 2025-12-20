@@ -3,6 +3,7 @@ package forfun.miningqol.client;
 import forfun.miningqol.client.config.MiningConfig;
 import forfun.miningqol.client.gui.VexelMainScreen;
 import forfun.miningqol.client.gui.UpdateScreen;
+import forfun.miningqol.client.profit.BlockTracker;
 import forfun.miningqol.client.profit.GemstoneTracker;
 import forfun.miningqol.client.profit.ProfitTrackerHUD;
 import forfun.miningqol.client.profit.ProfitDebugger;
@@ -309,6 +310,7 @@ public class MiningqolClient implements ClientModInitializer {
             if (client.world != null && client.player != null) {
                 CorpseESP.tick();
                 GemstoneTracker.tick();
+                BlockTracker.tick();
                 EfficientMinerOverlay.tick();
                 PickaxeCooldownHUD.tick();
                 AutoClickerManager.tick();
@@ -353,6 +355,9 @@ public class MiningqolClient implements ClientModInitializer {
                 int amount = Integer.parseInt(pristineMatcher.group(2));
                 GemstoneTracker.onPristineGem(gemType, amount);
             }
+
+            // Block tracker for sack messages
+            BlockTracker.onChatMessage(message);
         });
 
         ClientSendMessageEvents.COMMAND.register((command) -> {

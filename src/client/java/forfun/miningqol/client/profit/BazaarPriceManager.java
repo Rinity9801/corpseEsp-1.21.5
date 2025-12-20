@@ -19,8 +19,17 @@ public class BazaarPriceManager {
     private static final long CACHE_DURATION = 5 * 60 * 1000; 
 
     private static final Map<String, Double> gemPrices = new HashMap<>();
+    private static final Map<String, Double> blockPrices = new HashMap<>();
     private static long lastUpdate = 0;
+    private static long lastBlockUpdate = 0;
     private static boolean useNPCPrices = false;
+
+    // Block IDs to track
+    private static final String[] BLOCK_IDS = {
+        "ENCHANTED_COAL", "ENCHANTED_DIAMOND", "ENCHANTED_GOLD",
+        "ENCHANTED_MYCELIUM_CUBE", "ENCHANTED_RED_SAND_CUBE",
+        "ENCHANTED_OBSIDIAN", "ENCHANTED_QUARTZ", "ENCHANTED_EMERALD"
+    };
 
     public static void setUseNPCPrices(boolean use) {
         useNPCPrices = use;
@@ -125,5 +134,57 @@ public class BazaarPriceManager {
         if (itemId.startsWith("FLAWLESS_")) return 3;
         if (itemId.startsWith("PERFECT_")) return 4;
         return 1;
+    }
+
+    public static double getBlockPrice(String itemId) {
+        return blockPrices.getOrDefault(itemId, 0.0);
+    }
+
+    public static CompletableFuture<Boolean> updateBlockPrices() {
+        if (System.currentTimeMillis() - lastBlockUpdate < CACHE_DURATION) {
+            return CompletableFuture.completedFuture(true);
+        }
+
+        return CompletableFuture.supplyAsync(() -> {
+            try {
+                URL url = new URL(BAZAAR_API);
+                HttpURLConnection conn = (HttpURLConnection) url.openConnection();
+                conn.setRequestMethod("GET");
+                conn.setConnectTimeout(5000);
+                conn.setReadTimeout(5000);
+
+                BufferedReader reader = new BufferedReader(new InputStreamReader(conn.getInputStream()));
+                StringBuilder response = new StringBuilder();
+                String line;
+                while ((line = reader.readLine()) != null) {
+                    response.append(line);
+                }
+                reader.close();
+
+                JsonObject json = JsonParser.parseString(response.toString()).getAsJsonObject();
+                JsonObject products = json.getAsJsonObject("products");
+
+                if (products != null) {
+                    for (String blockId : BLOCK_IDS) {
+                        if (products.has(blockId)) {
+                            JsonObject product = products.getAsJsonObject(blockId);
+                            JsonObject quickStatus = product.getAsJsonObject("quick_status");
+
+                            if (quickStatus != null) {
+                                double sellPrice = quickStatus.get("sellPrice").getAsDouble();
+                                blockPrices.put(blockId, sellPrice);
+                            }
+                        }
+                    }
+
+                    lastBlockUpdate = System.currentTimeMillis();
+                    LOGGER.info("[BazaarPriceManager] Updated block prices successfully");
+                    return true;
+                }
+            } catch (Exception e) {
+                LOGGER.error("[BazaarPriceManager] Failed to fetch block prices: " + e.getMessage());
+            }
+            return false;
+        });
     }
 }

@@ -2,6 +2,7 @@ package forfun.miningqol.client.gui
 
 import forfun.miningqol.client.MiningqolClient
 import forfun.miningqol.client.profit.BazaarPriceManager
+import forfun.miningqol.client.profit.BlockTracker
 import forfun.miningqol.client.profit.GemstoneTracker
 import forfun.miningqol.client.profit.ProfitTrackerHUD
 import net.minecraft.client.MinecraftClient
@@ -19,6 +20,8 @@ import xyz.meowing.vexel.animations.*
 class MiningProfitCategoryScreen(private val parentScreen: Screen) : VexelScreen("Mining Profit Settings") {
     private lateinit var overlay: Rectangle
     private lateinit var mainPanel: Rectangle
+    private lateinit var contentPanel: Rectangle
+    private var isBlockMode = ProfitTrackerHUD.isBlockMode()
 
     override fun afterInitialization() {
         // Semi-transparent dark overlay background
@@ -79,102 +82,22 @@ class MiningProfitCategoryScreen(private val parentScreen: Screen) : VexelScreen
             .fadeIn(700, EasingType.EASE_OUT)
 
         // Subtitle
-        Text("Track your mining profits and gemstones", 0xFF888888.toInt(), 13f, false)
+        val subtitle = if (isBlockMode) "Track your block mining profits" else "Track your gemstone profits"
+        Text(subtitle, 0xFF888888.toInt(), 13f, false)
             .setPositioning(0f, Pos.ParentCenter, 50f, Pos.ParentPixels)
             .childOf(mainPanel)
             .fadeIn(800, EasingType.EASE_OUT)
 
-        // Toggles
-        val toggles = listOf(
-            Triple("Enable Profit Tracker", 0xFF44FF44.toInt()) { ProfitTrackerHUD.isEnabled() },
-            Triple("Include Rough Gemstones", 0xFF44FF44.toInt()) { GemstoneTracker.isIncludingRough() },
-            Triple("Use NPC Prices Instead of Bazaar", 0xFF44FF44.toInt()) { BazaarPriceManager.isUsingNPCPrices() }
+        // Content panel for mode-specific options
+        contentPanel = Rectangle(
+            backgroundColor = 0x00000000.toInt(),
+            borderColor = 0x00000000
         )
-
-        val toggleActions = listOf<() -> Unit>(
-            { ProfitTrackerHUD.setEnabled(!ProfitTrackerHUD.isEnabled()) },
-            { GemstoneTracker.setIncludeRough(!GemstoneTracker.isIncludingRough()) },
-            { BazaarPriceManager.setUseNPCPrices(!BazaarPriceManager.isUsingNPCPrices()) }
-        )
-
-        val startY = 100f
-        val toggleHeight = 65f
-        val toggleSpacing = 10f
-        val toggleWidth = 480f
-
-        toggles.forEachIndexed { index, (label, accentColor, getEnabled) ->
-            val delay = 200L + (index * 100L)
-            createToggleCard(
-                label,
-                accentColor,
-                getEnabled,
-                toggleActions[index],
-                (mainPanel.width - toggleWidth) / 2f,
-                startY + (index * (toggleHeight + toggleSpacing)),
-                toggleWidth,
-                toggleHeight,
-                mainPanel,
-                delay
-            )
-        }
-
-        // Gem tier selector card
-        createSelectorCard(
-            "Gem Tier",
-            { GemstoneTracker.getGemTierName() },
-            {
-                val currentTier = GemstoneTracker.getGemTier()
-                val nextTier = if (currentTier >= 3) 1 else currentTier + 1
-                GemstoneTracker.setGemTier(nextTier)
-            },
-            (mainPanel.width - toggleWidth) / 2f,
-            325f,
-            toggleWidth,
-            toggleHeight,
-            mainPanel,
-            500L
-        )
-
-        // Pristine chance slider
-        createSliderCard(
-            "Pristine Chance",
-            0f,
-            100f,
-            GemstoneTracker.getPristineChance().toFloat(),
-            { value -> GemstoneTracker.setPristineChance(value.toInt()) },
-            "%",
-            (mainPanel.width - toggleWidth) / 2f,
-            405f,
-            toggleWidth,
-            75f,
-            mainPanel,
-            600L
-        )
-
-        // Position button
-        Button("Set HUD Position", 0xFFFFFFFF.toInt(), fontSize = 16f)
-            .setSizing(480f, Size.Pixels, 50f, Size.Pixels)
-            .setPositioning((mainPanel.width - 480f) / 2f, Pos.ParentPixels, 500f, Pos.ParentPixels)
-            .backgroundColor(0xFF2A2A2A.toInt())
-            .borderColor(0xFF44FF44.toInt())
-            .borderRadius(12f)
-            .borderThickness(1f)
-            .hoverColors(0xFF353535.toInt(), 0xFFFFFFFF.toInt())
-            .pressedColors(0xFF1A1A1A.toInt(), 0xFFAAAAAA.toInt())
-            .onClick { _, _, _ ->
-                MinecraftClient.getInstance().setScreen(ProfitPositionScreen(this@MiningProfitCategoryScreen))
-                true
-            }
+            .setSizing(100f, Size.ParentPerc, 520f, Size.Pixels)
+            .setPositioning(0f, Pos.ParentPixels, 90f, Pos.ParentPixels)
             .childOf(mainPanel)
-            .apply {
-                visible = false
-                Thread {
-                    Thread.sleep(600L)
-                    MinecraftClient.getInstance().execute {
-                        fadeIn(400, EasingType.EASE_OUT)
-                    }
-                }.start()
-            }
+
+        buildContent()
 
         // Back button at bottom
         Button("Back", 0xFFFFFFFF.toInt(), fontSize = 15f)
@@ -194,6 +117,292 @@ class MiningProfitCategoryScreen(private val parentScreen: Screen) : VexelScreen
             }
             .childOf(mainPanel)
             .fadeIn(1000, EasingType.EASE_OUT)
+    }
+
+    private fun buildContent() {
+        val toggleWidth = 480f
+        val toggleHeight = 65f
+        val toggleSpacing = 10f
+        var yOffset = 10f
+
+        // Enable toggle
+        createToggleCard(
+            "Enable Profit Tracker",
+            0xFF44FF44.toInt(),
+            { ProfitTrackerHUD.isEnabled() },
+            { ProfitTrackerHUD.setEnabled(!ProfitTrackerHUD.isEnabled()) },
+            (mainPanel.width - toggleWidth) / 2f,
+            yOffset,
+            toggleWidth,
+            toggleHeight,
+            contentPanel,
+            200L
+        )
+        yOffset += toggleHeight + toggleSpacing
+
+        // Mode selector
+        createModeSelector(
+            (mainPanel.width - toggleWidth) / 2f,
+            yOffset,
+            toggleWidth,
+            toggleHeight,
+            contentPanel,
+            300L
+        )
+        yOffset += toggleHeight + toggleSpacing
+
+        if (isBlockMode) {
+            buildBlockModeOptions(yOffset, toggleWidth, toggleHeight, toggleSpacing)
+        } else {
+            buildGemstoneModeOptions(yOffset, toggleWidth, toggleHeight, toggleSpacing)
+        }
+    }
+
+    private fun buildGemstoneModeOptions(startY: Float, toggleWidth: Float, toggleHeight: Float, spacing: Float) {
+        var yOffset = startY
+
+        // Include rough gemstones
+        createToggleCard(
+            "Include Rough Gemstones",
+            0xFF44FF44.toInt(),
+            { GemstoneTracker.isIncludingRough() },
+            { GemstoneTracker.setIncludeRough(!GemstoneTracker.isIncludingRough()) },
+            (mainPanel.width - toggleWidth) / 2f,
+            yOffset,
+            toggleWidth,
+            toggleHeight,
+            contentPanel,
+            400L
+        )
+        yOffset += toggleHeight + spacing
+
+        // Use NPC prices
+        createToggleCard(
+            "Use NPC Prices Instead of Bazaar",
+            0xFF44FF44.toInt(),
+            { BazaarPriceManager.isUsingNPCPrices() },
+            { BazaarPriceManager.setUseNPCPrices(!BazaarPriceManager.isUsingNPCPrices()) },
+            (mainPanel.width - toggleWidth) / 2f,
+            yOffset,
+            toggleWidth,
+            toggleHeight,
+            contentPanel,
+            450L
+        )
+        yOffset += toggleHeight + spacing
+
+        // Gem tier selector
+        createSelectorCard(
+            "Gem Tier",
+            { GemstoneTracker.getGemTierName() },
+            {
+                val currentTier = GemstoneTracker.getGemTier()
+                val nextTier = if (currentTier >= 3) 1 else currentTier + 1
+                GemstoneTracker.setGemTier(nextTier)
+            },
+            (mainPanel.width - toggleWidth) / 2f,
+            yOffset,
+            toggleWidth,
+            toggleHeight,
+            contentPanel,
+            500L
+        )
+        yOffset += toggleHeight + spacing
+
+        // Pristine chance slider
+        createSliderCard(
+            "Pristine Chance",
+            0f,
+            100f,
+            GemstoneTracker.getPristineChance().toFloat(),
+            { value -> GemstoneTracker.setPristineChance(value.toInt()) },
+            "%",
+            (mainPanel.width - toggleWidth) / 2f,
+            yOffset,
+            toggleWidth,
+            75f,
+            contentPanel,
+            550L
+        )
+        yOffset += 75f + spacing
+
+        // Position button
+        Button("Set HUD Position", 0xFFFFFFFF.toInt(), fontSize = 16f)
+            .setSizing(toggleWidth, Size.Pixels, 50f, Size.Pixels)
+            .setPositioning((mainPanel.width - toggleWidth) / 2f, Pos.ParentPixels, yOffset, Pos.ParentPixels)
+            .backgroundColor(0xFF2A2A2A.toInt())
+            .borderColor(0xFF44FF44.toInt())
+            .borderRadius(12f)
+            .borderThickness(1f)
+            .hoverColors(0xFF353535.toInt(), 0xFFFFFFFF.toInt())
+            .pressedColors(0xFF1A1A1A.toInt(), 0xFFAAAAAA.toInt())
+            .onClick { _, _, _ ->
+                MinecraftClient.getInstance().setScreen(ProfitPositionScreen(this@MiningProfitCategoryScreen))
+                true
+            }
+            .childOf(contentPanel)
+            .fadeIn(600, EasingType.EASE_OUT)
+    }
+
+    private fun buildBlockModeOptions(startY: Float, toggleWidth: Float, toggleHeight: Float, spacing: Float) {
+        var yOffset = startY
+
+        // Material selector
+        createSelectorCard(
+            "Track Material",
+            { BlockTracker.getMaterialDisplayName() },
+            {
+                val materials = BlockTracker.getAllMaterials()
+                val currentIdx = materials.indexOf(BlockTracker.getMaterial())
+                val nextIdx = (currentIdx + 1) % materials.size
+                BlockTracker.setMaterial(materials[nextIdx])
+            },
+            (mainPanel.width - toggleWidth) / 2f,
+            yOffset,
+            toggleWidth,
+            toggleHeight,
+            contentPanel,
+            400L
+        )
+        yOffset += toggleHeight + spacing
+
+        // Info text
+        Text("Tracks [Sacks] messages for the selected material.", 0xFF888888.toInt(), 12f, false)
+            .setPositioning(0f, Pos.ParentCenter, yOffset + 10f, Pos.ParentPixels)
+            .childOf(contentPanel)
+
+        Text("Calculates value using enchanted prices (160 raw = 1 enchanted).", 0xFF888888.toInt(), 12f, false)
+            .setPositioning(0f, Pos.ParentCenter, yOffset + 26f, Pos.ParentPixels)
+            .childOf(contentPanel)
+
+        yOffset += 60f
+
+        // Reset button
+        Button("Reset Session", 0xFFFFFFFF.toInt(), fontSize = 14f)
+            .setSizing(200f, Size.Pixels, 45f, Size.Pixels)
+            .setPositioning(0f, Pos.ParentCenter, yOffset, Pos.ParentPixels)
+            .backgroundColor(0xFF2A2A2A.toInt())
+            .borderColor(0xFFFF6B6B.toInt())
+            .borderRadius(10f)
+            .borderThickness(1f)
+            .hoverColors(0xFF353535.toInt(), 0xFFFFFFFF.toInt())
+            .pressedColors(0xFF1A1A1A.toInt(), 0xFFAAAAAA.toInt())
+            .onClick { _, _, _ ->
+                BlockTracker.reset()
+                true
+            }
+            .childOf(contentPanel)
+            .fadeIn(450, EasingType.EASE_OUT)
+
+        yOffset += 60f
+
+        // Position button
+        Button("Set HUD Position", 0xFFFFFFFF.toInt(), fontSize = 16f)
+            .setSizing(toggleWidth, Size.Pixels, 50f, Size.Pixels)
+            .setPositioning((mainPanel.width - toggleWidth) / 2f, Pos.ParentPixels, yOffset, Pos.ParentPixels)
+            .backgroundColor(0xFF2A2A2A.toInt())
+            .borderColor(0xFF44FF44.toInt())
+            .borderRadius(12f)
+            .borderThickness(1f)
+            .hoverColors(0xFF353535.toInt(), 0xFFFFFFFF.toInt())
+            .pressedColors(0xFF1A1A1A.toInt(), 0xFFAAAAAA.toInt())
+            .onClick { _, _, _ ->
+                MinecraftClient.getInstance().setScreen(ProfitPositionScreen(this@MiningProfitCategoryScreen))
+                true
+            }
+            .childOf(contentPanel)
+            .fadeIn(500, EasingType.EASE_OUT)
+    }
+
+    private fun createModeSelector(x: Float, y: Float, width: Float, height: Float, parent: Rectangle, animDelay: Long) {
+        val card = Rectangle(
+            backgroundColor = 0xF01E1E1E.toInt(),
+            borderColor = 0xFF2A2A2A.toInt(),
+            borderRadius = 12f,
+            borderThickness = 1f
+        )
+            .setSizing(width, Size.Pixels, height, Size.Pixels)
+            .setPositioning(x, Pos.ParentPixels, y, Pos.ParentPixels)
+            .childOf(parent)
+            .apply {
+                dropShadow = true
+                shadowBlur = 15f
+                shadowSpread = 1f
+                shadowColor = 0x40000000.toInt()
+            }
+
+        // Accent bar
+        Rectangle(
+            backgroundColor = 0xFF6B6BFF.toInt(),
+            borderRadius = 12f
+        )
+            .setSizing(5f, Size.Pixels, 100f, Size.ParentPerc)
+            .setPositioning(0f, Pos.ParentPixels, 0f, Pos.ParentPixels)
+            .ignoreMouseEvents()
+            .childOf(card)
+            .apply {
+                borderRadiusTopRight = 0f
+                borderRadiusBottomRight = 0f
+            }
+
+        Text("Tracking Mode", 0xFFFFFFFF.toInt(), 20f, true)
+            .setPositioning(20f, Pos.ParentPixels, 18f, Pos.ParentPixels)
+            .childOf(card)
+
+        // Mode buttons
+        val gemBg = if (!isBlockMode) 0xFF4CAF50.toInt() else 0xFF2A2A2A.toInt()
+        val blockBg = if (isBlockMode) 0xFF4CAF50.toInt() else 0xFF2A2A2A.toInt()
+
+        Button("Gemstones", 0xFFFFFFFF.toInt(), fontSize = 12f)
+            .setSizing(100f, Size.Pixels, 30f, Size.Pixels)
+            .setPositioning(0f, Pos.ParentPixels, 17f, Pos.ParentPixels)
+            .alignRight()
+            .setOffset(-130f, 0f)
+            .backgroundColor(gemBg)
+            .borderColor(0xFF45A049.toInt())
+            .borderRadius(6f)
+            .borderThickness(1f)
+            .onClick { _, _, _ ->
+                if (isBlockMode) {
+                    isBlockMode = false
+                    ProfitTrackerHUD.setMode("GEMSTONES")
+                    rebuildContent()
+                }
+                true
+            }
+            .childOf(card)
+
+        Button("Blocks", 0xFFFFFFFF.toInt(), fontSize = 12f)
+            .setSizing(100f, Size.Pixels, 30f, Size.Pixels)
+            .setPositioning(0f, Pos.ParentPixels, 17f, Pos.ParentPixels)
+            .alignRight()
+            .setOffset(-20f, 0f)
+            .backgroundColor(blockBg)
+            .borderColor(0xFF45A049.toInt())
+            .borderRadius(6f)
+            .borderThickness(1f)
+            .onClick { _, _, _ ->
+                if (!isBlockMode) {
+                    isBlockMode = true
+                    ProfitTrackerHUD.setMode("BLOCKS")
+                    rebuildContent()
+                }
+                true
+            }
+            .childOf(card)
+
+        card.visible = false
+        Thread {
+            Thread.sleep(animDelay)
+            MinecraftClient.getInstance().execute {
+                card.fadeIn(400, EasingType.EASE_OUT)
+            }
+        }.start()
+    }
+
+    private fun rebuildContent() {
+        contentPanel.children.clear()
+        buildContent()
     }
 
     private fun createToggleCard(
