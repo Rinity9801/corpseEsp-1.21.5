@@ -22,6 +22,8 @@ class MiningProfitCategoryScreen(private val parentScreen: Screen) : VexelScreen
     private lateinit var mainPanel: Rectangle
     private lateinit var contentPanel: Rectangle
     private var isBlockMode = ProfitTrackerHUD.isBlockMode()
+    private var dropdownOpen = false
+    private var dropdownPanel: Rectangle? = null
 
     override fun afterInitialization() {
         // Semi-transparent dark overlay background
@@ -247,16 +249,8 @@ class MiningProfitCategoryScreen(private val parentScreen: Screen) : VexelScreen
     private fun buildBlockModeOptions(startY: Float, toggleWidth: Float, toggleHeight: Float, spacing: Float) {
         var yOffset = startY
 
-        // Material selector
-        createSelectorCard(
-            "Track Material",
-            { BlockTracker.getMaterialDisplayName() },
-            {
-                val materials = BlockTracker.getAllMaterials()
-                val currentIdx = materials.indexOf(BlockTracker.getMaterial())
-                val nextIdx = (currentIdx + 1) % materials.size
-                BlockTracker.setMaterial(materials[nextIdx])
-            },
+        // Material dropdown selector
+        createMaterialDropdown(
             (mainPanel.width - toggleWidth) / 2f,
             yOffset,
             toggleWidth,
@@ -314,6 +308,131 @@ class MiningProfitCategoryScreen(private val parentScreen: Screen) : VexelScreen
             .fadeIn(500, EasingType.EASE_OUT)
     }
 
+    private fun createMaterialDropdown(x: Float, y: Float, width: Float, height: Float, parent: Rectangle, animDelay: Long) {
+        val materials = BlockTracker.getAllMaterials()
+        val materialNames = mapOf(
+            "COAL" to "Coal",
+            "DIAMOND" to "Diamond",
+            "GOLD" to "Gold",
+            "MYCELIUM" to "Mycelium",
+            "RED_SAND" to "Red Sand",
+            "OBSIDIAN" to "Obsidian",
+            "QUARTZ" to "Quartz",
+            "EMERALD" to "Emerald"
+        )
+
+        val card = Rectangle(
+            backgroundColor = 0xF01E1E1E.toInt(),
+            borderColor = 0xFF2A2A2A.toInt(),
+            borderRadius = 12f,
+            borderThickness = 1f,
+            hoverColor = 0xF0252525.toInt()
+        )
+            .setSizing(width, Size.Pixels, height, Size.Pixels)
+            .setPositioning(x, Pos.ParentPixels, y, Pos.ParentPixels)
+            .childOf(parent)
+            .apply {
+                dropShadow = true
+                shadowBlur = 15f
+                shadowSpread = 1f
+                shadowColor = 0x40000000.toInt()
+            }
+
+        // Accent bar
+        Rectangle(
+            backgroundColor = 0xFFFFAA00.toInt(),
+            borderRadius = 12f
+        )
+            .setSizing(5f, Size.Pixels, 100f, Size.ParentPerc)
+            .setPositioning(0f, Pos.ParentPixels, 0f, Pos.ParentPixels)
+            .ignoreMouseEvents()
+            .childOf(card)
+            .apply {
+                borderRadiusTopRight = 0f
+                borderRadiusBottomRight = 0f
+            }
+
+        Text("Track Material", 0xFFFFFFFF.toInt(), 20f, true)
+            .setPositioning(20f, Pos.ParentPixels, 18f, Pos.ParentPixels)
+            .childOf(card)
+
+        val valueText = Text(BlockTracker.getMaterialDisplayName(), 0xFFFFAA00.toInt(), 16f, true)
+            .setPositioning(20f, Pos.ParentPixels, 43f, Pos.ParentPixels)
+            .childOf(card)
+
+        Text("▼", 0xFF888888.toInt(), 14f, false)
+            .setPositioning(0f, Pos.ParentPixels, 25f, Pos.ParentPixels)
+            .alignRight()
+            .setOffset(-20f, 0f)
+            .childOf(card)
+
+        // Dropdown panel (hidden initially)
+        val dropdownHeight = materials.size * 35f + 10f
+        val dropdown = Rectangle(
+            backgroundColor = 0xF01E1E1E.toInt(),
+            borderColor = 0xFF3A3A3A.toInt(),
+            borderRadius = 8f,
+            borderThickness = 1f
+        )
+            .setSizing(width - 20f, Size.Pixels, dropdownHeight, Size.Pixels)
+            .setPositioning(x + 10f, Pos.ParentPixels, y + height + 5f, Pos.ParentPixels)
+            .childOf(parent)
+            .apply {
+                dropShadow = true
+                shadowBlur = 20f
+                shadowSpread = 2f
+                shadowColor = 0x80000000.toInt()
+                visible = false
+            }
+        dropdownPanel = dropdown
+
+        // Add material options
+        var optionY = 5f
+        for (material in materials) {
+            val displayName = materialNames[material] ?: material
+            val isSelected = material == BlockTracker.getMaterial()
+            val bgColor = if (isSelected) 0xFF3A3A3A.toInt() else 0x00000000.toInt()
+
+            val option = Rectangle(
+                backgroundColor = bgColor,
+                borderColor = 0x00000000,
+                borderRadius = 6f,
+                hoverColor = 0xFF2A2A2A.toInt()
+            )
+                .setSizing(width - 30f, Size.Pixels, 30f, Size.Pixels)
+                .setPositioning(5f, Pos.ParentPixels, optionY, Pos.ParentPixels)
+                .childOf(dropdown)
+
+            Text(displayName, if (isSelected) 0xFFFFAA00.toInt() else 0xFFFFFFFF.toInt(), 14f, false)
+                .setPositioning(10f, Pos.ParentPixels, 8f, Pos.ParentPixels)
+                .childOf(option)
+
+            option.onClick { _, _, _ ->
+                BlockTracker.setMaterial(material)
+                dropdown.visible = false
+                dropdownOpen = false
+                valueText.text = materialNames[material] ?: material
+                true
+            }
+
+            optionY += 35f
+        }
+
+        card.onClick { _, _, _ ->
+            dropdownOpen = !dropdownOpen
+            dropdown.visible = dropdownOpen
+            true
+        }
+
+        card.visible = false
+        Thread {
+            Thread.sleep(animDelay)
+            MinecraftClient.getInstance().execute {
+                card.fadeIn(400, EasingType.EASE_OUT)
+            }
+        }.start()
+    }
+
     private fun createModeSelector(x: Float, y: Float, width: Float, height: Float, parent: Rectangle, animDelay: Long) {
         val card = Rectangle(
             backgroundColor = 0xF01E1E1E.toInt(),
@@ -365,9 +484,9 @@ class MiningProfitCategoryScreen(private val parentScreen: Screen) : VexelScreen
             .onClick { _, _, _ ->
                 if (isBlockMode) {
                     ProfitTrackerHUD.setMode("GEMSTONES")
-                    MiningqolClient.getConfig()?.loadFromGame()
-                    MiningqolClient.getConfig()?.save()
-                    MinecraftClient.getInstance().setScreen(MiningProfitCategoryScreen(parentScreen))
+                    MinecraftClient.getInstance().execute {
+                        MinecraftClient.getInstance().setScreen(MiningProfitCategoryScreen(parentScreen))
+                    }
                 }
                 true
             }
@@ -385,9 +504,9 @@ class MiningProfitCategoryScreen(private val parentScreen: Screen) : VexelScreen
             .onClick { _, _, _ ->
                 if (!isBlockMode) {
                     ProfitTrackerHUD.setMode("BLOCKS")
-                    MiningqolClient.getConfig()?.loadFromGame()
-                    MiningqolClient.getConfig()?.save()
-                    MinecraftClient.getInstance().setScreen(MiningProfitCategoryScreen(parentScreen))
+                    MinecraftClient.getInstance().execute {
+                        MinecraftClient.getInstance().setScreen(MiningProfitCategoryScreen(parentScreen))
+                    }
                 }
                 true
             }
