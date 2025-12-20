@@ -20,6 +20,7 @@ class UpdateScreen : VexelScreen("MiningQOL Update Available") {
     private lateinit var mainPanel: Rectangle
     private lateinit var statusText: Text
     private lateinit var downloadButton: Button
+    private lateinit var laterButton: Button
     private var isDownloading = false
     private var downloadComplete = false
 
@@ -168,8 +169,8 @@ class UpdateScreen : VexelScreen("MiningQOL Update Available") {
             }
             .childOf(mainPanel)
 
-        // Later button
-        Button("Remind Me Later", 0xFFAAAAAA.toInt(), fontSize = 13f)
+        // Later button (becomes Done button after download)
+        laterButton = Button("Remind Me Later", 0xFFAAAAAA.toInt(), fontSize = 13f)
             .setSizing(140f, Size.Pixels, 36f, Size.Pixels)
             .setPositioning(0f, Pos.ParentCenter, 0f, Pos.ParentPixels)
             .alignBottom()
@@ -184,7 +185,7 @@ class UpdateScreen : VexelScreen("MiningQOL Update Available") {
                 close()
                 true
             }
-            .childOf(mainPanel)
+            .childOf(mainPanel) as Button
 
         // Don't Show Again button
         Button("Don't Show Again", 0xFF666666.toInt(), fontSize = 11f)
@@ -223,11 +224,16 @@ class UpdateScreen : VexelScreen("MiningQOL Update Available") {
         UpdateChecker.downloadUpdate(modsFolder).thenAccept { success ->
             MinecraftClient.getInstance().execute {
                 if (success) {
-                    statusText.text = "Downloaded! Delete old jar & restart."
+                    statusText.text = "Updated! Restart the game to apply."
                     statusText.color(0xFF4CAF50.toInt())
                     downloadButton.text = "Done"
                     downloadComplete = true
                     isDownloading = false
+                    // Change Later button to green Done button
+                    laterButton.text = "Done"
+                    laterButton.textColor = 0xFFFFFFFF.toInt()
+                    laterButton.backgroundColor(0xFF4CAF50.toInt())
+                    laterButton.borderColor(0xFF45A049.toInt())
                     dismissUpdate() // Don't show again after successful download
                 } else {
                     statusText.text = "Download failed. Try browser instead."

@@ -3,6 +3,8 @@ package forfun.miningqol.client.update;
 import com.google.gson.JsonArray;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
+import net.fabricmc.loader.api.FabricLoader;
+import net.fabricmc.loader.api.ModContainer;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -12,12 +14,13 @@ import java.net.URL;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.StandardCopyOption;
+import java.util.Optional;
 import java.util.concurrent.CompletableFuture;
 
 public class UpdateChecker {
     private static final Logger LOGGER = LoggerFactory.getLogger("UpdateChecker");
     private static final String GITHUB_API_URL = "https://api.github.com/repos/Rinity9801/MiningQOL/releases/latest";
-    private static final String CURRENT_VERSION = "1.1.0";
+    private static final String MOD_ID = "miningqol";
 
     private static String latestVersion = null;
     private static String downloadUrl = null;
@@ -76,13 +79,14 @@ public class UpdateChecker {
                 }
 
                 // Compare versions
-                updateAvailable = isNewerVersion(latestVersion, CURRENT_VERSION);
+                String currentVersion = getCurrentVersion();
+                updateAvailable = isNewerVersion(latestVersion, currentVersion);
                 checkComplete = true;
 
                 if (updateAvailable) {
-                    LOGGER.info("[UpdateChecker] Update available! Current: {}, Latest: {}", CURRENT_VERSION, latestVersion);
+                    LOGGER.info("[UpdateChecker] Update available! Current: {}, Latest: {}", currentVersion, latestVersion);
                 } else {
-                    LOGGER.info("[UpdateChecker] Up to date! Version: {}", CURRENT_VERSION);
+                    LOGGER.info("[UpdateChecker] Up to date! Version: {}", currentVersion);
                 }
 
                 return updateAvailable;
@@ -118,8 +122,8 @@ public class UpdateChecker {
 
     public static CompletableFuture<Boolean> downloadUpdate(Path modsFolder) {
         return CompletableFuture.supplyAsync(() -> {
-            if (downloadUrl == null) {
-                LOGGER.error("[UpdateChecker] No download URL available");
+            if (downloadUrl == null || latestVersion == null) {
+                LOGGER.error("[UpdateChecker] No download URL or version available");
                 return false;
             }
 
@@ -142,8 +146,8 @@ public class UpdateChecker {
                     return false;
                 }
 
-                // Get filename from URL
-                String fileName = downloadUrl.substring(downloadUrl.lastIndexOf('/') + 1);
+                // Save with version number in filename
+                String fileName = "miningqol-" + latestVersion + ".jar";
                 Path targetPath = modsFolder.resolve(fileName);
 
                 // Download to temp file first
@@ -156,6 +160,10 @@ public class UpdateChecker {
                 Files.move(tempPath, targetPath, StandardCopyOption.REPLACE_EXISTING);
 
                 LOGGER.info("[UpdateChecker] Update downloaded to: {}", targetPath);
+
+                // Delete old miningqol jars (except the one we just downloaded)
+                deleteOldJars(modsFolder, fileName);
+
                 return true;
 
             } catch (Exception e) {
@@ -165,8 +173,38 @@ public class UpdateChecker {
         });
     }
 
+    private static void deleteOldJars(Path modsFolder, String newFileName) {
+        try {
+            File[] files = modsFolder.toFile().listFiles((dir, name) ->
+                name.startsWith("miningqol") && name.endsWith(".jar") && !name.equals(newFileName)
+            );
+
+            if (files != null) {
+                for (File file : files) {
+                    try {
+                        if (file.delete()) {
+                            LOGGER.info("[UpdateChecker] Deleted old jar: {}", file.getName());
+                        } else {
+                            // If we can't delete, try to mark for deletion on exit
+                            file.deleteOnExit();
+                            LOGGER.info("[UpdateChecker] Marked for deletion on exit: {}", file.getName());
+                        }
+                    } catch (Exception e) {
+                        LOGGER.warn("[UpdateChecker] Could not delete old jar: {}", file.getName());
+                    }
+                }
+            }
+        } catch (Exception e) {
+            LOGGER.warn("[UpdateChecker] Error cleaning up old jars", e);
+        }
+    }
+
     public static String getCurrentVersion() {
-        return CURRENT_VERSION;
+        Optional<ModContainer> modContainer = FabricLoader.getInstance().getModContainer(MOD_ID);
+        if (modContainer.isPresent()) {
+            return modContainer.get().getMetadata().getVersion().getFriendlyString();
+        }
+        return "unknown";
     }
 
     public static String getLatestVersion() {
