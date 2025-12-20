@@ -366,8 +366,9 @@ class MiningProfitCategoryScreen(private val parentScreen: Screen) : VexelScreen
             .setOffset(-20f, 0f)
             .childOf(card)
 
-        // Dropdown panel (hidden initially)
+        // Dropdown panel (hidden initially) - added to mainPanel for proper z-order
         val dropdownHeight = materials.size * 35f + 10f
+        val contentPanelOffset = 90f // contentPanel starts at y=90 in mainPanel
         val dropdown = Rectangle(
             backgroundColor = 0xF01E1E1E.toInt(),
             borderColor = 0xFF3A3A3A.toInt(),
@@ -375,8 +376,8 @@ class MiningProfitCategoryScreen(private val parentScreen: Screen) : VexelScreen
             borderThickness = 1f
         )
             .setSizing(width - 20f, Size.Pixels, dropdownHeight, Size.Pixels)
-            .setPositioning(x + 10f, Pos.ParentPixels, y + height + 5f, Pos.ParentPixels)
-            .childOf(parent)
+            .setPositioning(x + 10f, Pos.ParentPixels, contentPanelOffset + y + height + 5f, Pos.ParentPixels)
+            .childOf(mainPanel)
             .apply {
                 dropShadow = true
                 shadowBlur = 20f
@@ -442,6 +443,7 @@ class MiningProfitCategoryScreen(private val parentScreen: Screen) : VexelScreen
         )
             .setSizing(width, Size.Pixels, height, Size.Pixels)
             .setPositioning(x, Pos.ParentPixels, y, Pos.ParentPixels)
+            .ignoreMouseEvents()
             .childOf(parent)
             .apply {
                 dropShadow = true
@@ -471,6 +473,8 @@ class MiningProfitCategoryScreen(private val parentScreen: Screen) : VexelScreen
         // Mode buttons
         val gemBg = if (!isBlockMode) 0xFF4CAF50.toInt() else 0xFF2A2A2A.toInt()
         val blockBg = if (isBlockMode) 0xFF4CAF50.toInt() else 0xFF2A2A2A.toInt()
+        val gemHover = if (!isBlockMode) 0xFF45A049.toInt() else 0xFF353535.toInt()
+        val blockHover = if (isBlockMode) 0xFF45A049.toInt() else 0xFF353535.toInt()
 
         Button("Gemstones", 0xFFFFFFFF.toInt(), fontSize = 12f)
             .setSizing(100f, Size.Pixels, 30f, Size.Pixels)
@@ -481,12 +485,12 @@ class MiningProfitCategoryScreen(private val parentScreen: Screen) : VexelScreen
             .borderColor(0xFF45A049.toInt())
             .borderRadius(6f)
             .borderThickness(1f)
+            .hoverColors(gemHover, 0xFFFFFFFF.toInt())
+            .pressedColors(0xFF388E3C.toInt(), 0xFFFFFFFF.toInt())
             .onClick { _, _, _ ->
                 if (isBlockMode) {
                     ProfitTrackerHUD.setMode("GEMSTONES")
-                    MinecraftClient.getInstance().execute {
-                        MinecraftClient.getInstance().setScreen(MiningProfitCategoryScreen(parentScreen))
-                    }
+                    MinecraftClient.getInstance().setScreen(MiningProfitCategoryScreen(parentScreen))
                 }
                 true
             }
@@ -501,12 +505,12 @@ class MiningProfitCategoryScreen(private val parentScreen: Screen) : VexelScreen
             .borderColor(0xFF45A049.toInt())
             .borderRadius(6f)
             .borderThickness(1f)
+            .hoverColors(blockHover, 0xFFFFFFFF.toInt())
+            .pressedColors(0xFF388E3C.toInt(), 0xFFFFFFFF.toInt())
             .onClick { _, _, _ ->
                 if (!isBlockMode) {
                     ProfitTrackerHUD.setMode("BLOCKS")
-                    MinecraftClient.getInstance().execute {
-                        MinecraftClient.getInstance().setScreen(MiningProfitCategoryScreen(parentScreen))
-                    }
+                    MinecraftClient.getInstance().setScreen(MiningProfitCategoryScreen(parentScreen))
                 }
                 true
             }
