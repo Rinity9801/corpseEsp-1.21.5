@@ -119,6 +119,7 @@ public class BlockTracker {
         }
 
         boolean matchesMaterial = false;
+        boolean isEnchanted = hoverText.contains("Enchanted");
         for (String name : displayNames) {
             if (hoverText.contains(name)) {
                 matchesMaterial = true;
@@ -136,19 +137,30 @@ public class BlockTracker {
         }
 
         lastBlockTime = System.currentTimeMillis();
-        totalBlocks += amount;
         totalTimeSeconds += seconds;
 
         // Calculate coins for this event
         String enchantedId = MATERIAL_TO_ENCHANTED.get(currentMaterial);
         double enchantedPrice = BazaarPriceManager.getBlockPrice(enchantedId);
-        double coinsThisEvent = (amount / 160.0) * enchantedPrice;
+        double enchantedCount;
+
+        if (isEnchanted) {
+            // Sack shows enchanted items directly
+            enchantedCount = amount;
+            totalBlocks += amount * 160; // Store as raw equivalent for display
+        } else {
+            // Sack shows raw items, convert to enchanted
+            enchantedCount = amount / 160.0;
+            totalBlocks += amount;
+        }
+
+        double coinsThisEvent = enchantedCount * enchantedPrice;
 
         // Calculate coins/hr for this specific interval and add as sample
         double eventCoinsPerHour = (coinsThisEvent / seconds) * 3600.0;
         profitSamples.add(eventCoinsPerHour);
 
-        LOGGER.info("Tracked {} {} ({}s) -> {}/hr", amount, currentMaterial, seconds, formatCoins(eventCoinsPerHour));
+        LOGGER.info("Tracked {} {} ({}s, enchanted={}) -> {}/hr", amount, currentMaterial, seconds, isEnchanted, formatCoins(eventCoinsPerHour));
     }
 
     private static String extractHoverText(Text message) {
