@@ -21,6 +21,11 @@ public class BlockTracker {
     private static long totalBlocks = 0;
     private static String currentMaterial = "COAL";
 
+    // Cached values - only updated on sack messages
+    private static long cachedSessionTime = 0;
+    private static double cachedCoinsPerHour = 0;
+    private static double cachedTotalValue = 0;
+
     // Pattern to match sack messages like "[Sacks] +22,400 items (Last 30s.)"
     private static final Pattern SACK_PATTERN = Pattern.compile("\\[Sacks\\] \\+([\\d,]+) items");
 
@@ -119,6 +124,28 @@ public class BlockTracker {
 
         lastBlockTime = System.currentTimeMillis();
         totalBlocks += amount;
+
+        // Update cached values
+        updateCachedValues();
+    }
+
+    private static void updateCachedValues() {
+        cachedSessionTime = System.currentTimeMillis() - sessionStartTime;
+
+        // Get enchanted price
+        String enchantedId = MATERIAL_TO_ENCHANTED.get(currentMaterial);
+        double enchantedPrice = BazaarPriceManager.getBlockPrice(enchantedId);
+
+        // Calculate coins per hour: 160 raw blocks = 1 enchanted
+        if (cachedSessionTime > 0) {
+            double blocksPerHour = totalBlocks / (cachedSessionTime / (1000.0 * 60.0 * 60.0));
+            double enchantedPerHour = blocksPerHour / 160.0;
+            cachedCoinsPerHour = enchantedPerHour * enchantedPrice;
+        }
+
+        // Calculate total value
+        double enchantedCount = totalBlocks / 160.0;
+        cachedTotalValue = enchantedCount * enchantedPrice;
     }
 
     private static String extractHoverText(Text message) {
@@ -160,6 +187,9 @@ public class BlockTracker {
         sessionStartTime = 0;
         lastBlockTime = 0;
         totalBlocks = 0;
+        cachedSessionTime = 0;
+        cachedCoinsPerHour = 0;
+        cachedTotalValue = 0;
     }
 
     public static boolean isTracking() {
@@ -167,8 +197,8 @@ public class BlockTracker {
     }
 
     public static long getSessionTime() {
-        if (!isTracking) return 0;
-        return System.currentTimeMillis() - sessionStartTime;
+        // Return cached session time (only updates on sack messages)
+        return cachedSessionTime;
     }
 
     public static long getTotalBlocks() {
@@ -176,24 +206,13 @@ public class BlockTracker {
     }
 
     public static double getCoinsPerHour() {
-        if (!isTracking || getSessionTime() == 0) return 0;
-
-        // Get enchanted price
-        String enchantedId = MATERIAL_TO_ENCHANTED.get(currentMaterial);
-        double enchantedPrice = BazaarPriceManager.getBlockPrice(enchantedId);
-
-        // Calculate value: 160 raw blocks = 1 enchanted
-        double blocksPerHour = totalBlocks / (getSessionTime() / (1000.0 * 60.0 * 60.0));
-        double enchantedPerHour = blocksPerHour / 160.0;
-
-        return enchantedPerHour * enchantedPrice;
+        // Return cached value (only updates on sack messages)
+        return cachedCoinsPerHour;
     }
 
     public static double getTotalValue() {
-        String enchantedId = MATERIAL_TO_ENCHANTED.get(currentMaterial);
-        double enchantedPrice = BazaarPriceManager.getBlockPrice(enchantedId);
-        double enchantedCount = totalBlocks / 160.0;
-        return enchantedCount * enchantedPrice;
+        // Return cached value (only updates on sack messages)
+        return cachedTotalValue;
     }
 
     public static String formatTime(long millis) {
