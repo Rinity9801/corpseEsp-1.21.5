@@ -25,8 +25,9 @@ public class BlockTracker {
     // Per-event coins/hr samples - averaged for display
     private static final java.util.List<Double> profitSamples = new java.util.ArrayList<>();
 
-    // Pattern to match sack messages like "[Sacks] +22,400 items (Last 30s.)"
-    private static final Pattern SACK_PATTERN = Pattern.compile("\\[Sacks\\] \\+([\\d,]+) items \\(Last (\\d+)s\\.\\)");
+    // Pattern to match sack messages like "[Sacks] +22,400 items (Last 30s.)" or "[Sacks] +22,400 items."
+    private static final Pattern SACK_PATTERN = Pattern.compile("\\[Sacks\\] \\+([\\d,]+) items");
+    private static final Pattern TIME_PATTERN = Pattern.compile("\\(Last (\\d+)s\\.?\\)");
 
     // Mapping from display names to bazaar item IDs
     private static final Map<String, String> MATERIAL_TO_ENCHANTED = new HashMap<>();
@@ -77,24 +78,33 @@ public class BlockTracker {
     public static void onChatMessage(Text message) {
         String messageText = message.getString();
 
-        // Check if it's a sack message with time interval
-        Matcher matcher = SACK_PATTERN.matcher(messageText);
-        if (!matcher.find()) {
+        // Check if it's a sack message
+        Matcher sackMatcher = SACK_PATTERN.matcher(messageText);
+        if (!sackMatcher.find()) {
             return;
         }
 
-        // Extract the amount and seconds
-        String amountStr = matcher.group(1).replace(",", "");
-        int seconds;
+        // Extract the amount
+        String amountStr = sackMatcher.group(1).replace(",", "");
         long amount;
         try {
             amount = Long.parseLong(amountStr);
-            seconds = Integer.parseInt(matcher.group(2));
         } catch (NumberFormatException e) {
             return;
         }
 
-        if (seconds <= 0) return;
+        // Extract seconds from "(Last Xs.)" if present, default to 30
+        int seconds = 30;
+        Matcher timeMatcher = TIME_PATTERN.matcher(messageText);
+        if (timeMatcher.find()) {
+            try {
+                seconds = Integer.parseInt(timeMatcher.group(1));
+            } catch (NumberFormatException e) {
+                seconds = 30;
+            }
+        }
+
+        if (seconds <= 0) seconds = 30;
 
         // Check hover text to see what item was added
         String hoverText = extractHoverText(message);
@@ -137,6 +147,8 @@ public class BlockTracker {
         // Calculate coins/hr for this specific interval and add as sample
         double eventCoinsPerHour = (coinsThisEvent / seconds) * 3600.0;
         profitSamples.add(eventCoinsPerHour);
+
+        LOGGER.info("Tracked {} {} ({}s) -> {}/hr", amount, currentMaterial, seconds, formatCoins(eventCoinsPerHour));
     }
 
     private static String extractHoverText(Text message) {
