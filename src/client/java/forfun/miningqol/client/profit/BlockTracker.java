@@ -19,13 +19,14 @@ public class BlockTracker {
     private static final long RESET_DELAY = 60000; // 1 minute without blocks = reset
 
     private static long totalBlocks = 0;
+    private static long totalTimeSeconds = 0;
     private static String currentMaterial = "COAL";
 
-    // Cached coins per hour - only updated on sack messages
-    private static double cachedCoinsPerHour = 0;
+    // Per-event coins/hr samples - averaged for display
+    private static final java.util.List<Double> profitSamples = new java.util.ArrayList<>();
 
     // Pattern to match sack messages like "[Sacks] +22,400 items (Last 30s.)"
-    private static final Pattern SACK_PATTERN = Pattern.compile("\\[Sacks\\] \\+([\\d,]+) items");
+    private static final Pattern SACK_PATTERN = Pattern.compile("\\[Sacks\\] \\+([\\d,]+) items \\(Last (\\d+)s\\.\\)");
 
     // Mapping from display names to bazaar item IDs
     private static final Map<String, String> MATERIAL_TO_ENCHANTED = new HashMap<>();
@@ -76,20 +77,24 @@ public class BlockTracker {
     public static void onChatMessage(Text message) {
         String messageText = message.getString();
 
-        // Check if it's a sack message
+        // Check if it's a sack message with time interval
         Matcher matcher = SACK_PATTERN.matcher(messageText);
         if (!matcher.find()) {
             return;
         }
 
-        // Extract the amount
+        // Extract the amount and seconds
         String amountStr = matcher.group(1).replace(",", "");
+        int seconds;
         long amount;
         try {
             amount = Long.parseLong(amountStr);
+            seconds = Integer.parseInt(matcher.group(2));
         } catch (NumberFormatException e) {
             return;
         }
+
+        if (seconds <= 0) return;
 
         // Check hover text to see what item was added
         String hoverText = extractHoverText(message);
@@ -122,24 +127,16 @@ public class BlockTracker {
 
         lastBlockTime = System.currentTimeMillis();
         totalBlocks += amount;
+        totalTimeSeconds += seconds;
 
-        // Update cached values
-        updateCachedValues();
-    }
-
-    private static void updateCachedValues() {
-        long sessionTime = System.currentTimeMillis() - sessionStartTime;
-
-        // Get enchanted price
+        // Calculate coins for this event
         String enchantedId = MATERIAL_TO_ENCHANTED.get(currentMaterial);
         double enchantedPrice = BazaarPriceManager.getBlockPrice(enchantedId);
+        double coinsThisEvent = (amount / 160.0) * enchantedPrice;
 
-        // Calculate coins per hour: 160 raw blocks = 1 enchanted
-        if (sessionTime > 0) {
-            double blocksPerHour = totalBlocks / (sessionTime / (1000.0 * 60.0 * 60.0));
-            double enchantedPerHour = blocksPerHour / 160.0;
-            cachedCoinsPerHour = enchantedPerHour * enchantedPrice;
-        }
+        // Calculate coins/hr for this specific interval and add as sample
+        double eventCoinsPerHour = (coinsThisEvent / seconds) * 3600.0;
+        profitSamples.add(eventCoinsPerHour);
     }
 
     private static String extractHoverText(Text message) {
@@ -181,7 +178,8 @@ public class BlockTracker {
         sessionStartTime = 0;
         lastBlockTime = 0;
         totalBlocks = 0;
-        cachedCoinsPerHour = 0;
+        totalTimeSeconds = 0;
+        profitSamples.clear();
     }
 
     public static boolean isTracking() {
@@ -189,8 +187,8 @@ public class BlockTracker {
     }
 
     public static long getSessionTime() {
-        if (!isTracking) return 0;
-        return System.currentTimeMillis() - sessionStartTime;
+        // Return total tracked time from sack messages (in milliseconds for display)
+        return totalTimeSeconds * 1000;
     }
 
     public static long getTotalBlocks() {
@@ -198,8 +196,13 @@ public class BlockTracker {
     }
 
     public static double getCoinsPerHour() {
-        // Return cached value (only updates on sack messages)
-        return cachedCoinsPerHour;
+        // Average of per-event coins/hr samples
+        if (profitSamples.isEmpty()) return 0.0;
+        double sum = 0.0;
+        for (double v : profitSamples) {
+            sum += v;
+        }
+        return sum / profitSamples.size();
     }
 
     public static double getTotalValue() {
