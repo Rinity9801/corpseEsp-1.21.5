@@ -389,12 +389,13 @@ public class OrderedWaypointRenderer {
 
         Vec3d cameraPos = camera.getPos();
         VertexConsumerProvider.Immediate immediate = client.getBufferBuilders().getEntityVertexConsumers();
-        VertexConsumer buffer = immediate.getBuffer(RenderLayer.getLines());
         Matrix4f posMatrix = matrices.peek().getPositionMatrix();
 
         float r = color[0];
         float g = color[1];
         float b = color[2];
+
+        VertexConsumer buffer = immediate.getBuffer(RenderLayer.getLines());
 
         // Draw connected outlines - only draw external edges
         // An edge is internal if the adjacent block in that direction also has the same face exposed

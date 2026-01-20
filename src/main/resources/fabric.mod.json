@@ -4,10 +4,10 @@
   "version": "${version}",
   "name": "MiningQOL",
   "description": "Quality of life features for mining in Hypixel Skyblock - Corpse ESP, profit tracking, and efficient mining overlays",
-  "authors": ["alexdong"],
+  "authors": ["forfun"],
   "contact": {
-    "homepage": "https://github.com/alexdong/miningqol",
-    "sources": "https://github.com/alexdong/miningqol"
+    "homepage": "https://github.com/forfun/miningqol",
+    "sources": "https://github.com/forfun/miningqol"
   },
   "license": "All-Rights-Reserved",
   "icon": "assets/miningqol/icon.png",

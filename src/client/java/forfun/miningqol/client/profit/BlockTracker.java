@@ -211,8 +211,9 @@ public class BlockTracker {
     }
 
     public static long getSessionTime() {
-        // Return total tracked time from sack messages (in milliseconds for display)
-        return totalTimeSeconds * 1000;
+        // Return real elapsed time since session start (like GemstoneTracker)
+        if (!isTracking || sessionStartTime == 0) return 0;
+        return System.currentTimeMillis() - sessionStartTime;
     }
 
     public static long getTotalBlocks() {
@@ -220,13 +221,12 @@ public class BlockTracker {
     }
 
     public static double getCoinsPerHour() {
-        // Average of per-event coins/hr samples
-        if (profitSamples.isEmpty()) return 0.0;
-        double sum = 0.0;
-        for (double v : profitSamples) {
-            sum += v;
-        }
-        return sum / profitSamples.size();
+        // Real-time calculation: totalValue / realElapsedTime * 3600
+        // This makes the display dynamic and decreases if you stop mining
+        long sessionMs = getSessionTime();
+        if (sessionMs == 0) return 0.0;
+        double hours = sessionMs / (1000.0 * 60.0 * 60.0);
+        return getTotalValue() / hours;
     }
 
     public static double getTotalValue() {

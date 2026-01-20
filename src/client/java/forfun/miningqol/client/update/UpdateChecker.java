@@ -19,8 +19,13 @@ import java.util.concurrent.CompletableFuture;
 
 public class UpdateChecker {
     private static final Logger LOGGER = LoggerFactory.getLogger("UpdateChecker");
-    private static final String GITHUB_API_URL = "https://api.github.com/repos/Rinity9801/MiningQOL/releases/latest";
+    private static final String GITHUB_API_URL = "https://api.github.com/repos/Rinity9801/MiningQOL/releases";
     private static final String MOD_ID = "miningqol";
+    private static final String MINECRAFT_VERSION = getMinecraftVersion();
+
+    private static String getMinecraftVersion() {
+        return net.minecraft.SharedConstants.getGameVersion().getName();
+    }
 
     private static String latestVersion = null;
     private static String downloadUrl = null;
@@ -31,7 +36,7 @@ public class UpdateChecker {
     public static CompletableFuture<Boolean> checkForUpdates() {
         return CompletableFuture.supplyAsync(() -> {
             try {
-                LOGGER.info("[UpdateChecker] Checking for updates...");
+                LOGGER.info("[UpdateChecker] Checking for updates for Minecraft {}...", MINECRAFT_VERSION);
 
                 URL url = new URL(GITHUB_API_URL);
                 HttpURLConnection connection = (HttpURLConnection) url.openConnection();
@@ -56,19 +61,39 @@ public class UpdateChecker {
                 }
                 reader.close();
 
-                JsonObject json = JsonParser.parseString(response.toString()).getAsJsonObject();
+                JsonArray releases = JsonParser.parseString(response.toString()).getAsJsonArray();
+
+                // Find the latest release for this Minecraft version
+                JsonObject matchingRelease = null;
+                for (int i = 0; i < releases.size(); i++) {
+                    JsonObject release = releases.get(i).getAsJsonObject();
+                    String tagName = release.get("tag_name").getAsString();
+
+                    // Check if this release is for our Minecraft version
+                    // Tags should contain the MC version, e.g., "1.0.0-1.21.8" or "v1.0.0+1.21.8"
+                    if (tagName.contains(MINECRAFT_VERSION)) {
+                        matchingRelease = release;
+                        break; // First match is the latest for this version
+                    }
+                }
+
+                if (matchingRelease == null) {
+                    LOGGER.info("[UpdateChecker] No releases found for Minecraft {}", MINECRAFT_VERSION);
+                    checkComplete = true;
+                    return false;
+                }
 
                 // Get version tag (remove 'v' prefix if present)
-                String tagName = json.get("tag_name").getAsString();
+                String tagName = matchingRelease.get("tag_name").getAsString();
                 latestVersion = tagName.startsWith("v") ? tagName.substring(1) : tagName;
 
                 // Get release notes
-                releaseNotes = json.has("body") && !json.get("body").isJsonNull()
-                        ? json.get("body").getAsString()
+                releaseNotes = matchingRelease.has("body") && !matchingRelease.get("body").isJsonNull()
+                        ? matchingRelease.get("body").getAsString()
                         : "No release notes available.";
 
                 // Get download URL for the jar file
-                JsonArray assets = json.getAsJsonArray("assets");
+                JsonArray assets = matchingRelease.getAsJsonArray("assets");
                 for (int i = 0; i < assets.size(); i++) {
                     JsonObject asset = assets.get(i).getAsJsonObject();
                     String name = asset.get("name").getAsString();
