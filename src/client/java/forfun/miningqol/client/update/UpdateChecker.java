@@ -24,7 +24,9 @@ public class UpdateChecker {
     private static final String MINECRAFT_VERSION = getMinecraftVersion();
 
     private static String getMinecraftVersion() {
-        return net.minecraft.SharedConstants.getGameVersion().getName();
+        return FabricLoader.getInstance().getModContainer("minecraft")
+                .map(mod -> mod.getMetadata().getVersion().getFriendlyString())
+                .orElse("unknown");
     }
 
     private static String latestVersion = null;
