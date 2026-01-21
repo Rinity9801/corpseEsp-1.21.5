@@ -3,6 +3,11 @@ package forfun.miningqol.client.profit;
 import net.minecraft.client.MinecraftClient;
 import net.minecraft.client.font.TextRenderer;
 import net.minecraft.client.gui.DrawContext;
+import net.minecraft.item.Item;
+import net.minecraft.item.ItemStack;
+import net.minecraft.item.Items;
+import net.minecraft.registry.Registries;
+import net.minecraft.util.Identifier;
 
 public class ProfitTrackerHUD {
     private static int hudX = 10;
@@ -107,11 +112,14 @@ public class ProfitTrackerHUD {
         int lineHeight = (int)(10 * scale);
         int y = hudY;
 
-        // Title line with material name (like "Coal Profit" with colored icon)
-        String titleColor = getMaterialColor(BlockTracker.getMaterial());
-        String title = titleColor + "◆ §f" + materialName + " Profit";
-        drawScaledText(context, textRenderer, title, hudX, y);
-        y += lineHeight;
+        // Draw item icon and title
+        ItemStack itemIcon = getMaterialItemStack(BlockTracker.getMaterial());
+        context.drawItem(itemIcon, hudX, y - 4); // Item icons are 16x16, offset to align with text
+
+        // Title text after the icon
+        String title = "§f" + materialName + " Profit";
+        drawScaledText(context, textRenderer, title, hudX + 18, y);
+        y += lineHeight + 4; // Extra space after title with icon
 
         // Enchanted item count
         String enchantedLine = "§7" + BlockTracker.getEnchantedDisplayName() + ": §f" +
@@ -139,18 +147,37 @@ public class ProfitTrackerHUD {
         drawScaledText(context, textRenderer, collPerHourLine, hudX, y);
     }
 
-    private static String getMaterialColor(String material) {
+    private static ItemStack getMaterialItemStack(String material) {
+        Item item;
         switch (material) {
-            case "COAL": return "§8"; // Dark gray
-            case "DIAMOND": return "§b"; // Aqua
-            case "GOLD": return "§6"; // Gold
-            case "EMERALD": return "§a"; // Green
-            case "QUARTZ": return "§f"; // White
-            case "OBSIDIAN": return "§5"; // Purple
-            case "MYCELIUM": return "§d"; // Light purple
-            case "RED_SAND": return "§c"; // Red
-            default: return "§f";
+            case "COAL":
+                item = Items.COAL;
+                break;
+            case "DIAMOND":
+                item = Items.DIAMOND;
+                break;
+            case "GOLD":
+                item = Items.GOLD_INGOT;
+                break;
+            case "EMERALD":
+                item = Items.EMERALD;
+                break;
+            case "QUARTZ":
+                item = Items.QUARTZ;
+                break;
+            case "OBSIDIAN":
+                item = Items.OBSIDIAN;
+                break;
+            case "MYCELIUM":
+                item = Items.MYCELIUM;
+                break;
+            case "RED_SAND":
+                item = Items.RED_SAND;
+                break;
+            default:
+                item = Items.COAL;
         }
+        return new ItemStack(item);
     }
 
     private static String formatWithCommas(long number) {
