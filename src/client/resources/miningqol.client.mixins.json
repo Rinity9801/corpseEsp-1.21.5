@@ -10,7 +10,8 @@
     "ItemStackMixin",
     "ClientConnectionGlassSyncMixin",
     "GenericContainerScreenMixin",
-    "MouseScrollMixin"
+    "MouseScrollMixin",
+    "ClientPlayerInventoryMixin"
   ],
   "injectors": {
     "defaultRequire": 1
