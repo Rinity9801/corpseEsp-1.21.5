@@ -5,42 +5,62 @@ import net.minecraft.text.Text;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.util.HashMap;
-import java.util.Map;
+import java.util.*;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 public class BlockTracker {
     private static final Logger LOGGER = LoggerFactory.getLogger("BlockTracker");
 
-    private static boolean isTracking = false;
-    private static long sessionStartTime = 0;
-    private static long lastActivityTime = 0;
+    // Display modes
+    public enum DisplayMode { SEPARATE, COMBINED }
+    private static DisplayMode displayMode = DisplayMode.SEPARATE;
+
     private static final long RESET_DELAY = 60000; // 1 minute without activity = reset
+    private static final long HIDE_DELAY = 10000; // Hide HUD after 10 seconds of inactivity
 
-    // Track raw items and enchanted items separately
-    private static long totalRawItems = 0;
-    private static long totalEnchantedItems = 0;
-    private static String currentMaterial = "COAL";
+    // Per-material tracking data
+    public static class MaterialData {
+        public long rawItems = 0;
+        public long enchantedItems = 0;
+        public long sessionStartTime = 0;
+        public long lastActivityTime = 0;
 
-    // Source tracking
-    public enum Source { SACKS, INVENTORY }
-    private static final Map<Source, Long> rawItemsBySource = new HashMap<>();
-    private static final Map<Source, Long> enchantedItemsBySource = new HashMap<>();
+        public boolean isActive() {
+            return sessionStartTime > 0 && (System.currentTimeMillis() - lastActivityTime) < RESET_DELAY;
+        }
 
-    // Pattern to match sack messages like "[Sacks] +22,400 items (Last 30s.)" or "[Sacks] +22,400 items."
+        public boolean shouldShow() {
+            return sessionStartTime > 0 && (System.currentTimeMillis() - lastActivityTime) < HIDE_DELAY;
+        }
+
+        public void reset() {
+            rawItems = 0;
+            enchantedItems = 0;
+            sessionStartTime = 0;
+            lastActivityTime = 0;
+        }
+
+        public long getSessionTime() {
+            if (sessionStartTime == 0) return 0;
+            return System.currentTimeMillis() - sessionStartTime;
+        }
+    }
+
+    // Track all materials
+    private static final Map<String, MaterialData> materialDataMap = new LinkedHashMap<>();
+
+    // Pattern to match sack messages
     private static final Pattern SACK_PATTERN = Pattern.compile("\\[Sacks\\] \\+([\\d,]+) items");
-    private static final Pattern TIME_PATTERN = Pattern.compile("\\(Last (\\d+)s\\.?\\)");
 
-    // Mapping from display names to bazaar item IDs
+    // Material mappings
     private static final Map<String, String> MATERIAL_TO_ENCHANTED = new HashMap<>();
-    private static final Map<String, String> MATERIAL_TO_RAW = new HashMap<>();
     private static final Map<String, String[]> MATERIAL_DISPLAY_NAMES = new HashMap<>();
-    private static final Map<String, String[]> MATERIAL_ITEM_IDS = new HashMap<>(); // For inventory tracking
-    private static final Map<String, Integer> ENCHANTED_RATIO = new HashMap<>(); // Raw items per enchanted
+    private static final Map<String, String[]> MATERIAL_ITEM_IDS = new HashMap<>();
+    private static final Map<String, Integer> ENCHANTED_RATIO = new HashMap<>();
 
     static {
-        // Map material types to their enchanted bazaar IDs
+        // Enchanted bazaar IDs
         MATERIAL_TO_ENCHANTED.put("COAL", "ENCHANTED_COAL");
         MATERIAL_TO_ENCHANTED.put("DIAMOND", "ENCHANTED_DIAMOND");
         MATERIAL_TO_ENCHANTED.put("GOLD", "ENCHANTED_GOLD");
@@ -50,27 +70,17 @@ public class BlockTracker {
         MATERIAL_TO_ENCHANTED.put("QUARTZ", "ENCHANTED_QUARTZ");
         MATERIAL_TO_ENCHANTED.put("EMERALD", "ENCHANTED_EMERALD");
 
-        // Map material types to their raw bazaar IDs
-        MATERIAL_TO_RAW.put("COAL", "COAL");
-        MATERIAL_TO_RAW.put("DIAMOND", "DIAMOND");
-        MATERIAL_TO_RAW.put("GOLD", "GOLD_INGOT");
-        MATERIAL_TO_RAW.put("MYCELIUM", "MYCEL");
-        MATERIAL_TO_RAW.put("RED_SAND", "RED_SAND");
-        MATERIAL_TO_RAW.put("OBSIDIAN", "OBSIDIAN");
-        MATERIAL_TO_RAW.put("QUARTZ", "QUARTZ");
-        MATERIAL_TO_RAW.put("EMERALD", "EMERALD");
-
-        // Enchanted ratios (raw items per enchanted)
+        // Enchanted ratios
         ENCHANTED_RATIO.put("COAL", 160);
         ENCHANTED_RATIO.put("DIAMOND", 160);
         ENCHANTED_RATIO.put("GOLD", 160);
-        ENCHANTED_RATIO.put("MYCELIUM", 25600); // Cube = 160 * 160
-        ENCHANTED_RATIO.put("RED_SAND", 25600); // Cube = 160 * 160
+        ENCHANTED_RATIO.put("MYCELIUM", 25600);
+        ENCHANTED_RATIO.put("RED_SAND", 25600);
         ENCHANTED_RATIO.put("OBSIDIAN", 160);
         ENCHANTED_RATIO.put("QUARTZ", 160);
         ENCHANTED_RATIO.put("EMERALD", 160);
 
-        // Map material types to possible display names in hover/message text
+        // Display names for matching sack hover text
         MATERIAL_DISPLAY_NAMES.put("COAL", new String[]{"Coal"});
         MATERIAL_DISPLAY_NAMES.put("DIAMOND", new String[]{"Diamond"});
         MATERIAL_DISPLAY_NAMES.put("GOLD", new String[]{"Gold Ingot", "Gold"});
@@ -80,7 +90,7 @@ public class BlockTracker {
         MATERIAL_DISPLAY_NAMES.put("QUARTZ", new String[]{"Nether Quartz", "Quartz"});
         MATERIAL_DISPLAY_NAMES.put("EMERALD", new String[]{"Emerald"});
 
-        // Map material types to Minecraft item IDs (for inventory tracking)
+        // Minecraft item IDs for inventory tracking
         MATERIAL_ITEM_IDS.put("COAL", new String[]{"minecraft:coal"});
         MATERIAL_ITEM_IDS.put("DIAMOND", new String[]{"minecraft:diamond"});
         MATERIAL_ITEM_IDS.put("GOLD", new String[]{"minecraft:gold_ingot"});
@@ -89,78 +99,46 @@ public class BlockTracker {
         MATERIAL_ITEM_IDS.put("OBSIDIAN", new String[]{"minecraft:obsidian"});
         MATERIAL_ITEM_IDS.put("QUARTZ", new String[]{"minecraft:quartz"});
         MATERIAL_ITEM_IDS.put("EMERALD", new String[]{"minecraft:emerald"});
-
-        // Initialize source maps
-        for (Source source : Source.values()) {
-            rawItemsBySource.put(source, 0L);
-            enchantedItemsBySource.put(source, 0L);
-        }
     }
 
-    public static void setMaterial(String material) {
-        currentMaterial = material;
+    public static void setDisplayMode(DisplayMode mode) {
+        displayMode = mode;
     }
 
-    public static String getMaterial() {
-        return currentMaterial;
-    }
-
-    public static String getMaterialDisplayName() {
-        String[] names = MATERIAL_DISPLAY_NAMES.get(currentMaterial);
-        if (names != null && names.length > 0) {
-            return names[0];
-        }
-        return currentMaterial;
-    }
-
-    public static String getEnchantedDisplayName() {
-        return "Ench. " + getMaterialDisplayName();
+    public static DisplayMode getDisplayMode() {
+        return displayMode;
     }
 
     public static String[] getAllMaterials() {
         return new String[]{"COAL", "DIAMOND", "GOLD", "MYCELIUM", "RED_SAND", "OBSIDIAN", "QUARTZ", "EMERALD"};
     }
 
-    public static int getEnchantedRatio() {
-        return ENCHANTED_RATIO.getOrDefault(currentMaterial, 160);
+    public static String getMaterialDisplayName(String material) {
+        String[] names = MATERIAL_DISPLAY_NAMES.get(material);
+        if (names != null && names.length > 0) {
+            return names[0];
+        }
+        return material;
+    }
+
+    public static int getEnchantedRatio(String material) {
+        return ENCHANTED_RATIO.getOrDefault(material, 160);
+    }
+
+    private static MaterialData getOrCreateData(String material) {
+        return materialDataMap.computeIfAbsent(material, k -> new MaterialData());
     }
 
     /**
      * Called when items are added to inventory (from mixin)
      */
     public static void onInventoryItemAdd(String itemId, String itemName, int amount) {
-        // Check if this item matches our tracked material
-        String[] trackedIds = MATERIAL_ITEM_IDS.get(currentMaterial);
-        if (trackedIds == null) return;
+        // Find which material this item belongs to
+        String material = findMaterialByItemId(itemId);
+        if (material == null) return;
 
-        boolean matches = false;
-        for (String id : trackedIds) {
-            if (itemId.equals(id)) {
-                matches = true;
-                break;
-            }
-        }
-
-        if (!matches) return;
-
-        // Check if it's enchanted (by name containing "Enchanted")
         boolean isEnchanted = itemName.contains("Enchanted");
-
-        if (!isTracking) {
-            startSession();
-        }
-
-        lastActivityTime = System.currentTimeMillis();
-
-        if (isEnchanted) {
-            totalEnchantedItems += amount;
-            enchantedItemsBySource.merge(Source.INVENTORY, (long) amount, Long::sum);
-            LOGGER.info("[Inventory] Tracked {} enchanted {} (total enchanted: {})", amount, currentMaterial, totalEnchantedItems);
-        } else {
-            totalRawItems += amount;
-            rawItemsBySource.merge(Source.INVENTORY, (long) amount, Long::sum);
-            LOGGER.info("[Inventory] Tracked {} raw {} (total raw: {})", amount, currentMaterial, totalRawItems);
-        }
+        trackItem(material, amount, isEnchanted, "Inventory");
     }
 
     /**
@@ -169,13 +147,9 @@ public class BlockTracker {
     public static void onChatMessage(Text message) {
         String messageText = message.getString();
 
-        // Check if it's a sack message
         Matcher sackMatcher = SACK_PATTERN.matcher(messageText);
-        if (!sackMatcher.find()) {
-            return;
-        }
+        if (!sackMatcher.find()) return;
 
-        // Extract the amount
         String amountStr = sackMatcher.group(1).replace(",", "");
         long amount;
         try {
@@ -184,65 +158,72 @@ public class BlockTracker {
             return;
         }
 
-        // Check hover text to see what item was added
         String hoverText = extractHoverText(message);
-        if (hoverText == null || hoverText.isEmpty()) {
-            return;
-        }
+        if (hoverText == null || hoverText.isEmpty()) return;
 
-        // Check if the hover text contains our tracked material
-        String[] displayNames = MATERIAL_DISPLAY_NAMES.get(currentMaterial);
-        if (displayNames == null) {
-            return;
-        }
+        // Find which material this is
+        String material = findMaterialByHoverText(hoverText);
+        if (material == null) return;
 
-        boolean matchesMaterial = false;
         boolean isEnchanted = hoverText.contains("Enchanted");
-        for (String name : displayNames) {
-            if (hoverText.contains(name)) {
-                matchesMaterial = true;
-                break;
-            }
+        trackItem(material, amount, isEnchanted, "Sacks");
+    }
+
+    private static void trackItem(String material, long amount, boolean isEnchanted, String source) {
+        MaterialData data = getOrCreateData(material);
+
+        // Start session if needed
+        if (data.sessionStartTime == 0) {
+            BazaarPriceManager.updateBlockPrices();
+            data.sessionStartTime = System.currentTimeMillis();
         }
 
-        if (!matchesMaterial) {
-            return;
-        }
-
-        // Track the items
-        if (!isTracking) {
-            startSession();
-        }
-
-        lastActivityTime = System.currentTimeMillis();
+        data.lastActivityTime = System.currentTimeMillis();
 
         if (isEnchanted) {
-            totalEnchantedItems += amount;
-            enchantedItemsBySource.merge(Source.SACKS, amount, Long::sum);
-            LOGGER.info("[Sacks] Tracked {} enchanted {} (total enchanted: {})", amount, currentMaterial, totalEnchantedItems);
+            data.enchantedItems += amount;
+            LOGGER.info("[{}] Tracked {} enchanted {} (total: {})", source, amount, material, data.enchantedItems);
         } else {
-            totalRawItems += amount;
-            rawItemsBySource.merge(Source.SACKS, amount, Long::sum);
-            LOGGER.info("[Sacks] Tracked {} raw {} (total raw: {})", amount, currentMaterial, totalRawItems);
+            data.rawItems += amount;
+            LOGGER.info("[{}] Tracked {} raw {} (total: {})", source, amount, material, data.rawItems);
         }
+    }
+
+    private static String findMaterialByItemId(String itemId) {
+        for (Map.Entry<String, String[]> entry : MATERIAL_ITEM_IDS.entrySet()) {
+            for (String id : entry.getValue()) {
+                if (itemId.equals(id)) {
+                    return entry.getKey();
+                }
+            }
+        }
+        return null;
+    }
+
+    private static String findMaterialByHoverText(String hoverText) {
+        for (Map.Entry<String, String[]> entry : MATERIAL_DISPLAY_NAMES.entrySet()) {
+            for (String name : entry.getValue()) {
+                if (hoverText.contains(name)) {
+                    return entry.getKey();
+                }
+            }
+        }
+        return null;
     }
 
     private static String extractHoverText(Text message) {
         StringBuilder hoverContent = new StringBuilder();
 
-        // Check the main text's hover event
         HoverEvent hover = message.getStyle().getHoverEvent();
         if (hover instanceof HoverEvent.ShowText showText) {
             hoverContent.append(showText.value().getString());
         }
 
-        // Also check siblings
         for (Text sibling : message.getSiblings()) {
             HoverEvent siblingHover = sibling.getStyle().getHoverEvent();
             if (siblingHover instanceof HoverEvent.ShowText showText) {
                 hoverContent.append(showText.value().getString());
             }
-            // Recursively check nested siblings
             hoverContent.append(extractHoverText(sibling));
         }
 
@@ -250,109 +231,122 @@ public class BlockTracker {
     }
 
     public static void tick() {
-        if (isTracking && System.currentTimeMillis() - lastActivityTime > RESET_DELAY) {
-            reset();
+        // Reset materials that have been inactive
+        for (MaterialData data : materialDataMap.values()) {
+            if (data.sessionStartTime > 0 && !data.isActive()) {
+                data.reset();
+            }
         }
-    }
-
-    public static void startSession() {
-        BazaarPriceManager.updateBlockPrices();
-        sessionStartTime = System.currentTimeMillis();
-        isTracking = true;
     }
 
     public static void reset() {
-        isTracking = false;
-        sessionStartTime = 0;
-        lastActivityTime = 0;
-        totalRawItems = 0;
-        totalEnchantedItems = 0;
-        for (Source source : Source.values()) {
-            rawItemsBySource.put(source, 0L);
-            enchantedItemsBySource.put(source, 0L);
+        materialDataMap.clear();
+    }
+
+    /**
+     * Get list of materials currently being tracked (with recent activity)
+     */
+    public static List<String> getActiveMaterials() {
+        List<String> active = new ArrayList<>();
+        for (Map.Entry<String, MaterialData> entry : materialDataMap.entrySet()) {
+            if (entry.getValue().shouldShow()) {
+                active.add(entry.getKey());
+            }
         }
-    }
-
-    public static boolean isTracking() {
-        return isTracking;
-    }
-
-    public static long getSessionTime() {
-        if (!isTracking || sessionStartTime == 0) return 0;
-        return System.currentTimeMillis() - sessionStartTime;
+        return active;
     }
 
     /**
-     * Get total enchanted items (directly collected + converted from raw)
+     * Check if any materials are being tracked
      */
-    public static long getTotalEnchantedItems() {
-        int ratio = getEnchantedRatio();
-        return totalEnchantedItems + (totalRawItems / ratio);
+    public static boolean hasActiveMaterials() {
+        return !getActiveMaterials().isEmpty();
     }
 
-    /**
-     * Get total raw items collected
-     */
-    public static long getTotalRawItems() {
-        return totalRawItems;
+    // Per-material getters
+    public static long getTotalEnchantedItems(String material) {
+        MaterialData data = materialDataMap.get(material);
+        if (data == null) return 0;
+        int ratio = getEnchantedRatio(material);
+        return data.enchantedItems + (data.rawItems / ratio);
     }
 
-    /**
-     * Get total raw items equivalent (enchanted * ratio + raw)
-     */
-    public static long getTotalRawEquivalent() {
-        int ratio = getEnchantedRatio();
-        return (totalEnchantedItems * ratio) + totalRawItems;
+    public static long getTotalRawEquivalent(String material) {
+        MaterialData data = materialDataMap.get(material);
+        if (data == null) return 0;
+        int ratio = getEnchantedRatio(material);
+        return (data.enchantedItems * ratio) + data.rawItems;
     }
 
-    /**
-     * Get total value in coins
-     */
-    public static double getTotalValue() {
-        String enchantedId = MATERIAL_TO_ENCHANTED.get(currentMaterial);
+    public static double getTotalValue(String material) {
+        MaterialData data = materialDataMap.get(material);
+        if (data == null) return 0;
+
+        String enchantedId = MATERIAL_TO_ENCHANTED.get(material);
         double enchantedPrice = BazaarPriceManager.getBlockPrice(enchantedId);
+        int ratio = getEnchantedRatio(material);
 
-        // Calculate value: (enchanted items * price) + (raw items / ratio * price)
-        int ratio = getEnchantedRatio();
-        double enchantedValue = totalEnchantedItems * enchantedPrice;
-        double rawValue = (totalRawItems / (double) ratio) * enchantedPrice;
+        double enchantedValue = data.enchantedItems * enchantedPrice;
+        double rawValue = (data.rawItems / (double) ratio) * enchantedPrice;
 
         return enchantedValue + rawValue;
     }
 
-    /**
-     * Get coins per hour based on real elapsed time
-     */
-    public static double getCoinsPerHour() {
-        long sessionMs = getSessionTime();
-        if (sessionMs == 0) return 0.0;
-        double hours = sessionMs / (1000.0 * 60.0 * 60.0);
-        return getTotalValue() / hours;
+    public static long getSessionTime(String material) {
+        MaterialData data = materialDataMap.get(material);
+        if (data == null) return 0;
+        return data.getSessionTime();
     }
 
-    /**
-     * Get enchanted items per hour
-     */
-    public static double getEnchantedPerHour() {
-        long sessionMs = getSessionTime();
-        if (sessionMs == 0) return 0.0;
+    public static double getCoinsPerHour(String material) {
+        long sessionMs = getSessionTime(material);
+        if (sessionMs == 0) return 0;
         double hours = sessionMs / (1000.0 * 60.0 * 60.0);
-        return getTotalEnchantedItems() / hours;
+        return getTotalValue(material) / hours;
     }
 
-    /**
-     * Get collection (raw items) per hour
-     */
-    public static double getCollectionPerHour() {
-        long sessionMs = getSessionTime();
-        if (sessionMs == 0) return 0.0;
+    public static double getEnchantedPerHour(String material) {
+        long sessionMs = getSessionTime(material);
+        if (sessionMs == 0) return 0;
         double hours = sessionMs / (1000.0 * 60.0 * 60.0);
-        return getTotalRawEquivalent() / hours;
+        return getTotalEnchantedItems(material) / hours;
     }
 
+    public static double getCollectionPerHour(String material) {
+        long sessionMs = getSessionTime(material);
+        if (sessionMs == 0) return 0;
+        double hours = sessionMs / (1000.0 * 60.0 * 60.0);
+        return getTotalRawEquivalent(material) / hours;
+    }
+
+    // Combined totals (for COMBINED display mode)
+    public static double getCombinedTotalValue() {
+        double total = 0;
+        for (String material : getActiveMaterials()) {
+            total += getTotalValue(material);
+        }
+        return total;
+    }
+
+    public static double getCombinedCoinsPerHour() {
+        double total = 0;
+        for (String material : getActiveMaterials()) {
+            total += getCoinsPerHour(material);
+        }
+        return total;
+    }
+
+    public static long getCombinedSessionTime() {
+        long maxTime = 0;
+        for (String material : getActiveMaterials()) {
+            maxTime = Math.max(maxTime, getSessionTime(material));
+        }
+        return maxTime;
+    }
+
+    // Formatting utilities
     public static String formatTime(long millis) {
         if (millis == 0) return "n/a";
-
         long seconds = millis / 1000;
         long hours = seconds / 3600;
         long minutes = (seconds % 3600) / 60;
@@ -367,35 +361,24 @@ public class BlockTracker {
         }
     }
 
-    public static String formatCoins(double coins) {
-        if (coins >= 1_000_000_000) {
-            return String.format("%.2fB", coins / 1_000_000_000.0);
-        } else if (coins >= 1_000_000) {
-            return String.format("%.2fM", coins / 1_000_000.0);
-        } else if (coins >= 1_000) {
-            return String.format("%.1fK", coins / 1_000.0);
-        } else {
-            return String.format("%.0f", coins);
-        }
+    public static String formatWithCommas(long number) {
+        return String.format("%,d", number);
     }
 
-    public static String formatNumber(double number) {
-        if (number >= 1_000_000) {
-            return String.format("%.2fM", number / 1_000_000.0);
-        } else if (number >= 1_000) {
-            return String.format("%.1fK", number / 1_000.0);
-        } else {
-            return String.format("%.0f", number);
-        }
+    // Legacy compatibility methods (for old code that might reference these)
+    @Deprecated
+    public static void setMaterial(String material) {
+        // No longer needed - auto-detect
     }
 
-    public static String formatBlocks(long blocks) {
-        if (blocks >= 1_000_000) {
-            return String.format("%.2fM", blocks / 1_000_000.0);
-        } else if (blocks >= 1_000) {
-            return String.format("%.1fK", blocks / 1_000.0);
-        } else {
-            return String.format("%d", blocks);
-        }
+    @Deprecated
+    public static String getMaterial() {
+        List<String> active = getActiveMaterials();
+        return active.isEmpty() ? "COAL" : active.get(0);
+    }
+
+    @Deprecated
+    public static boolean isTracking() {
+        return hasActiveMaterials();
     }
 }

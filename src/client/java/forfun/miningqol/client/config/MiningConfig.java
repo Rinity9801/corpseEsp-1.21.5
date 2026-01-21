@@ -45,7 +45,7 @@ public class MiningConfig {
 
     // Block profit tracking (Gemstones vs Blocks mode)
     public String profitTrackerMode = "GEMSTONES"; // GEMSTONES or BLOCKS
-    public String blockTrackerMaterial = "COAL"; // COAL, DIAMOND, GOLD, MYCELIUM, RED_SAND, OBSIDIAN, QUARTZ, EMERALD
+    public String blockTrackerDisplayMode = "SEPARATE"; // SEPARATE or COMBINED
 
     public boolean efficientMinerEnabled = false;
     public boolean useOldHeatmap = false;
@@ -176,7 +176,11 @@ public class MiningConfig {
         GemstoneTracker.setIncludeRough(includeRough);
         GemstoneTracker.setGemTier(gemTier);
         BazaarPriceManager.setUseNPCPrices(useNPCPrices);
-        BlockTracker.setMaterial(blockTrackerMaterial);
+        try {
+            BlockTracker.setDisplayMode(BlockTracker.DisplayMode.valueOf(blockTrackerDisplayMode));
+        } catch (Exception e) {
+            BlockTracker.setDisplayMode(BlockTracker.DisplayMode.SEPARATE);
+        }
 
         EfficientMinerOverlay.setEnabled(efficientMinerEnabled);
         EfficientMinerOverlay.setUseOldHeatmap(useOldHeatmap);
@@ -273,7 +277,7 @@ public class MiningConfig {
         includeRough = GemstoneTracker.isIncludingRough();
         gemTier = GemstoneTracker.getGemTier();
         useNPCPrices = BazaarPriceManager.isUsingNPCPrices();
-        blockTrackerMaterial = BlockTracker.getMaterial();
+        blockTrackerDisplayMode = BlockTracker.getDisplayMode().name();
 
         efficientMinerEnabled = EfficientMinerOverlay.isEnabled();
         useOldHeatmap = EfficientMinerOverlay.isUsingOldHeatmap();

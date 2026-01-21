@@ -309,16 +309,11 @@ class MiningProfitCategoryScreen(private val parentScreen: Screen) : VexelScreen
     }
 
     private fun createMaterialDropdown(x: Float, y: Float, width: Float, height: Float, parent: Rectangle, animDelay: Long) {
-        val materials = BlockTracker.getAllMaterials()
-        val materialNames = mapOf(
-            "COAL" to "Coal",
-            "DIAMOND" to "Diamond",
-            "GOLD" to "Gold",
-            "MYCELIUM" to "Mycelium",
-            "RED_SAND" to "Red Sand",
-            "OBSIDIAN" to "Obsidian",
-            "QUARTZ" to "Quartz",
-            "EMERALD" to "Emerald"
+        // Display mode options (SEPARATE shows each material, COMBINED shows totals)
+        val displayModes = listOf("SEPARATE", "COMBINED")
+        val displayModeNames = mapOf(
+            "SEPARATE" to "Separate",
+            "COMBINED" to "Combined"
         )
 
         val card = Rectangle(
@@ -352,11 +347,12 @@ class MiningProfitCategoryScreen(private val parentScreen: Screen) : VexelScreen
                 borderRadiusBottomRight = 0f
             }
 
-        Text("Track Material", 0xFFFFFFFF.toInt(), 20f, true)
+        Text("Display Mode", 0xFFFFFFFF.toInt(), 20f, true)
             .setPositioning(20f, Pos.ParentPixels, 18f, Pos.ParentPixels)
             .childOf(card)
 
-        val valueText = Text(BlockTracker.getMaterialDisplayName(), 0xFFFFAA00.toInt(), 16f, true)
+        val currentMode = BlockTracker.getDisplayMode().name
+        val valueText = Text(displayModeNames[currentMode] ?: currentMode, 0xFFFFAA00.toInt(), 16f, true)
             .setPositioning(20f, Pos.ParentPixels, 43f, Pos.ParentPixels)
             .childOf(card)
 
@@ -367,7 +363,7 @@ class MiningProfitCategoryScreen(private val parentScreen: Screen) : VexelScreen
             .childOf(card)
 
         // Dropdown panel (hidden initially) - added to mainPanel for proper z-order
-        val dropdownHeight = materials.size * 35f + 10f
+        val dropdownHeight = displayModes.size * 35f + 10f
         val contentPanelOffset = 90f // contentPanel starts at y=90 in mainPanel
         val dropdown = Rectangle(
             backgroundColor = 0xF01E1E1E.toInt(),
@@ -387,11 +383,11 @@ class MiningProfitCategoryScreen(private val parentScreen: Screen) : VexelScreen
             }
         dropdownPanel = dropdown
 
-        // Add material options
+        // Add display mode options
         var optionY = 5f
-        for (material in materials) {
-            val displayName = materialNames[material] ?: material
-            val isSelected = material == BlockTracker.getMaterial()
+        for (mode in displayModes) {
+            val displayName = displayModeNames[mode] ?: mode
+            val isSelected = mode == BlockTracker.getDisplayMode().name
             val bgColor = if (isSelected) 0xFF3A3A3A.toInt() else 0x00000000.toInt()
 
             val option = Rectangle(
@@ -409,10 +405,10 @@ class MiningProfitCategoryScreen(private val parentScreen: Screen) : VexelScreen
                 .childOf(option)
 
             option.onClick { _, _, _ ->
-                BlockTracker.setMaterial(material)
+                BlockTracker.setDisplayMode(BlockTracker.DisplayMode.valueOf(mode))
                 dropdown.visible = false
                 dropdownOpen = false
-                valueText.text = materialNames[material] ?: material
+                valueText.text = displayModeNames[mode] ?: mode
                 true
             }
 

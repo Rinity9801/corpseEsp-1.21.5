@@ -6,8 +6,8 @@ import net.minecraft.client.gui.DrawContext;
 import net.minecraft.item.Item;
 import net.minecraft.item.ItemStack;
 import net.minecraft.item.Items;
-import net.minecraft.registry.Registries;
-import net.minecraft.util.Identifier;
+
+import java.util.List;
 
 public class ProfitTrackerHUD {
     private static int hudX = 10;
@@ -38,7 +38,7 @@ public class ProfitTrackerHUD {
     }
 
     public static void setScale(float newScale) {
-        scale = Math.max(0.5f, Math.min(3.0f, newScale)); // Clamp between 0.5 and 3.0
+        scale = Math.max(0.5f, Math.min(3.0f, newScale));
     }
 
     public static float getScale() {
@@ -108,43 +108,111 @@ public class ProfitTrackerHUD {
     }
 
     private static void renderBlockMode(DrawContext context, TextRenderer textRenderer) {
-        String materialName = BlockTracker.getMaterialDisplayName();
+        // Only show if there are active materials being tracked
+        if (!BlockTracker.hasActiveMaterials()) {
+            return;
+        }
+
+        List<String> activeMaterials = BlockTracker.getActiveMaterials();
+
+        if (BlockTracker.getDisplayMode() == BlockTracker.DisplayMode.COMBINED) {
+            renderCombinedMode(context, textRenderer, activeMaterials);
+        } else {
+            renderSeparateMode(context, textRenderer, activeMaterials);
+        }
+    }
+
+    private static void renderSeparateMode(DrawContext context, TextRenderer textRenderer, List<String> materials) {
+        int lineHeight = (int)(10 * scale);
+        int trackerWidth = 140; // Width of each tracker column
+        int xOffset = 0;
+
+        for (String material : materials) {
+            int x = hudX + xOffset;
+            int y = hudY;
+
+            // Draw item icon and title
+            ItemStack itemIcon = getMaterialItemStack(material);
+            context.drawItem(itemIcon, x, y - 4);
+
+            String materialName = BlockTracker.getMaterialDisplayName(material);
+            String title = "§f" + materialName + " Profit";
+            drawScaledText(context, textRenderer, title, x + 18, y);
+            y += lineHeight + 4;
+
+            // Enchanted item count
+            String enchName = "Ench. " + materialName;
+            String enchantedLine = "§7" + enchName + ": §f" +
+                    BlockTracker.formatWithCommas(BlockTracker.getTotalEnchantedItems(material));
+            drawScaledText(context, textRenderer, enchantedLine, x, y);
+            y += lineHeight;
+
+            // Total value
+            String totalLine = "§7Total: §6" + BlockTracker.formatWithCommas((long) BlockTracker.getTotalValue(material));
+            drawScaledText(context, textRenderer, totalLine, x, y);
+            y += lineHeight;
+
+            // Per hour
+            String perHourLine = "§7Per Hour: §6" + BlockTracker.formatWithCommas((long) BlockTracker.getCoinsPerHour(material));
+            drawScaledText(context, textRenderer, perHourLine, x, y);
+            y += lineHeight;
+
+            // Enchanted per hour
+            String enchPerHourLine = "§7Ench/hr: §a" + BlockTracker.formatWithCommas((long) BlockTracker.getEnchantedPerHour(material));
+            drawScaledText(context, textRenderer, enchPerHourLine, x, y);
+            y += lineHeight;
+
+            // Collection per hour
+            String collPerHourLine = "§7Coll/hr: §b" + BlockTracker.formatWithCommas((long) BlockTracker.getCollectionPerHour(material));
+            drawScaledText(context, textRenderer, collPerHourLine, x, y);
+
+            xOffset += trackerWidth;
+        }
+    }
+
+    private static void renderCombinedMode(DrawContext context, TextRenderer textRenderer, List<String> materials) {
         int lineHeight = (int)(10 * scale);
         int y = hudY;
 
-        // Draw item icon and title
-        ItemStack itemIcon = getMaterialItemStack(BlockTracker.getMaterial());
-        context.drawItem(itemIcon, hudX, y - 4); // Item icons are 16x16, offset to align with text
+        // Title with icons of all materials being tracked
+        int iconX = hudX;
+        for (String material : materials) {
+            ItemStack itemIcon = getMaterialItemStack(material);
+            context.drawItem(itemIcon, iconX, y - 4);
+            iconX += 18;
+        }
 
-        // Title text after the icon
-        String title = "§f" + materialName + " Profit";
-        drawScaledText(context, textRenderer, title, hudX + 18, y);
-        y += lineHeight + 4; // Extra space after title with icon
-
-        // Enchanted item count
-        String enchantedLine = "§7" + BlockTracker.getEnchantedDisplayName() + ": §f" +
-                              formatWithCommas(BlockTracker.getTotalEnchantedItems());
-        drawScaledText(context, textRenderer, enchantedLine, hudX, y);
-        y += lineHeight;
+        String title = "§fCombined Profit";
+        drawScaledText(context, textRenderer, title, iconX, y);
+        y += lineHeight + 4;
 
         // Total value
-        String totalLine = "§7Total: §6" + formatWithCommas((long) BlockTracker.getTotalValue());
+        String totalLine = "§7Total: §6" + BlockTracker.formatWithCommas((long) BlockTracker.getCombinedTotalValue());
         drawScaledText(context, textRenderer, totalLine, hudX, y);
         y += lineHeight;
 
         // Per hour
-        String perHourLine = "§7Per Hour: §6" + formatWithCommas((long) BlockTracker.getCoinsPerHour());
+        String perHourLine = "§7Per Hour: §6" + BlockTracker.formatWithCommas((long) BlockTracker.getCombinedCoinsPerHour());
         drawScaledText(context, textRenderer, perHourLine, hudX, y);
         y += lineHeight;
 
-        // Enchanted per hour
-        String enchPerHourLine = "§7Ench/hr: §a" + formatWithCommas((long) BlockTracker.getEnchantedPerHour());
-        drawScaledText(context, textRenderer, enchPerHourLine, hudX, y);
+        // Session time
+        String timeLine = "§7Uptime: §f" + BlockTracker.formatTime(BlockTracker.getCombinedSessionTime());
+        drawScaledText(context, textRenderer, timeLine, hudX, y);
         y += lineHeight;
 
-        // Collection per hour
-        String collPerHourLine = "§7Coll/hr: §b" + formatWithCommas((long) BlockTracker.getCollectionPerHour());
-        drawScaledText(context, textRenderer, collPerHourLine, hudX, y);
+        // List each material's contribution
+        y += 4; // Small gap
+        for (String material : materials) {
+            ItemStack itemIcon = getMaterialItemStack(material);
+            context.drawItem(itemIcon, hudX, y - 4);
+
+            String materialName = BlockTracker.getMaterialDisplayName(material);
+            String materialLine = "§7" + materialName + ": §6" +
+                    BlockTracker.formatWithCommas((long) BlockTracker.getTotalValue(material));
+            drawScaledText(context, textRenderer, materialLine, hudX + 18, y);
+            y += lineHeight;
+        }
     }
 
     private static ItemStack getMaterialItemStack(String material) {
@@ -178,10 +246,6 @@ public class ProfitTrackerHUD {
                 item = Items.COAL;
         }
         return new ItemStack(item);
-    }
-
-    private static String formatWithCommas(long number) {
-        return String.format("%,d", number);
     }
 
     private static void drawScaledText(DrawContext context, TextRenderer textRenderer, String text, int x, int y) {
