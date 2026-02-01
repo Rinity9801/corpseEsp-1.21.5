@@ -2,9 +2,13 @@ package forfun.miningqol.client;
 
 import forfun.miningqol.client.config.MiningConfig;
 import forfun.miningqol.client.gui.VexelMainScreen;
+import forfun.miningqol.client.gui.UpdateScreen;
+import forfun.miningqol.client.profit.BlockTracker;
 import forfun.miningqol.client.profit.GemstoneTracker;
 import forfun.miningqol.client.profit.ProfitTrackerHUD;
 import forfun.miningqol.client.profit.ProfitDebugger;
+import forfun.miningqol.client.sacks.CoalValueCommand;
+import forfun.miningqol.client.update.UpdateChecker;
 import forfun.miningqol.client.waypoints.OrderedWaypointManager;
 import com.mojang.brigadier.arguments.IntegerArgumentType;
 import com.mojang.brigadier.arguments.StringArgumentType;
@@ -34,6 +38,8 @@ public class MiningqolClient implements ClientModInitializer {
     private static final Pattern PRISTINE_PATTERN = Pattern.compile("PRISTINE! You found . Flawed (.+) Gemstone x(\\d+)!");
     private static MiningConfig config;
     private static KeyBinding toggleAutoClickerKey;
+    private static KeyBinding commClaimKey;
+    private static boolean updateScreenShown = false;
 
     @Override
     public void onInitializeClient() {
@@ -44,11 +50,24 @@ public class MiningqolClient implements ClientModInitializer {
 
         OrderedWaypointManager.init();
 
+        // Check for updates
+        UpdateChecker.checkForUpdates();
+
+        // Create category once and reuse for all keybinds
+        KeyBinding.Category miningqolCategory = KeyBinding.Category.create(Identifier.of("miningqol", "category"));
+
         toggleAutoClickerKey = KeyBindingHelper.registerKeyBinding(new KeyBinding(
             "key.miningqol.toggle_coalclick",
             InputUtil.Type.KEYSYM,
             GLFW.GLFW_KEY_R,
-            KeyBinding.Category.create(Identifier.of("miningqol", "category"))
+            miningqolCategory
+        ));
+
+        commClaimKey = KeyBindingHelper.registerKeyBinding(new KeyBinding(
+            "key.miningqol.comm_claim",
+            InputUtil.Type.KEYSYM,
+            GLFW.GLFW_KEY_G,
+            miningqolCategory
         ));
 
         ClientCommandRegistrationCallback.EVENT.register((dispatcher, registryAccess) -> {
@@ -73,6 +92,23 @@ public class MiningqolClient implements ClientModInitializer {
             dispatcher.register(ClientCommandManager.literal("profitdebug")
                 .executes(context -> {
                     ProfitDebugger.showCalculationDetails();
+                    return 1;
+                }));
+            dispatcher.register(ClientCommandManager.literal("trackerdebug")
+                .executes(context -> {
+                    boolean newState = !BlockTracker.isDebugEnabled();
+                    BlockTracker.setDebugEnabled(newState);
+                    MinecraftClient client = MinecraftClient.getInstance();
+                    if (client.player != null) {
+                        client.player.sendMessage(Text.literal(
+                            newState ? "\u00A7aBlock tracker debug enabled" : "\u00A7cBlock tracker debug disabled"
+                        ), false);
+                    }
+                    return 1;
+                }));
+            dispatcher.register(ClientCommandManager.literal("coalvalue")
+                .executes(context -> {
+                    CoalValueCommand.execute();
                     return 1;
                 }));
             dispatcher.register(ClientCommandManager.literal("getplayerhead")
@@ -293,20 +329,40 @@ public class MiningqolClient implements ClientModInitializer {
                 AutoClickerManager.toggle();
             }
 
+            while (commClaimKey.wasPressed()) {
+                if (CommClaimManager.isRunning()) {
+                    CommClaimManager.stop();
+                } else {
+                    CommClaimManager.start();
+                }
+            }
+
             if (client.world != null && client.player != null) {
                 CorpseESP.tick();
                 GemstoneTracker.tick();
+                BlockTracker.tick();
                 EfficientMinerOverlay.tick();
                 PickaxeCooldownHUD.tick();
                 AutoClickerManager.tick();
                 CommandKeybindManager.tick(client);
                 LobbyFinder.tick();
                 OrderedWaypointManager.tick();
+                CommClaimManager.tick();
+
+                // Show update screen once when update is available (unless dismissed)
+                if (!updateScreenShown && UpdateChecker.isCheckComplete() && UpdateChecker.isUpdateAvailable()) {
+                    String latestVersion = UpdateChecker.getLatestVersion();
+                    if (latestVersion != null && !latestVersion.equals(config.dismissedUpdateVersion)) {
+                        updateScreenShown = true;
+                        client.send(() -> client.setScreen(new UpdateScreen()));
+                    }
+                }
             }
         });
 
         net.fabricmc.fabric.api.client.event.lifecycle.v1.ClientTickEvents.START_WORLD_TICK.register(world -> {
             LobbyFinder.onWorldChange();
+            BlockTracker.onWorldChange();
             OrderedWaypointManager.onWorldChange();
         });
 
@@ -327,6 +383,17 @@ public class MiningqolClient implements ClientModInitializer {
                 int amount = Integer.parseInt(pristineMatcher.group(2));
                 GemstoneTracker.onPristineGem(gemType, amount);
             }
+
+            // Auto-trigger commission claim on completion message
+            if (CommClaimManager.isAutoTrigger() && !CommClaimManager.isRunning()) {
+                if (messageText.contains("Commission Complete! Visit the King to claim your rewards!")) {
+                    LOGGER.info("[MiningqolClient] Commission complete message detected, auto-starting CommClaim");
+                    CommClaimManager.start();
+                }
+            }
+
+            // Block tracker for sack messages
+            BlockTracker.onChatMessage(message);
         });
 
         ClientSendMessageEvents.COMMAND.register((command) -> {

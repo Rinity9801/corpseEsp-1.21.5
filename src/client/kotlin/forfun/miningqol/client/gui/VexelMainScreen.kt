@@ -187,6 +187,12 @@ class VexelMainScreen : VexelScreen("MiningQOL Settings") {
                 "Miscellaneous features and utilities",
                 0xFF888888.toInt(),
                 listOf("misc", "miscellaneous", "auto-skip", "sho", "load", "glass", "pane", "sync", "gemstone", "connection", "utilities")
+            ),
+            CardInfo(
+                "Comm Claim",
+                "Auto-claim commissions with armor swap",
+                0xFFFFD700.toInt(),
+                listOf("comm", "claim", "commission", "wardrobe", "armor", "bat person", "divan", "pigeon", "royal pigeon", "refined")
             )
         )
 
@@ -202,7 +208,8 @@ class VexelMainScreen : VexelScreen("MiningQOL Settings") {
             { NameHiderCategoryScreen(this) },
             { AutoClickerCategoryScreen(this) },
             { CommandKeybindCategoryScreen(this) },
-            { MiscCategoryScreen(this) }
+            { MiscCategoryScreen(this) },
+            { CommClaimCategoryScreen(this) }
         )
 
         // Create left column cards

@@ -5,12 +5,14 @@ import com.google.gson.GsonBuilder;
 import forfun.miningqol.client.AutoClickerHUD;
 import forfun.miningqol.client.AutoClickerManager;
 import forfun.miningqol.client.BlockOutlineRenderer;
+import forfun.miningqol.client.CommClaimManager;
 import forfun.miningqol.client.CorpseESP;
 import forfun.miningqol.client.EfficientMinerOverlay;
 import forfun.miningqol.client.GlassSync;
 import forfun.miningqol.client.NameHider;
 import forfun.miningqol.client.PickaxeCooldownHUD;
 import forfun.miningqol.client.profit.BazaarPriceManager;
+import forfun.miningqol.client.profit.BlockTracker;
 import forfun.miningqol.client.profit.GemstoneTracker;
 import forfun.miningqol.client.profit.ProfitTrackerHUD;
 import forfun.miningqol.client.waypoints.OrderedWaypointManager;
@@ -36,10 +38,15 @@ public class MiningConfig {
     public boolean profitTrackerEnabled = false;
     public int profitTrackerX = 10;
     public int profitTrackerY = 10;
+    public float profitTrackerScale = 1.0f;
     public int pristineChance = 20;
     public boolean includeRough = false;
     public boolean useNPCPrices = false;
     public int gemTier = 1;
+
+    // Block profit tracking (Gemstones vs Blocks mode)
+    public String profitTrackerMode = "GEMSTONES"; // GEMSTONES or BLOCKS
+    public String blockTrackerDisplayMode = "SEPARATE"; // SEPARATE or COMBINED
 
     public boolean efficientMinerEnabled = false;
     public boolean useOldHeatmap = false;
@@ -54,6 +61,7 @@ public class MiningConfig {
     public boolean pickaxeCooldownEnabled = true;
     public int pickaxeCooldownX = 10;
     public int pickaxeCooldownY = 50;
+    public float pickaxeCooldownScale = 1.0f;
     public boolean pickaxeCooldownTitleEnabled = true;
     public int pickaxeCooldownTitleThreshold = 5;
 
@@ -106,6 +114,26 @@ public class MiningConfig {
     public float[] orderedWaypointBlockOutlineColor = {1f, 1f, 1f};
     public float orderedWaypointBlockOutlineAlpha = 0.8f;
 
+    // Update checker - remember dismissed version
+    public String dismissedUpdateVersion = "";
+
+    // Coal value calculator settings
+    public String coalValueSellMethod = "SELLOFFER"; // INSTASELL or SELLOFFER
+    public String coalValueSulphurBuy = "BUY_ORDER"; // BUY_ORDER or INSTA_BUY
+    public String coalValueCrudeBuy = "BUY_ORDER";
+    public String coalValueFuelBuy = "BUY_ORDER";
+    public String coalValueHeavyBuy = "BUY_ORDER";
+    public boolean coalValueShowSettings = true; // Show settings first time, then go to results
+
+    // Comm Claim settings
+    public int commClaimBatPersonSlot = 1; // 1-9, wardrobe slot
+    public int commClaimDivanSlot = 2; // 1-9, wardrobe slot
+    public int commClaimRefinedToolSlot = 0; // 0-8, hotbar slot
+    public int commClaimTickDelay = 2; // 1-10 ticks
+    public int commClaimGuiWaitDelay = 3; // 1-10 ticks
+    public boolean commClaimAutoTrigger = false; // Auto-trigger on commission complete message
+    public boolean commClaimWardrobeSwap = true; // Enable wardrobe armor swapping
+
     public static MiningConfig load() {
         if (!CONFIG_FILE.exists()) {
             LOGGER.info("[MiningConfig] Config file not found, creating default");
@@ -152,16 +180,24 @@ public class MiningConfig {
 
         ProfitTrackerHUD.setEnabled(profitTrackerEnabled);
         ProfitTrackerHUD.setPosition(profitTrackerX, profitTrackerY);
+        ProfitTrackerHUD.setScale(profitTrackerScale);
+        ProfitTrackerHUD.setMode(profitTrackerMode);
         GemstoneTracker.setPristineChance(pristineChance);
         GemstoneTracker.setIncludeRough(includeRough);
         GemstoneTracker.setGemTier(gemTier);
         BazaarPriceManager.setUseNPCPrices(useNPCPrices);
+        try {
+            BlockTracker.setDisplayMode(BlockTracker.DisplayMode.valueOf(blockTrackerDisplayMode));
+        } catch (Exception e) {
+            BlockTracker.setDisplayMode(BlockTracker.DisplayMode.SEPARATE);
+        }
 
         EfficientMinerOverlay.setEnabled(efficientMinerEnabled);
         EfficientMinerOverlay.setUseOldHeatmap(useOldHeatmap);
 
         PickaxeCooldownHUD.setEnabled(pickaxeCooldownEnabled);
         PickaxeCooldownHUD.setPosition(pickaxeCooldownX, pickaxeCooldownY);
+        PickaxeCooldownHUD.setScale(pickaxeCooldownScale);
         PickaxeCooldownHUD.setTitleEnabled(pickaxeCooldownTitleEnabled);
         PickaxeCooldownHUD.setTitleThreshold(pickaxeCooldownTitleThreshold);
 
@@ -234,6 +270,15 @@ public class MiningConfig {
         OrderedWaypointManager.setBlockOutlineRadius(orderedWaypointBlockOutlineRadius);
         OrderedWaypointManager.setBlockOutlineColor(orderedWaypointBlockOutlineColor[0], orderedWaypointBlockOutlineColor[1], orderedWaypointBlockOutlineColor[2]);
         OrderedWaypointManager.setBlockOutlineAlpha(orderedWaypointBlockOutlineAlpha);
+
+        // Comm Claim
+        CommClaimManager.setBatPersonSlot(commClaimBatPersonSlot);
+        CommClaimManager.setDivanSlot(commClaimDivanSlot);
+        CommClaimManager.setRefinedToolSlot(commClaimRefinedToolSlot);
+        CommClaimManager.setTickDelay(commClaimTickDelay);
+        CommClaimManager.setGuiWaitDelay(commClaimGuiWaitDelay);
+        CommClaimManager.setAutoTrigger(commClaimAutoTrigger);
+        CommClaimManager.setWardrobeSwap(commClaimWardrobeSwap);
     }
 
     public void loadFromGame() {
@@ -245,10 +290,13 @@ public class MiningConfig {
         profitTrackerEnabled = ProfitTrackerHUD.isEnabled();
         profitTrackerX = ProfitTrackerHUD.getX();
         profitTrackerY = ProfitTrackerHUD.getY();
+        profitTrackerScale = ProfitTrackerHUD.getScale();
+        profitTrackerMode = ProfitTrackerHUD.getMode();
         pristineChance = GemstoneTracker.getPristineChance();
         includeRough = GemstoneTracker.isIncludingRough();
         gemTier = GemstoneTracker.getGemTier();
         useNPCPrices = BazaarPriceManager.isUsingNPCPrices();
+        blockTrackerDisplayMode = BlockTracker.getDisplayMode().name();
 
         efficientMinerEnabled = EfficientMinerOverlay.isEnabled();
         useOldHeatmap = EfficientMinerOverlay.isUsingOldHeatmap();
@@ -256,6 +304,7 @@ public class MiningConfig {
         pickaxeCooldownEnabled = PickaxeCooldownHUD.isEnabled();
         pickaxeCooldownX = PickaxeCooldownHUD.getX();
         pickaxeCooldownY = PickaxeCooldownHUD.getY();
+        pickaxeCooldownScale = PickaxeCooldownHUD.getScale();
         pickaxeCooldownTitleEnabled = PickaxeCooldownHUD.isTitleEnabled();
         pickaxeCooldownTitleThreshold = PickaxeCooldownHUD.getTitleThreshold();
 
@@ -319,5 +368,14 @@ public class MiningConfig {
         orderedWaypointBlockOutlineRadius = OrderedWaypointManager.getBlockOutlineRadius();
         orderedWaypointBlockOutlineColor = OrderedWaypointManager.getBlockOutlineColor();
         orderedWaypointBlockOutlineAlpha = OrderedWaypointManager.getBlockOutlineAlpha();
+
+        // Comm Claim
+        commClaimBatPersonSlot = CommClaimManager.getBatPersonSlot();
+        commClaimDivanSlot = CommClaimManager.getDivanSlot();
+        commClaimRefinedToolSlot = CommClaimManager.getRefinedToolSlot();
+        commClaimTickDelay = CommClaimManager.getTickDelay();
+        commClaimGuiWaitDelay = CommClaimManager.getGuiWaitDelay();
+        commClaimAutoTrigger = CommClaimManager.isAutoTrigger();
+        commClaimWardrobeSwap = CommClaimManager.isWardrobeSwap();
     }
 }

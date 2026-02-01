@@ -9,7 +9,8 @@
     "PlayerListHudMixin",
     "ItemStackMixin",
     "ClientConnectionGlassSyncMixin",
-    "WorldRendererMixin"
+    "WorldRendererMixin",
+    "GenericContainerScreenMixin"
   ],
   "injectors": {
     "defaultRequire": 1

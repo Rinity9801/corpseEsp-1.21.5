@@ -29,7 +29,7 @@ public class PickaxeCooldownHUD {
 
     private static int hudX = 10;
     private static int hudY = 50;
-
+    private static float scale = 1.0f;
 
     private static boolean titleEnabled = true;
     private static int titleThreshold = 5;
@@ -182,6 +182,22 @@ public class PickaxeCooldownHUD {
     public static void setPosition(int x, int y) {
         hudX = x;
         hudY = y;
+    }
+
+    public static float getScale() {
+        return scale;
+    }
+
+    public static void setScale(float newScale) {
+        scale = Math.max(0.5f, Math.min(3.0f, newScale));
+    }
+
+    public static int getWidth() {
+        return (int)(100 * scale);
+    }
+
+    public static int getHeight() {
+        return (int)(20 * scale);
     }
 
     public static boolean isTitleEnabled() {

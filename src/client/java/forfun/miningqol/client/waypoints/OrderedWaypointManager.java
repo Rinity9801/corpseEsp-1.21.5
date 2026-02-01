@@ -7,6 +7,7 @@ import net.minecraft.registry.Registries;
 import net.minecraft.text.Text;
 import net.minecraft.util.Identifier;
 import net.minecraft.util.math.BlockPos;
+import net.minecraft.util.math.ChunkPos;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -72,9 +73,9 @@ public class OrderedWaypointManager {
     private static float blockOutlineAlpha = 0.8f;
 
     // World change / teleport tracking
-    private static String lastWorldId = "";
+    private static Object lastWorld = null;
     private static BlockPos lastPlayerPos = null;
-    private static final double TELEPORT_THRESHOLD = 100.0; // Distance to consider a teleport
+    private static final double TELEPORT_THRESHOLD = 100.0;
 
     public static void init() {
         ROUTES_DIR.mkdirs();
@@ -240,10 +241,54 @@ public class OrderedWaypointManager {
     }
 
     public static void tick() {
-        if (!enabled || currentRoute.isEmpty()) return;
-
         MinecraftClient client = MinecraftClient.getInstance();
-        if (client.player == null) return;
+        if (client.player == null || client.world == null) return;
+
+        boolean shouldReset = false;
+
+        // Detect world change and reset to waypoint 1
+        if (lastWorld != client.world) {
+            if (lastWorld != null && !currentRoute.isEmpty()) {
+                shouldReset = true;
+                LOGGER.info("[OrderedWaypointManager] World changed, reset to waypoint #1");
+            }
+            lastWorld = client.world;
+        }
+
+        // Detect teleports (large position changes) - for servers like Hypixel
+        BlockPos currentPos = client.player.getBlockPos();
+        if (lastPlayerPos != null && !shouldReset && !currentRoute.isEmpty()) {
+            double distance = Math.sqrt(lastPlayerPos.getSquaredDistance(currentPos));
+            if (distance > TELEPORT_THRESHOLD) {
+                shouldReset = true;
+                LOGGER.info("[OrderedWaypointManager] Teleport detected ({}m), reset to waypoint #1", (int)distance);
+            }
+        }
+        lastPlayerPos = currentPos;
+
+        if (shouldReset) {
+            currentIndex = 0;
+            wrongWaypoints.clear();
+            waypointsReachedSinceLastCheck = 0;
+
+            // Rescan for bad waypoints after a short delay (let chunks load)
+            if (lobbyCheckEnabled) {
+                new Thread(() -> {
+                    try {
+                        Thread.sleep(1000); // Wait 1 second for chunks to load
+                        client.execute(() -> {
+                            if (client.world != null && !currentRoute.isEmpty()) {
+                                checkRouteBlocks();
+                            }
+                        });
+                    } catch (InterruptedException e) {
+                        LOGGER.error("Failed to rescan after reset", e);
+                    }
+                }).start();
+            }
+        }
+
+        if (!enabled || currentRoute.isEmpty()) return;
 
         BlockPos playerPos = client.player.getBlockPos();
         // Check if player reached the NEXT waypoint (target), then advance
@@ -257,25 +302,23 @@ public class OrderedWaypointManager {
     public static void advanceToNext() {
         if (currentRoute.isEmpty()) return;
 
-        // Remove the previous waypoint (current) from wrong waypoints list
-        // This unhighlights wrong waypoints once we pass them
-        OrderedWaypoint previous = getCurrentWaypoint();
-        if (previous != null) {
-            wrongWaypoints.remove(Integer.valueOf(previous.getIndex()));
-        }
-
-        // Remove the waypoint we just reached from wrong waypoints list
-        OrderedWaypoint reached = getNextWaypoint();
-        if (reached != null) {
-            wrongWaypoints.remove(Integer.valueOf(reached.getIndex()));
-        }
-
         currentIndex = (currentIndex + 1) % currentRoute.size();
 
-        // Lobby check logic - re-scan periodically
+        // Clean up wrong waypoints - remove any that are no longer in the upcoming scan range
+        // This ensures all "passed" waypoints get unhighlighted, not just the last two
         if (lobbyCheckEnabled) {
+            // Build set of upcoming waypoint indices that are still in scan range
+            java.util.Set<Integer> upcomingIndices = new java.util.HashSet<>();
+            for (int i = 0; i < lobbyCheckInterval && i < currentRoute.size(); i++) {
+                int idx = (currentIndex + i) % currentRoute.size();
+                OrderedWaypoint wp = currentRoute.get(idx);
+                upcomingIndices.add(wp.getIndex());
+            }
+            // Remove any wrong waypoints that are no longer upcoming
+            wrongWaypoints.removeIf(idx -> !upcomingIndices.contains(idx));
+
             waypointsReachedSinceLastCheck++;
-            if (waypointsReachedSinceLastCheck >= lobbyCheckInterval) {
+            if (waypointsReachedSinceLastCheck >= lobbyCheckInterval - 1) {
                 waypointsReachedSinceLastCheck = 0;
                 checkRouteBlocks();
             }
@@ -295,10 +338,6 @@ public class OrderedWaypointManager {
         }
 
         int radius = lobbyCheckRadius;
-        BlockPos playerPos = client.player.getBlockPos();
-
-        // Calculate max scan distance based on render distance (chunks * 16, minus some buffer)
-        int renderDistanceBlocks = client.options.getViewDistance().getValue() * 16 - 16;
 
         // Only check the next N waypoints (based on interval setting)
         for (int i = 0; i < lobbyCheckInterval && i < currentRoute.size(); i++) {
@@ -307,10 +346,10 @@ public class OrderedWaypointManager {
             BlockPos pos = wp.getPosition();
             Integer waypointIndex = wp.getIndex();
 
-            // Only check waypoints within render distance - chunks must be loaded
-            double distance = Math.sqrt(playerPos.getSquaredDistance(pos));
-            if (distance > renderDistanceBlocks) {
-                // Too far, skip for now - will be checked when player gets closer
+            // Only check waypoints in loaded chunks - unloaded chunks can't be scanned
+            ChunkPos chunkPos = new ChunkPos(pos);
+            if (!client.world.getChunkManager().isChunkLoaded(chunkPos.x, chunkPos.z)) {
+                // Chunk not loaded, skip for now - will be checked when player gets closer
                 continue;
             }
 
@@ -343,12 +382,12 @@ public class OrderedWaypointManager {
 
     public static void manualLobbyCheck() {
         if (!lobbyCheckEnabled) {
-            sendMessage("§cLobby check is disabled. Enable it in settings.");
+            sendMessage("\u00A7cLobby check is disabled. Enable it in settings.");
             return;
         }
         checkRouteBlocks();
         if (wrongWaypoints.isEmpty()) {
-            sendMessage("§aAll waypoints have the correct block!");
+            sendMessage("\u00A7aAll waypoints have the correct block!");
         }
     }
 
@@ -365,7 +404,7 @@ public class OrderedWaypointManager {
         int newIndex = currentRoute.size() + 1;
         currentRoute.add(new OrderedWaypoint(pos, newIndex));
 
-        sendMessage("§aAdded waypoint §e#" + newIndex + " §aat §f" + pos.getX() + ", " + pos.getY() + ", " + pos.getZ());
+        sendMessage("\u00A7aAdded waypoint \u00A7e#" + newIndex + " \u00A7aat \u00A7f" + pos.getX() + ", " + pos.getY() + ", " + pos.getZ());
     }
 
     public static void insert(int number) {
@@ -373,7 +412,7 @@ public class OrderedWaypointManager {
         if (client.player == null) return;
 
         if (number < 1 || number > currentRoute.size() + 1) {
-            sendMessage("§cInvalid position. Must be between 1 and " + (currentRoute.size() + 1));
+            sendMessage("\u00A7cInvalid position. Must be between 1 and " + (currentRoute.size() + 1));
             return;
         }
 
@@ -385,17 +424,17 @@ public class OrderedWaypointManager {
         }
 
         currentRoute.add(number - 1, new OrderedWaypoint(pos, number));
-        sendMessage("§aInserted waypoint §e#" + number + " §aat §f" + pos.getX() + ", " + pos.getY() + ", " + pos.getZ());
+        sendMessage("\u00A7aInserted waypoint \u00A7e#" + number + " \u00A7aat \u00A7f" + pos.getX() + ", " + pos.getY() + ", " + pos.getZ());
     }
 
     public static void remove(int number) {
         if (currentRoute.isEmpty()) {
-            sendMessage("§cNo waypoints to remove.");
+            sendMessage("\u00A7cNo waypoints to remove.");
             return;
         }
 
         if (number < 1 || number > currentRoute.size()) {
-            sendMessage("§cInvalid waypoint number. Must be between 1 and " + currentRoute.size());
+            sendMessage("\u00A7cInvalid waypoint number. Must be between 1 and " + currentRoute.size());
             return;
         }
 
@@ -410,39 +449,39 @@ public class OrderedWaypointManager {
             currentIndex = 0;
         }
 
-        sendMessage("§aRemoved waypoint §e#" + number);
+        sendMessage("\u00A7aRemoved waypoint \u00A7e#" + number);
     }
 
     public static void skip(int amount) {
         if (currentRoute.isEmpty()) {
-            sendMessage("§cNo route loaded.");
+            sendMessage("\u00A7cNo route loaded.");
             return;
         }
 
         currentIndex = (currentIndex + amount) % currentRoute.size();
         if (currentIndex < 0) currentIndex += currentRoute.size();
 
-        sendMessage("§aSkipped " + amount + " waypoint(s). Now at §e#" + (currentIndex + 1));
+        sendMessage("\u00A7aSkipped " + amount + " waypoint(s). Now at \u00A7e#" + (currentIndex + 1));
     }
 
     public static void skipTo(int number) {
         if (currentRoute.isEmpty()) {
-            sendMessage("§cNo route loaded.");
+            sendMessage("\u00A7cNo route loaded.");
             return;
         }
 
         if (number < 1 || number > currentRoute.size()) {
-            sendMessage("§cInvalid waypoint number. Must be between 1 and " + currentRoute.size());
+            sendMessage("\u00A7cInvalid waypoint number. Must be between 1 and " + currentRoute.size());
             return;
         }
 
         currentIndex = number - 1;
-        sendMessage("§aSkipped to waypoint §e#" + number);
+        sendMessage("\u00A7aSkipped to waypoint \u00A7e#" + number);
     }
 
     public static void save(String name) {
         if (currentRoute.isEmpty()) {
-            sendMessage("§cNo waypoints to save.");
+            sendMessage("\u00A7cNo waypoints to save.");
             return;
         }
 
@@ -452,10 +491,10 @@ public class OrderedWaypointManager {
                 BlockPos pos = wp.getPosition();
                 writer.println(pos.getX() + "," + pos.getY() + "," + pos.getZ());
             }
-            sendMessage("§aSaved route as §e" + name + ".txt §awith " + currentRoute.size() + " waypoints.");
+            sendMessage("\u00A7aSaved route as \u00A7e" + name + ".txt \u00A7awith " + currentRoute.size() + " waypoints.");
         } catch (IOException e) {
             LOGGER.error("Failed to save route: " + e.getMessage());
-            sendMessage("§cFailed to save route: " + e.getMessage());
+            sendMessage("\u00A7cFailed to save route: " + e.getMessage());
         }
     }
 
@@ -467,7 +506,7 @@ public class OrderedWaypointManager {
             String available = routes != null && routes.length > 0
                 ? String.join(", ", routes).replace(".txt", "")
                 : "none";
-            sendMessage("§cRoute §e" + name + " §cnot found. Available: " + available);
+            sendMessage("\u00A7cRoute \u00A7e" + name + " \u00A7cnot found. Available: " + available);
             return;
         }
 
@@ -493,12 +532,12 @@ public class OrderedWaypointManager {
             }
         } catch (IOException e) {
             LOGGER.error("Failed to load route: " + e.getMessage());
-            sendMessage("§cFailed to load route: " + e.getMessage());
+            sendMessage("\u00A7cFailed to load route: " + e.getMessage());
             return;
         }
 
         if (currentRoute.isEmpty()) {
-            sendMessage("§cNo valid waypoints found in " + name + ".txt");
+            sendMessage("\u00A7cNo valid waypoints found in " + name + ".txt");
             return;
         }
 
@@ -523,7 +562,7 @@ public class OrderedWaypointManager {
 
         enabled = true;
         resetLobbyCheckCounter();
-        sendMessage("§aLoaded route §e" + name + " §awith " + currentRoute.size() + " waypoints. Starting at §e#" + (currentIndex + 1));
+        sendMessage("\u00A7aLoaded route \u00A7e" + name + " \u00A7awith " + currentRoute.size() + " waypoints. Starting at \u00A7e#" + (currentIndex + 1));
 
         // Do initial lobby check if enabled
         if (lobbyCheckEnabled) {
@@ -537,7 +576,7 @@ public class OrderedWaypointManager {
 
         String clipboardContent = client.keyboard.getClipboard();
         if (clipboardContent == null || clipboardContent.trim().isEmpty()) {
-            sendMessage("§cClipboard is empty.");
+            sendMessage("\u00A7cClipboard is empty.");
             return;
         }
 
@@ -552,7 +591,7 @@ public class OrderedWaypointManager {
         }
 
         if (currentRoute.isEmpty()) {
-            sendMessage("§cNo valid waypoints found in clipboard.");
+            sendMessage("\u00A7cNo valid waypoints found in clipboard.");
             return;
         }
 
@@ -572,7 +611,7 @@ public class OrderedWaypointManager {
 
         enabled = true;
         resetLobbyCheckCounter();
-        sendMessage("§aLoaded " + currentRoute.size() + " waypoints from clipboard. Starting at §e#" + (currentIndex + 1));
+        sendMessage("\u00A7aLoaded " + currentRoute.size() + " waypoints from clipboard. Starting at \u00A7e#" + (currentIndex + 1));
 
         // Do initial lobby check if enabled
         if (lobbyCheckEnabled) {
@@ -646,64 +685,15 @@ public class OrderedWaypointManager {
     public static void unload() {
         currentRoute.clear();
         currentIndex = 0;
-        sendMessage("§aRoute unloaded.");
+        sendMessage("\u00A7aRoute unloaded.");
     }
 
-    public static void deleteRoute(String name) {
-        File routeFile = new File(ROUTES_DIR, name + ".txt");
-        if (!routeFile.exists()) {
-            sendMessage("§cRoute §e" + name + " §cnot found.");
-            return;
-        }
-
-        if (routeFile.delete()) {
-            sendMessage("§aDeleted route §e" + name + ".txt");
-        } else {
-            sendMessage("§cFailed to delete route §e" + name + ".txt");
-        }
-    }
-
-    public static void listRoutes() {
-        File[] files = ROUTES_DIR.listFiles((dir, name) -> name.endsWith(".txt"));
-        if (files == null || files.length == 0) {
-            sendMessage("§cNo saved routes.");
-            return;
-        }
-
-        sendMessage("§6Saved routes:");
-        for (File file : files) {
-            String name = file.getName().replace(".txt", "");
-            try {
-                long lineCount = Files.lines(file.toPath()).filter(l -> !l.trim().isEmpty()).count();
-                sendMessage("§e  " + name + " §7(" + lineCount + " waypoints)");
-            } catch (IOException e) {
-                sendMessage("§e  " + name + " §7(unknown waypoints)");
-            }
-        }
-    }
-
-    public static void info() {
-        if (currentRoute.isEmpty()) {
-            sendMessage("§cNo route loaded.");
-            return;
-        }
-
-        sendMessage("§6Current route: §f" + currentRoute.size() + " waypoints");
-        sendMessage("§6Current position: §e#" + (currentIndex + 1));
-        sendMessage("§6Enabled: §f" + enabled);
-    }
-
-    public static void toggle() {
-        enabled = !enabled;
-        sendMessage("§aOrdered waypoints " + (enabled ? "§2enabled" : "§cdisabled"));
-    }
-
-    public static void export() {
+    public static void exportToClipboard() {
         MinecraftClient client = MinecraftClient.getInstance();
         if (client.player == null) return;
 
         if (currentRoute.isEmpty()) {
-            sendMessage("§cNo route to export.");
+            sendMessage("\u00A7cNo route to export.");
             return;
         }
 
@@ -714,47 +704,72 @@ public class OrderedWaypointManager {
         }
 
         client.keyboard.setClipboard(sb.toString().trim());
-        sendMessage("§aExported " + currentRoute.size() + " waypoints to clipboard.");
+        sendMessage("\u00A7aExported " + currentRoute.size() + " waypoints to clipboard.");
     }
 
-    public static void onWorldChange() {
-        MinecraftClient client = MinecraftClient.getInstance();
-        if (client.world == null || client.player == null || currentRoute.isEmpty()) {
+    // Alias for exportToClipboard to maintain compatibility
+    public static void export() {
+        exportToClipboard();
+    }
+
+    public static void deleteRoute(String name) {
+        File routeFile = new File(ROUTES_DIR, name + ".txt");
+        if (!routeFile.exists()) {
+            sendMessage("\u00A7cRoute \u00A7e" + name + " \u00A7cnot found.");
             return;
         }
 
-        boolean shouldReset = false;
-        String resetReason = "";
+        if (routeFile.delete()) {
+            sendMessage("\u00A7aDeleted route \u00A7e" + name + ".txt");
+        } else {
+            sendMessage("\u00A7cFailed to delete route \u00A7e" + name + ".txt");
+        }
+    }
 
-        // Get world ID to detect world changes
-        String currentWorldId = client.world.getRegistryKey().getValue().toString();
-        if (!currentWorldId.equals(lastWorldId)) {
-            lastWorldId = currentWorldId;
-            shouldReset = true;
-            resetReason = "World changed";
+    public static void listRoutes() {
+        File[] files = ROUTES_DIR.listFiles((dir, name) -> name.endsWith(".txt"));
+        if (files == null || files.length == 0) {
+            sendMessage("\u00A7cNo saved routes.");
+            return;
         }
 
-        // Also detect teleports (large position changes) - for servers like Hypixel
-        BlockPos currentPos = client.player.getBlockPos();
-        if (lastPlayerPos != null && !shouldReset) {
-            double distance = Math.sqrt(lastPlayerPos.getSquaredDistance(currentPos));
-            if (distance > TELEPORT_THRESHOLD) {
-                shouldReset = true;
-                resetReason = "Teleport detected";
+        sendMessage("\u00A76Saved routes:");
+        for (File file : files) {
+            String name = file.getName().replace(".txt", "");
+            try {
+                long lineCount = Files.lines(file.toPath()).filter(l -> !l.trim().isEmpty()).count();
+                sendMessage("\u00A7e  " + name + " \u00A77(" + lineCount + " waypoints)");
+            } catch (IOException e) {
+                sendMessage("\u00A7e  " + name + " \u00A77(unknown waypoints)");
             }
         }
-        lastPlayerPos = currentPos;
+    }
 
-        if (shouldReset) {
-            currentIndex = 0;
-            resetLobbyCheckCounter();
+    public static void info() {
+        if (currentRoute.isEmpty()) {
+            sendMessage("\u00A7cNo route loaded.");
+            return;
         }
+
+        sendMessage("\u00A76Current route: \u00A7f" + currentRoute.size() + " waypoints");
+        sendMessage("\u00A76Current position: \u00A7e#" + (currentIndex + 1));
+        sendMessage("\u00A76Enabled: \u00A7f" + enabled);
+    }
+
+    public static void toggle() {
+        enabled = !enabled;
+        sendMessage("\u00A7aOrdered waypoints " + (enabled ? "\u00A72enabled" : "\u00A7cdisabled"));
+    }
+
+    public static void onWorldChange() {
+        // This method is now deprecated - world change detection is handled in tick()
+        // Keeping for backwards compatibility but it's a no-op now
     }
 
     private static void sendMessage(String msg) {
         MinecraftClient client = MinecraftClient.getInstance();
         if (client.player != null) {
-            client.player.sendMessage(Text.literal("§6[MQO] " + msg), false);
+            client.player.sendMessage(Text.literal("\u00A76[MQO] " + msg), false);
         }
     }
 }
