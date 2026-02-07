@@ -1,6 +1,6 @@
 # MiningQOL
 
-A modern Minecraft Fabric mod for 1.21.8 that provides quality-of-life improvements for mining in Hypixel Skyblock.
+A modern Minecraft Fabric mod for 1.21.10 that provides quality-of-life improvements for mining in Hypixel Skyblock.
 
 Built with the Vexel GUI library for a sleek, modern interface with smooth animations and an intuitive card-based design.
 
@@ -49,13 +49,7 @@ Fixes gemstone (stained glass) pane connections when mining:
 - Properly updates visual connections when breaking adjacent panes
 - Purely cosmetic client-side fix
 
-### Click Lock
-Click lock functionality for mining (use responsibly):
-- Configurable mining slot and cooldown
-- Rod swap support for Grappling Hook
-- Second drill support for dual-drill setups
-- Tab list cooldown integration
-- Visual HUD indicator
+
 
 ### Command Keybinds
 - Bind any chat command to any keyboard key
@@ -66,28 +60,11 @@ Click lock functionality for mining (use responsibly):
 - Auto-skip /sho load: Automatically runs `/sho skipto 1` after `/sho load`
 - Lobby Finder: Track and locate specific blocks across lobbies
 
-## Installation
-
-1. Make sure you have [Fabric Loader](https://fabricmc.net/use/) installed for Minecraft 1.21.8
-2. Download [Fabric API](https://modrinth.com/mod/fabric-api) for 1.21.8
-3. Download the latest release of MiningQOL from the [Releases](https://github.com/Rinity9801/MiningQOL/releases) page
-4. Place the downloaded `.jar` file in your `.minecraft/mods` folder
-5. Launch Minecraft with the Fabric profile
 
 ## Usage
 
 Open the config GUI in-game with `/miningconfig` command.
 
-### Modern GUI Interface
-
-The mod features a sleek, modern interface built with the Vexel GUI library:
-- **Card-based design** - Clean, organized categories with smooth hover effects
-- **Powerful search** - Search bar that finds settings across all categories
-  - Search by feature name (e.g., "profit", "cooldown")
-  - Search by specific settings (e.g., "bazaar", "heatmap", "gradient")
-  - Search by keywords (e.g., "lapis", "rod swap", "pristine")
-- **Instant navigation** - Fast screen transitions with no loading delays
-- **Responsive controls** - Modern sliders, toggles, and color pickers
 
 ### Categories
 
