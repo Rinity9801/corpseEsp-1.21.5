@@ -92,7 +92,12 @@ class UpdateScreen : VexelScreen("MiningQOL Update Available") {
 
         // Title
         Text("Update Available!", 0xFF4CAF50.toInt(), 24f, true)
-            .setPositioning(0f, Pos.ParentCenter, 18f, Pos.ParentPixels)
+            .setPositioning(0f, Pos.ParentCenter, 12f, Pos.ParentPixels)
+            .childOf(mainPanel)
+
+        // Edition label
+        Text("(Version without cheats)", 0xFF888888.toInt(), 11f, false)
+            .setPositioning(0f, Pos.ParentCenter, 38f, Pos.ParentPixels)
             .childOf(mainPanel)
 
         // Version info

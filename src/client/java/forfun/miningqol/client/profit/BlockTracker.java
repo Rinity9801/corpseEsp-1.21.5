@@ -25,23 +25,28 @@ public class BlockTracker {
     // Per-material tracking data
     public static class MaterialData {
         public long totalRawEquivalent = 0; // Total items as raw equivalent (enchanted * 160 + raw)
-        public long totalTimeSeconds = 0; // Total time from sack messages
+        public double totalCoins = 0; // Total coin value accumulated
+        public long sessionStartTime = 0; // When tracking started (wall clock)
         public long lastActivityTime = 0;
-        public final List<Double> profitSamples = new ArrayList<>(); // Per-event coins/hr samples
 
         public boolean isActive() {
-            return totalTimeSeconds > 0 && (System.currentTimeMillis() - lastActivityTime) < RESET_DELAY;
+            return sessionStartTime > 0 && (System.currentTimeMillis() - lastActivityTime) < RESET_DELAY;
         }
 
         public boolean shouldShow() {
-            return totalTimeSeconds > 0 && (System.currentTimeMillis() - lastActivityTime) < HIDE_DELAY;
+            return sessionStartTime > 0 && (System.currentTimeMillis() - lastActivityTime) < HIDE_DELAY;
+        }
+
+        public long getElapsedTimeMs() {
+            if (sessionStartTime == 0) return 0;
+            return System.currentTimeMillis() - sessionStartTime;
         }
 
         public void reset() {
             totalRawEquivalent = 0;
-            totalTimeSeconds = 0;
+            totalCoins = 0;
+            sessionStartTime = 0;
             lastActivityTime = 0;
-            profitSamples.clear();
         }
     }
 
@@ -253,37 +258,44 @@ public class BlockTracker {
     /**
      * Track a material with its combined raw equivalent from a sack message
      */
-    private static void trackMaterial(String material, long totalRawEquivalent, int seconds) {
+    private static void trackMaterial(String material, long rawEquivalentThisEvent, int seconds) {
         MaterialData data = getOrCreateData(material);
         int ratio = getEnchantedRatio(material);
 
+        // Start session timer on first event
+        if (data.sessionStartTime == 0) {
+            data.sessionStartTime = System.currentTimeMillis();
+        }
+
         // Add to totals
-        data.totalRawEquivalent += totalRawEquivalent;
-        data.totalTimeSeconds += seconds;
+        data.totalRawEquivalent += rawEquivalentThisEvent;
         data.lastActivityTime = System.currentTimeMillis();
 
-        // Calculate coins for this event (combined raw + enchanted)
+        // Calculate coins for this event using double to preserve fractional enchanted items
         String enchantedId = MATERIAL_TO_ENCHANTED.get(material);
         double enchantedPrice = BazaarPriceManager.getBlockPrice(enchantedId);
-
-        // Convert raw equivalent to enchanted count for value
-        double enchantedCount = totalRawEquivalent / (double) ratio;
+        double enchantedCount = rawEquivalentThisEvent / (double) ratio;
         double coinsThisEvent = enchantedCount * enchantedPrice;
 
-        // Calculate coins/hr for this specific interval
-        double eventCoinsPerHour = (coinsThisEvent / seconds) * 3600.0;
-        data.profitSamples.add(eventCoinsPerHour);
+        // Accumulate total coins
+        data.totalCoins += coinsThisEvent;
 
-        LOGGER.info("[Sacks] {} raw equiv {} ({}s) -> {} coins, {}/hr",
-            totalRawEquivalent, material, seconds,
-            String.format("%.0f", coinsThisEvent), String.format("%.0f", eventCoinsPerHour));
+        // Calculate current rate using wall-clock time
+        double elapsedHours = data.getElapsedTimeMs() / (1000.0 * 60.0 * 60.0);
+        double currentCoinsPerHour = elapsedHours > 0 ? data.totalCoins / elapsedHours : 0;
+
+        LOGGER.info("[Sacks] {} raw equiv {} -> {} coins (total: {}, {}/hr)",
+            rawEquivalentThisEvent, material,
+            String.format("%.0f", coinsThisEvent),
+            String.format("%.0f", data.totalCoins),
+            String.format("%.0f", currentCoinsPerHour));
 
         if (debugEnabled) {
             net.minecraft.client.MinecraftClient client = net.minecraft.client.MinecraftClient.getInstance();
             if (client.player != null) {
                 client.player.sendMessage(net.minecraft.text.Text.literal(
-                    String.format("\u00A7a[Track] \u00A7e%s \u00A77%,d raw equiv (%ds) -> \u00A7a%,.0f \u00A77coins, \u00A7a%,.0f\u00A77/hr",
-                        material, totalRawEquivalent, seconds, coinsThisEvent, eventCoinsPerHour)
+                    String.format("\u00A7a[Track] \u00A7e%s \u00A77%,d raw -> \u00A7a%,.0f \u00A77coins (total: \u00A7a%,.0f\u00A77, \u00A7a%,.0f\u00A77/hr)",
+                        material, rawEquivalentThisEvent, coinsThisEvent, data.totalCoins, currentCoinsPerHour)
                 ), false);
             }
         }
@@ -339,13 +351,14 @@ public class BlockTracker {
             String enchantedId = MATERIAL_TO_ENCHANTED.get(material);
             double enchantedPrice = BazaarPriceManager.getBlockPrice(enchantedId);
             double coinsPerHour = getCoinsPerHour(material);
+            long elapsedSeconds = data.getElapsedTimeMs() / 1000;
 
             client.player.sendMessage(net.minecraft.text.Text.literal(
-                String.format("\u00A7e%s\u00A77: %,d raw equiv, %ds tracked, %d samples",
-                    material, data.totalRawEquivalent, data.totalTimeSeconds, data.profitSamples.size())
+                String.format("\u00A7e%s\u00A77: %,d raw equiv, %,.0f coins, %ds elapsed",
+                    material, data.totalRawEquivalent, data.totalCoins, elapsedSeconds)
             ), false);
             client.player.sendMessage(net.minecraft.text.Text.literal(
-                String.format("  \u00A77Price=\u00A7a%.1f\u00A77, Avg rate=\u00A7a%,.0f\u00A77/hr", enchantedPrice, coinsPerHour)
+                String.format("  \u00A77Price=\u00A7a%.1f\u00A77, Rate=\u00A7a%,.0f\u00A77/hr", enchantedPrice, coinsPerHour)
             ), false);
         }
         client.player.sendMessage(net.minecraft.text.Text.literal("\u00A76-------------------------"), false);
@@ -354,7 +367,7 @@ public class BlockTracker {
     public static void tick() {
         // Reset materials that have been inactive
         for (MaterialData data : materialDataMap.values()) {
-            if (data.totalTimeSeconds > 0 && !data.isActive()) {
+            if (data.sessionStartTime > 0 && !data.isActive()) {
                 data.reset();
             }
         }
@@ -406,46 +419,38 @@ public class BlockTracker {
     public static double getTotalValue(String material) {
         MaterialData data = materialDataMap.get(material);
         if (data == null) return 0;
-
-        String enchantedId = MATERIAL_TO_ENCHANTED.get(material);
-        double enchantedPrice = BazaarPriceManager.getBlockPrice(enchantedId);
-        int ratio = getEnchantedRatio(material);
-
-        double enchantedCount = data.totalRawEquivalent / (double) ratio;
-        return enchantedCount * enchantedPrice;
+        return data.totalCoins;
     }
 
     public static long getSessionTime(String material) {
         MaterialData data = materialDataMap.get(material);
         if (data == null) return 0;
-        return data.totalTimeSeconds * 1000; // Return as milliseconds for display compatibility
+        return data.getElapsedTimeMs();
     }
 
     public static double getCoinsPerHour(String material) {
         MaterialData data = materialDataMap.get(material);
-        if (data == null || data.profitSamples.isEmpty()) return 0;
+        if (data == null || data.totalCoins == 0) return 0;
 
-        // Average of per-event coins/hr samples
-        double sum = 0.0;
-        for (double v : data.profitSamples) {
-            sum += v;
-        }
-        return sum / data.profitSamples.size();
+        // Total coins / elapsed wall-clock time
+        double elapsedHours = data.getElapsedTimeMs() / (1000.0 * 60.0 * 60.0);
+        if (elapsedHours <= 0) return 0;
+        return data.totalCoins / elapsedHours;
     }
 
     public static double getEnchantedPerHour(String material) {
         MaterialData data = materialDataMap.get(material);
-        if (data == null || data.totalTimeSeconds == 0) return 0;
+        if (data == null || data.getElapsedTimeMs() == 0) return 0;
         int ratio = getEnchantedRatio(material);
         double enchantedCount = data.totalRawEquivalent / (double) ratio;
-        double hours = data.totalTimeSeconds / 3600.0;
+        double hours = data.getElapsedTimeMs() / (1000.0 * 60.0 * 60.0);
         return enchantedCount / hours;
     }
 
     public static double getCollectionPerHour(String material) {
         MaterialData data = materialDataMap.get(material);
-        if (data == null || data.totalTimeSeconds == 0) return 0;
-        double hours = data.totalTimeSeconds / 3600.0;
+        if (data == null || data.getElapsedTimeMs() == 0) return 0;
+        double hours = data.getElapsedTimeMs() / (1000.0 * 60.0 * 60.0);
         return data.totalRawEquivalent / hours;
     }
 

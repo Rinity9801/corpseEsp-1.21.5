@@ -2,10 +2,7 @@ package forfun.miningqol.client.config;
 
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
-import forfun.miningqol.client.AutoClickerHUD;
-import forfun.miningqol.client.AutoClickerManager;
 import forfun.miningqol.client.BlockOutlineRenderer;
-import forfun.miningqol.client.CommClaimManager;
 import forfun.miningqol.client.CorpseESP;
 import forfun.miningqol.client.EfficientMinerOverlay;
 import forfun.miningqol.client.GlassSync;
@@ -75,13 +72,6 @@ public class MiningConfig {
     public float nameColorGreen2 = 1.0f;
     public float nameColorBlue2 = 1.0f;
 
-    public boolean autoClickerEnabled = false;
-    public int autoClickerMiningSlot = 0;
-    public boolean autoClickerRodSwap = true;
-    public boolean autoClickerSecondDrill = false;
-    public int autoClickerSecondDrillSlot = 3;
-    public boolean autoClickerHudEnabled = true;
-
     public Map<String, String> commandKeybinds = new HashMap<>();
 
     public boolean autoSkipShoLoad = false;
@@ -124,15 +114,6 @@ public class MiningConfig {
     public String coalValueFuelBuy = "BUY_ORDER";
     public String coalValueHeavyBuy = "BUY_ORDER";
     public boolean coalValueShowSettings = true; // Show settings first time, then go to results
-
-    // Comm Claim settings
-    public int commClaimBatPersonSlot = 1; // 1-9, wardrobe slot
-    public int commClaimDivanSlot = 2; // 1-9, wardrobe slot
-    public int commClaimRefinedToolSlot = 0; // 0-8, hotbar slot
-    public int commClaimTickDelay = 2; // 1-10 ticks
-    public int commClaimGuiWaitDelay = 3; // 1-10 ticks
-    public boolean commClaimAutoTrigger = false; // Auto-trigger on commission complete message
-    public boolean commClaimWardrobeSwap = true; // Enable wardrobe armor swapping
 
     public static MiningConfig load() {
         if (!CONFIG_FILE.exists()) {
@@ -215,13 +196,6 @@ public class MiningConfig {
         NameHider.setColor1(nameColorRed1, nameColorGreen1, nameColorBlue1);
         NameHider.setColor2(nameColorRed2, nameColorGreen2, nameColorBlue2);
 
-        AutoClickerManager.setEnabled(autoClickerEnabled);
-        AutoClickerManager.setMiningSlot(autoClickerMiningSlot);
-        AutoClickerManager.setEnableRodSwap(autoClickerRodSwap);
-        AutoClickerManager.setEnableSecondDrill(autoClickerSecondDrill);
-        AutoClickerManager.setSecondDrillSlot(autoClickerSecondDrillSlot);
-        AutoClickerHUD.setEnabled(autoClickerHudEnabled);
-
         forfun.miningqol.client.CommandKeybindManager.clearAll();
         for (Map.Entry<String, String> entry : commandKeybinds.entrySet()) {
             try {
@@ -271,14 +245,6 @@ public class MiningConfig {
         OrderedWaypointManager.setBlockOutlineColor(orderedWaypointBlockOutlineColor[0], orderedWaypointBlockOutlineColor[1], orderedWaypointBlockOutlineColor[2]);
         OrderedWaypointManager.setBlockOutlineAlpha(orderedWaypointBlockOutlineAlpha);
 
-        // Comm Claim
-        CommClaimManager.setBatPersonSlot(commClaimBatPersonSlot);
-        CommClaimManager.setDivanSlot(commClaimDivanSlot);
-        CommClaimManager.setRefinedToolSlot(commClaimRefinedToolSlot);
-        CommClaimManager.setTickDelay(commClaimTickDelay);
-        CommClaimManager.setGuiWaitDelay(commClaimGuiWaitDelay);
-        CommClaimManager.setAutoTrigger(commClaimAutoTrigger);
-        CommClaimManager.setWardrobeSwap(commClaimWardrobeSwap);
     }
 
     public void loadFromGame() {
@@ -325,13 +291,6 @@ public class MiningConfig {
         nameColorGreen2 = NameHider.getGreen2();
         nameColorBlue2 = NameHider.getBlue2();
 
-        autoClickerEnabled = AutoClickerManager.isEnabled();
-        autoClickerMiningSlot = AutoClickerManager.getMiningSlot();
-        autoClickerRodSwap = AutoClickerManager.isRodSwapEnabled();
-        autoClickerSecondDrill = AutoClickerManager.isSecondDrillEnabled();
-        autoClickerSecondDrillSlot = AutoClickerManager.getSecondDrillSlot();
-        autoClickerHudEnabled = AutoClickerHUD.isEnabled();
-
         commandKeybinds.clear();
         for (Map.Entry<Integer, String> entry : forfun.miningqol.client.CommandKeybindManager.getAllKeybinds().entrySet()) {
             commandKeybinds.put(String.valueOf(entry.getKey()), entry.getValue());
@@ -369,13 +328,5 @@ public class MiningConfig {
         orderedWaypointBlockOutlineColor = OrderedWaypointManager.getBlockOutlineColor();
         orderedWaypointBlockOutlineAlpha = OrderedWaypointManager.getBlockOutlineAlpha();
 
-        // Comm Claim
-        commClaimBatPersonSlot = CommClaimManager.getBatPersonSlot();
-        commClaimDivanSlot = CommClaimManager.getDivanSlot();
-        commClaimRefinedToolSlot = CommClaimManager.getRefinedToolSlot();
-        commClaimTickDelay = CommClaimManager.getTickDelay();
-        commClaimGuiWaitDelay = CommClaimManager.getGuiWaitDelay();
-        commClaimAutoTrigger = CommClaimManager.isAutoTrigger();
-        commClaimWardrobeSwap = CommClaimManager.isWardrobeSwap();
     }
 }

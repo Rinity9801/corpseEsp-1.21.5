@@ -16,16 +16,11 @@ import net.fabricmc.api.ClientModInitializer;
 import net.fabricmc.fabric.api.client.command.v2.ClientCommandManager;
 import net.fabricmc.fabric.api.client.command.v2.ClientCommandRegistrationCallback;
 import net.fabricmc.fabric.api.client.event.lifecycle.v1.ClientTickEvents;
-import net.fabricmc.fabric.api.client.keybinding.v1.KeyBindingHelper;
 import net.fabricmc.fabric.api.client.rendering.v1.HudRenderCallback;
 import net.fabricmc.fabric.api.client.message.v1.ClientReceiveMessageEvents;
 import net.fabricmc.fabric.api.client.message.v1.ClientSendMessageEvents;
 import net.minecraft.client.MinecraftClient;
-import net.minecraft.client.option.KeyBinding;
-import net.minecraft.client.util.InputUtil;
 import net.minecraft.text.Text;
-import net.minecraft.util.Identifier;
-import org.lwjgl.glfw.GLFW;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -37,8 +32,6 @@ public class MiningqolClient implements ClientModInitializer {
     private static final Pattern CORPSE_LOOT_PATTERN = Pattern.compile("\\s(.+) CORPSE LOOT!\\s");
     private static final Pattern PRISTINE_PATTERN = Pattern.compile("PRISTINE! You found . Flawed (.+) Gemstone x(\\d+)!");
     private static MiningConfig config;
-    private static KeyBinding toggleAutoClickerKey;
-    private static KeyBinding commClaimKey;
     private static boolean updateScreenShown = false;
 
     @Override
@@ -52,23 +45,6 @@ public class MiningqolClient implements ClientModInitializer {
 
         // Check for updates
         UpdateChecker.checkForUpdates();
-
-        // Create category once and reuse for all keybinds
-        KeyBinding.Category miningqolCategory = KeyBinding.Category.create(Identifier.of("miningqol", "category"));
-
-        toggleAutoClickerKey = KeyBindingHelper.registerKeyBinding(new KeyBinding(
-            "key.miningqol.toggle_coalclick",
-            InputUtil.Type.KEYSYM,
-            GLFW.GLFW_KEY_R,
-            miningqolCategory
-        ));
-
-        commClaimKey = KeyBindingHelper.registerKeyBinding(new KeyBinding(
-            "key.miningqol.comm_claim",
-            InputUtil.Type.KEYSYM,
-            GLFW.GLFW_KEY_G,
-            miningqolCategory
-        ));
 
         ClientCommandRegistrationCallback.EVENT.register((dispatcher, registryAccess) -> {
             dispatcher.register(ClientCommandManager.literal("getcorpse")
@@ -324,30 +300,15 @@ public class MiningqolClient implements ClientModInitializer {
             });
 
         ClientTickEvents.END_CLIENT_TICK.register(client -> {
-
-            while (toggleAutoClickerKey.wasPressed()) {
-                AutoClickerManager.toggle();
-            }
-
-            while (commClaimKey.wasPressed()) {
-                if (CommClaimManager.isRunning()) {
-                    CommClaimManager.stop();
-                } else {
-                    CommClaimManager.start();
-                }
-            }
-
             if (client.world != null && client.player != null) {
                 CorpseESP.tick();
                 GemstoneTracker.tick();
                 BlockTracker.tick();
                 EfficientMinerOverlay.tick();
                 PickaxeCooldownHUD.tick();
-                AutoClickerManager.tick();
                 CommandKeybindManager.tick(client);
                 LobbyFinder.tick();
                 OrderedWaypointManager.tick();
-                CommClaimManager.tick();
 
                 // Show update screen once when update is available (unless dismissed)
                 if (!updateScreenShown && UpdateChecker.isCheckComplete() && UpdateChecker.isUpdateAvailable()) {
@@ -384,14 +345,6 @@ public class MiningqolClient implements ClientModInitializer {
                 GemstoneTracker.onPristineGem(gemType, amount);
             }
 
-            // Auto-trigger commission claim on completion message
-            if (CommClaimManager.isAutoTrigger() && !CommClaimManager.isRunning()) {
-                if (messageText.contains("Commission Complete! Visit the King to claim your rewards!")) {
-                    LOGGER.info("[MiningqolClient] Commission complete message detected, auto-starting CommClaim");
-                    CommClaimManager.start();
-                }
-            }
-
             // Block tracker for sack messages
             BlockTracker.onChatMessage(message);
         });
@@ -421,13 +374,11 @@ public class MiningqolClient implements ClientModInitializer {
             MinecraftClient client = MinecraftClient.getInstance();
             ProfitTrackerHUD.render(context);
             PickaxeCooldownHUD.render(context);
-            AutoClickerHUD.render(context, client);
             LobbyFinderHUD.render(context);
         });
 
         net.fabricmc.fabric.api.client.event.lifecycle.v1.ClientLifecycleEvents.CLIENT_STOPPING.register(client -> {
             CorpseESP.onWorldUnload();
-            AutoClickerManager.cleanup();
 
             config.loadFromGame();
             config.save();

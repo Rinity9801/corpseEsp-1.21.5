@@ -71,9 +71,9 @@ public class UpdateChecker {
                     JsonObject release = releases.get(i).getAsJsonObject();
                     String tagName = release.get("tag_name").getAsString();
 
-                    // Check if this release is for our Minecraft version
-                    // Tags should contain the MC version, e.g., "1.0.0-1.21.8" or "v1.0.0+1.21.8"
-                    if (tagName.contains(MINECRAFT_VERSION)) {
+                    // Check if this release is for our Minecraft version (normal edition)
+                    // Tags should contain the MC version + "-normal", e.g., "v1.1.0-1.21.10-normal"
+                    if (tagName.contains(MINECRAFT_VERSION + "-normal")) {
                         matchingRelease = release;
                         break; // First match is the latest for this version
                     }

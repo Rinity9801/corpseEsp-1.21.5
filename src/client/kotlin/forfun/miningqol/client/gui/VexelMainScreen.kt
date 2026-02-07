@@ -171,12 +171,6 @@ class VexelMainScreen : VexelScreen("MiningQOL Settings") {
                 listOf("name", "hider", "replacement", "gradient", "color", "hide", "username", "disguise", "anonymize")
             ),
             CardInfo(
-                "Auto Clicker",
-                "Automated clicking for mining",
-                0xFFFFA05B.toInt(),
-                listOf("auto", "clicker", "coalclick", "hud", "tab", "cooldown", "rod", "swap", "drill", "mining slot", "maniac miner", "second drill", "automated")
-            ),
-            CardInfo(
                 "Command Keybinds",
                 "Bind commands to keys",
                 0xFFA05BFF.toInt(),
@@ -187,12 +181,6 @@ class VexelMainScreen : VexelScreen("MiningQOL Settings") {
                 "Miscellaneous features and utilities",
                 0xFF888888.toInt(),
                 listOf("misc", "miscellaneous", "auto-skip", "sho", "load", "glass", "pane", "sync", "gemstone", "connection", "utilities")
-            ),
-            CardInfo(
-                "Comm Claim",
-                "Auto-claim commissions with armor swap",
-                0xFFFFD700.toInt(),
-                listOf("comm", "claim", "commission", "wardrobe", "armor", "bat person", "divan", "pigeon", "royal pigeon", "refined")
             )
         )
 
@@ -206,10 +194,8 @@ class VexelMainScreen : VexelScreen("MiningQOL Settings") {
 
         val rightScreens = listOf(
             { NameHiderCategoryScreen(this) },
-            { AutoClickerCategoryScreen(this) },
             { CommandKeybindCategoryScreen(this) },
-            { MiscCategoryScreen(this) },
-            { CommClaimCategoryScreen(this) }
+            { MiscCategoryScreen(this) }
         )
 
         // Create left column cards
