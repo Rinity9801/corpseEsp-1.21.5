@@ -186,7 +186,8 @@ public class ProfitTrackerHUD {
             context.drawItem(itemIcon, x, y - 4);
 
             String materialName = BlockTracker.getMaterialDisplayName(material);
-            String title = "\u00A7f" + materialName + " Profit";
+            String npcTag = BazaarPriceManager.isUsingNPCPrices() ? " \u00A77(npc)" : "";
+            String title = "\u00A7f" + materialName + " Profit" + npcTag;
             drawScaledText(context, textRenderer, title, x + 18, y);
             y += lineHeight + 4;
 
@@ -232,7 +233,8 @@ public class ProfitTrackerHUD {
             iconX += 18;
         }
 
-        String title = "\u00A7fCombined Profit";
+        String npcTag = BazaarPriceManager.isUsingNPCPrices() ? " \u00A77(npc)" : "";
+        String title = "\u00A7fCombined Profit" + npcTag;
         drawScaledText(context, textRenderer, title, iconX, y);
         y += lineHeight + 4;
 

@@ -43,6 +43,7 @@ public class CommClaimManager {
     private static final int STATE_SWITCH_REFINED = 11; // Immediate after pigeon right-click
     // Phase 3: Claim commissions
     private static final int STATE_WAIT_PIGEON_GUI = 12;
+    private static final int STATE_DELAY_AFTER_PIGEON_OPEN = 25;
     private static final int STATE_DELAY_BEFORE_CLICK_COMPLETED = 13;
     private static final int STATE_CLICK_COMPLETED = 14;
     private static final int STATE_DELAY_AFTER_CLICK_COMPLETED = 15;
@@ -208,12 +209,19 @@ public class CommClaimManager {
             // ===== PHASE 3: CLAIM COMMISSIONS =====
             case STATE_WAIT_PIGEON_GUI:
                 if (isPigeonGuiOpen(client)) {
-                    state = STATE_DELAY_BEFORE_CLICK_COMPLETED;
+                    state = STATE_DELAY_AFTER_PIGEON_OPEN;
                     tickCounter = 0;
                     completedClickAttempts = 0;
                 } else if (tickCounter >= 60) {
                     LOGGER.warn("[CommClaim] Pigeon GUI didn't open");
                     stop();
+                }
+                break;
+
+            case STATE_DELAY_AFTER_PIGEON_OPEN:
+                if (tickCounter >= 2) {
+                    state = STATE_DELAY_BEFORE_CLICK_COMPLETED;
+                    tickCounter = 0;
                 }
                 break;
 

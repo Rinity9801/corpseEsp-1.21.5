@@ -19,29 +19,41 @@ public class BlockTracker {
     // Debug mode
     private static boolean debugEnabled = false;
 
-    private static final long RESET_DELAY = 90000; // 1.5 minutes without activity = reset
-    private static final long HIDE_DELAY = 35000; // Hide HUD after 35 seconds of inactivity
+    private static final long HIDE_DELAY = 40000; // Hide HUD and reset after 40 seconds of inactivity
 
     // Per-material tracking data
     public static class MaterialData {
         public long totalRawEquivalent = 0; // Total items as raw equivalent (enchanted * 160 + raw)
-        public long totalTimeSeconds = 0; // Total time from sack messages
+        public double totalCoins = 0; // Total coin value accumulated
+        public long sessionStartTime = 0; // When tracking started (wall clock)
         public long lastActivityTime = 0;
-        public final List<Double> profitSamples = new ArrayList<>(); // Per-event coins/hr samples
+
+        // Cached rates - only updated on new sack messages
+        public double cachedCoinsPerHour = 0;
+        public double cachedEnchantedPerHour = 0;
+        public double cachedCollectionPerHour = 0;
 
         public boolean isActive() {
-            return totalTimeSeconds > 0 && (System.currentTimeMillis() - lastActivityTime) < RESET_DELAY;
+            return sessionStartTime > 0 && (System.currentTimeMillis() - lastActivityTime) < HIDE_DELAY;
         }
 
         public boolean shouldShow() {
-            return totalTimeSeconds > 0 && (System.currentTimeMillis() - lastActivityTime) < HIDE_DELAY;
+            return sessionStartTime > 0 && (System.currentTimeMillis() - lastActivityTime) < HIDE_DELAY;
+        }
+
+        public long getElapsedTimeMs() {
+            if (sessionStartTime == 0) return 0;
+            return System.currentTimeMillis() - sessionStartTime;
         }
 
         public void reset() {
             totalRawEquivalent = 0;
-            totalTimeSeconds = 0;
+            totalCoins = 0;
+            sessionStartTime = 0;
             lastActivityTime = 0;
-            profitSamples.clear();
+            cachedCoinsPerHour = 0;
+            cachedEnchantedPerHour = 0;
+            cachedCollectionPerHour = 0;
         }
     }
 
@@ -67,8 +79,8 @@ public class BlockTracker {
         MATERIAL_TO_ENCHANTED.put("IRON", "ENCHANTED_IRON");
         MATERIAL_TO_ENCHANTED.put("REDSTONE", "ENCHANTED_REDSTONE");
         MATERIAL_TO_ENCHANTED.put("LAPIS", "ENCHANTED_LAPIS_LAZULI");
-        MATERIAL_TO_ENCHANTED.put("MYCELIUM", "ENCHANTED_MYCELIUM_CUBE");
-        MATERIAL_TO_ENCHANTED.put("RED_SAND", "ENCHANTED_RED_SAND_CUBE");
+        MATERIAL_TO_ENCHANTED.put("MYCELIUM", "ENCHANTED_MYCELIUM");
+        MATERIAL_TO_ENCHANTED.put("RED_SAND", "ENCHANTED_RED_SAND");
         MATERIAL_TO_ENCHANTED.put("OBSIDIAN", "ENCHANTED_OBSIDIAN");
         MATERIAL_TO_ENCHANTED.put("QUARTZ", "ENCHANTED_QUARTZ");
         MATERIAL_TO_ENCHANTED.put("EMERALD", "ENCHANTED_EMERALD");
@@ -86,8 +98,8 @@ public class BlockTracker {
         ENCHANTED_RATIO.put("IRON", 160);
         ENCHANTED_RATIO.put("REDSTONE", 160);
         ENCHANTED_RATIO.put("LAPIS", 160);
-        ENCHANTED_RATIO.put("MYCELIUM", 25600);
-        ENCHANTED_RATIO.put("RED_SAND", 25600);
+        ENCHANTED_RATIO.put("MYCELIUM", 160);
+        ENCHANTED_RATIO.put("RED_SAND", 160);
         ENCHANTED_RATIO.put("OBSIDIAN", 160);
         ENCHANTED_RATIO.put("QUARTZ", 160);
         ENCHANTED_RATIO.put("EMERALD", 160);
@@ -192,12 +204,13 @@ public class BlockTracker {
             BazaarPriceManager.updateBlockPrices();
         }
 
-        // First pass: collect all items per material (combine raw + enchanted)
-        // Map of material -> total raw equivalent for this message
-        Map<String, Long> materialRawEquivalents = new HashMap<>();
+        // Parse hover text into raw and enchanted amounts per material
+        // Sack messages can show both raw and enchanted forms of the same items
+        // (e.g., "+42,400 Red Sand" AND "+265 Enchanted Red Sand")
+        // These are the SAME items, so we only count the enchanted form when present
+        Map<String, Long> materialRawAmounts = new HashMap<>();
+        Map<String, Long> materialEnchantedRawEquiv = new HashMap<>();
 
-        // Parse each line of the hover text for individual items
-        // Format: "+61,266 Coal (Mining Sack)" or "+3 Enchanted Coal (Enchanted Mining Sack)"
         String[] lines = hoverText.split("\n");
         for (String line : lines) {
             Matcher itemMatcher = HOVER_ITEM_PATTERN.matcher(line);
@@ -213,18 +226,20 @@ public class BlockTracker {
                 continue;
             }
 
-            // Check if enchanted and get base item name
             boolean isEnchanted = itemName.startsWith("Enchanted ");
             String baseItemName = isEnchanted ? itemName.substring("Enchanted ".length()) : itemName;
 
-            // Find which material this is
             String material = findMaterialByName(baseItemName);
             if (material == null) continue;
 
-            // Convert to raw equivalent and accumulate
             int ratio = getEnchantedRatio(material);
             long rawEquivalent = isEnchanted ? amount * ratio : amount;
-            materialRawEquivalents.merge(material, rawEquivalent, Long::sum);
+
+            if (isEnchanted) {
+                materialEnchantedRawEquiv.merge(material, rawEquivalent, Long::sum);
+            } else {
+                materialRawAmounts.merge(material, rawEquivalent, Long::sum);
+            }
 
             if (debugEnabled) {
                 net.minecraft.client.MinecraftClient client = net.minecraft.client.MinecraftClient.getInstance();
@@ -234,6 +249,19 @@ public class BlockTracker {
                             amount, isEnchanted ? "ench" : "raw", material, rawEquivalent)
                     ), false);
                 }
+            }
+        }
+
+        // Merge: prefer enchanted form, fall back to raw if no enchanted seen
+        Map<String, Long> materialRawEquivalents = new HashMap<>();
+        Set<String> allMaterials = new HashSet<>();
+        allMaterials.addAll(materialRawAmounts.keySet());
+        allMaterials.addAll(materialEnchantedRawEquiv.keySet());
+        for (String material : allMaterials) {
+            if (materialEnchantedRawEquiv.containsKey(material)) {
+                materialRawEquivalents.put(material, materialEnchantedRawEquiv.get(material));
+            } else {
+                materialRawEquivalents.put(material, materialRawAmounts.get(material));
             }
         }
 
@@ -253,37 +281,51 @@ public class BlockTracker {
     /**
      * Track a material with its combined raw equivalent from a sack message
      */
-    private static void trackMaterial(String material, long totalRawEquivalent, int seconds) {
+    private static void trackMaterial(String material, long rawEquivalentThisEvent, int seconds) {
         MaterialData data = getOrCreateData(material);
         int ratio = getEnchantedRatio(material);
 
+        // Start session timer on first event, accounting for the sack time window
+        // The sack reports items from the last N seconds, so mining started N seconds ago
+        if (data.sessionStartTime == 0) {
+            data.sessionStartTime = System.currentTimeMillis() - (seconds * 1000L);
+        }
+
         // Add to totals
-        data.totalRawEquivalent += totalRawEquivalent;
-        data.totalTimeSeconds += seconds;
+        data.totalRawEquivalent += rawEquivalentThisEvent;
         data.lastActivityTime = System.currentTimeMillis();
 
-        // Calculate coins for this event (combined raw + enchanted)
+        // Recompute total coins from ALL accumulated items using current price
+        // This ensures items from earlier messages (before prices loaded) get properly valued
         String enchantedId = MATERIAL_TO_ENCHANTED.get(material);
         double enchantedPrice = BazaarPriceManager.getBlockPrice(enchantedId);
+        double totalEnchanted = data.totalRawEquivalent / (double) ratio;
+        data.totalCoins = totalEnchanted * enchantedPrice;
 
-        // Convert raw equivalent to enchanted count for value
-        double enchantedCount = totalRawEquivalent / (double) ratio;
-        double coinsThisEvent = enchantedCount * enchantedPrice;
+        // Update cached rates on each sack message
+        double elapsedHours = data.getElapsedTimeMs() / (1000.0 * 60.0 * 60.0);
+        data.cachedCoinsPerHour = elapsedHours > 0 ? data.totalCoins / elapsedHours : 0;
+        data.cachedEnchantedPerHour = elapsedHours > 0 ? totalEnchanted / elapsedHours : 0;
+        data.cachedCollectionPerHour = elapsedHours > 0 ? data.totalRawEquivalent / elapsedHours : 0;
 
-        // Calculate coins/hr for this specific interval
-        double eventCoinsPerHour = (coinsThisEvent / seconds) * 3600.0;
-        data.profitSamples.add(eventCoinsPerHour);
+        double currentCoinsPerHour = data.cachedCoinsPerHour;
 
-        LOGGER.info("[Sacks] {} raw equiv {} ({}s) -> {} coins, {}/hr",
-            totalRawEquivalent, material, seconds,
-            String.format("%.0f", coinsThisEvent), String.format("%.0f", eventCoinsPerHour));
+        double enchantedThisEvent = rawEquivalentThisEvent / (double) ratio;
+        double coinsThisEvent = enchantedThisEvent * enchantedPrice;
+
+        LOGGER.info("[Sacks] {} raw equiv {} -> {} coins (total: {}, {}/hr, price={})",
+            rawEquivalentThisEvent, material,
+            String.format("%.0f", coinsThisEvent),
+            String.format("%.0f", data.totalCoins),
+            String.format("%.0f", currentCoinsPerHour),
+            String.format("%.1f", enchantedPrice));
 
         if (debugEnabled) {
             net.minecraft.client.MinecraftClient client = net.minecraft.client.MinecraftClient.getInstance();
             if (client.player != null) {
                 client.player.sendMessage(net.minecraft.text.Text.literal(
-                    String.format("\u00A7a[Track] \u00A7e%s \u00A77%,d raw equiv (%ds) -> \u00A7a%,.0f \u00A77coins, \u00A7a%,.0f\u00A77/hr",
-                        material, totalRawEquivalent, seconds, coinsThisEvent, eventCoinsPerHour)
+                    String.format("\u00A7a[Track] \u00A7e%s \u00A77%,d raw -> \u00A7a%,.0f \u00A77coins (total: \u00A7a%,.0f\u00A77, \u00A7a%,.0f\u00A77/hr, price=%.1f)",
+                        material, rawEquivalentThisEvent, coinsThisEvent, data.totalCoins, currentCoinsPerHour, enchantedPrice)
                 ), false);
             }
         }
@@ -304,22 +346,23 @@ public class BlockTracker {
     }
 
     private static String extractHoverText(Text message) {
+        Set<String> seen = new HashSet<>();
         StringBuilder hoverContent = new StringBuilder();
+        extractHoverTextRecursive(message, hoverContent, seen);
+        return hoverContent.toString();
+    }
 
+    private static void extractHoverTextRecursive(Text message, StringBuilder sb, Set<String> seen) {
         HoverEvent hover = message.getStyle().getHoverEvent();
         if (hover instanceof HoverEvent.ShowText showText) {
-            hoverContent.append(showText.value().getString());
-        }
-
-        for (Text sibling : message.getSiblings()) {
-            HoverEvent siblingHover = sibling.getStyle().getHoverEvent();
-            if (siblingHover instanceof HoverEvent.ShowText showText) {
-                hoverContent.append(showText.value().getString());
+            String text = showText.value().getString();
+            if (seen.add(text)) {
+                sb.append(text);
             }
-            hoverContent.append(extractHoverText(sibling));
         }
-
-        return hoverContent.toString();
+        for (Text sibling : message.getSiblings()) {
+            extractHoverTextRecursive(sibling, sb, seen);
+        }
     }
 
     /**
@@ -339,13 +382,14 @@ public class BlockTracker {
             String enchantedId = MATERIAL_TO_ENCHANTED.get(material);
             double enchantedPrice = BazaarPriceManager.getBlockPrice(enchantedId);
             double coinsPerHour = getCoinsPerHour(material);
+            long elapsedSeconds = data.getElapsedTimeMs() / 1000;
 
             client.player.sendMessage(net.minecraft.text.Text.literal(
-                String.format("\u00A7e%s\u00A77: %,d raw equiv, %ds tracked, %d samples",
-                    material, data.totalRawEquivalent, data.totalTimeSeconds, data.profitSamples.size())
+                String.format("\u00A7e%s\u00A77: %,d raw equiv, %,.0f coins, %ds elapsed",
+                    material, data.totalRawEquivalent, data.totalCoins, elapsedSeconds)
             ), false);
             client.player.sendMessage(net.minecraft.text.Text.literal(
-                String.format("  \u00A77Price=\u00A7a%.1f\u00A77, Avg rate=\u00A7a%,.0f\u00A77/hr", enchantedPrice, coinsPerHour)
+                String.format("  \u00A77Price=\u00A7a%.1f\u00A77, Rate=\u00A7a%,.0f\u00A77/hr", enchantedPrice, coinsPerHour)
             ), false);
         }
         client.player.sendMessage(net.minecraft.text.Text.literal("\u00A76-------------------------"), false);
@@ -354,7 +398,7 @@ public class BlockTracker {
     public static void tick() {
         // Reset materials that have been inactive
         for (MaterialData data : materialDataMap.values()) {
-            if (data.totalTimeSeconds > 0 && !data.isActive()) {
+            if (data.sessionStartTime > 0 && !data.isActive()) {
                 data.reset();
             }
         }
@@ -364,9 +408,9 @@ public class BlockTracker {
         materialDataMap.clear();
     }
 
-    // Required for world change handling
+    // Pre-fetch prices on world join so they're ready before first sack message
     public static void onWorldChange() {
-        // Optional: could reset on world change
+        BazaarPriceManager.updateBlockPrices();
     }
 
     /**
@@ -406,47 +450,31 @@ public class BlockTracker {
     public static double getTotalValue(String material) {
         MaterialData data = materialDataMap.get(material);
         if (data == null) return 0;
-
-        String enchantedId = MATERIAL_TO_ENCHANTED.get(material);
-        double enchantedPrice = BazaarPriceManager.getBlockPrice(enchantedId);
-        int ratio = getEnchantedRatio(material);
-
-        double enchantedCount = data.totalRawEquivalent / (double) ratio;
-        return enchantedCount * enchantedPrice;
+        return data.totalCoins;
     }
 
     public static long getSessionTime(String material) {
         MaterialData data = materialDataMap.get(material);
         if (data == null) return 0;
-        return data.totalTimeSeconds * 1000; // Return as milliseconds for display compatibility
+        return data.getElapsedTimeMs();
     }
 
     public static double getCoinsPerHour(String material) {
         MaterialData data = materialDataMap.get(material);
-        if (data == null || data.profitSamples.isEmpty()) return 0;
-
-        // Average of per-event coins/hr samples
-        double sum = 0.0;
-        for (double v : data.profitSamples) {
-            sum += v;
-        }
-        return sum / data.profitSamples.size();
+        if (data == null) return 0;
+        return data.cachedCoinsPerHour;
     }
 
     public static double getEnchantedPerHour(String material) {
         MaterialData data = materialDataMap.get(material);
-        if (data == null || data.totalTimeSeconds == 0) return 0;
-        int ratio = getEnchantedRatio(material);
-        double enchantedCount = data.totalRawEquivalent / (double) ratio;
-        double hours = data.totalTimeSeconds / 3600.0;
-        return enchantedCount / hours;
+        if (data == null) return 0;
+        return data.cachedEnchantedPerHour;
     }
 
     public static double getCollectionPerHour(String material) {
         MaterialData data = materialDataMap.get(material);
-        if (data == null || data.totalTimeSeconds == 0) return 0;
-        double hours = data.totalTimeSeconds / 3600.0;
-        return data.totalRawEquivalent / hours;
+        if (data == null) return 0;
+        return data.cachedCollectionPerHour;
     }
 
     // Combined totals (for COMBINED display mode)

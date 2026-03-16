@@ -23,16 +23,39 @@ public class BazaarPriceManager {
     private static long lastUpdate = 0;
     private static long lastBlockUpdate = 0;
     private static boolean useNPCPrices = false;
+    private static boolean blockFetchInProgress = false;
 
     // Block IDs to track
     private static final String[] BLOCK_IDS = {
         "ENCHANTED_COAL", "ENCHANTED_DIAMOND", "ENCHANTED_GOLD",
-        "ENCHANTED_MYCELIUM_CUBE", "ENCHANTED_RED_SAND_CUBE",
+        "ENCHANTED_MYCELIUM", "ENCHANTED_RED_SAND",
         "ENCHANTED_OBSIDIAN", "ENCHANTED_QUARTZ", "ENCHANTED_EMERALD",
         "ENCHANTED_LAPIS_LAZULI", "ENCHANTED_REDSTONE", "ENCHANTED_HARD_STONE",
         "ENCHANTED_IRON", "ENCHANTED_GLOWSTONE", "ENCHANTED_MITHRIL",
         "ENCHANTED_TITANIUM", "ENCHANTED_SULPHUR", "ENCHANTED_UMBER"
     };
+
+    // NPC sell prices for enchanted blocks (raw_npc_sell * 160)
+    private static final Map<String, Double> BLOCK_NPC_PRICES = new HashMap<>();
+    static {
+        BLOCK_NPC_PRICES.put("ENCHANTED_COAL", 320.0);       // 2 * 160
+        BLOCK_NPC_PRICES.put("ENCHANTED_DIAMOND", 1280.0);   // 8 * 160
+        BLOCK_NPC_PRICES.put("ENCHANTED_GOLD", 640.0);       // 4 * 160
+        BLOCK_NPC_PRICES.put("ENCHANTED_IRON", 480.0);       // 3 * 160
+        BLOCK_NPC_PRICES.put("ENCHANTED_REDSTONE", 480.0);   // 3 * 160
+        BLOCK_NPC_PRICES.put("ENCHANTED_LAPIS_LAZULI", 480.0); // 3 * 160
+        BLOCK_NPC_PRICES.put("ENCHANTED_OBSIDIAN", 1280.0);  // 8 * 160
+        BLOCK_NPC_PRICES.put("ENCHANTED_QUARTZ", 640.0);     // 4 * 160
+        BLOCK_NPC_PRICES.put("ENCHANTED_EMERALD", 800.0);    // 5 * 160
+        BLOCK_NPC_PRICES.put("ENCHANTED_GLOWSTONE", 640.0);  // 4 * 160
+        BLOCK_NPC_PRICES.put("ENCHANTED_HARD_STONE", 160.0); // 1 * 160
+        BLOCK_NPC_PRICES.put("ENCHANTED_MITHRIL", 160.0);    // 1 * 160
+        BLOCK_NPC_PRICES.put("ENCHANTED_TITANIUM", 2560.0);  // 16 * 160
+        BLOCK_NPC_PRICES.put("ENCHANTED_SULPHUR", 480.0);    // 3 * 160
+        BLOCK_NPC_PRICES.put("ENCHANTED_UMBER", 480.0);      // 3 * 160
+        BLOCK_NPC_PRICES.put("ENCHANTED_MYCELIUM", 800.0);   // 5 * 160
+        BLOCK_NPC_PRICES.put("ENCHANTED_RED_SAND", 800.0);   // 5 * 160
+    }
 
     public static void setUseNPCPrices(boolean use) {
         useNPCPrices = use;
@@ -140,6 +163,9 @@ public class BazaarPriceManager {
     }
 
     public static double getBlockPrice(String itemId) {
+        if (useNPCPrices) {
+            return BLOCK_NPC_PRICES.getOrDefault(itemId, 0.0);
+        }
         return blockPrices.getOrDefault(itemId, 0.0);
     }
 
@@ -147,6 +173,10 @@ public class BazaarPriceManager {
         if (System.currentTimeMillis() - lastBlockUpdate < CACHE_DURATION) {
             return CompletableFuture.completedFuture(true);
         }
+        if (blockFetchInProgress) {
+            return CompletableFuture.completedFuture(false);
+        }
+        blockFetchInProgress = true;
 
         return CompletableFuture.supplyAsync(() -> {
             try {
@@ -174,19 +204,21 @@ public class BazaarPriceManager {
                             JsonObject quickStatus = product.getAsJsonObject("quick_status");
 
                             if (quickStatus != null) {
-                                double sellPrice = quickStatus.get("sellPrice").getAsDouble();
-                                blockPrices.put(blockId, sellPrice);
+                                double buyPrice = quickStatus.get("buyPrice").getAsDouble();
+                                blockPrices.put(blockId, buyPrice);
                             }
                         }
                     }
 
                     lastBlockUpdate = System.currentTimeMillis();
+                    blockFetchInProgress = false;
                     LOGGER.info("[BazaarPriceManager] Updated block prices successfully");
                     return true;
                 }
             } catch (Exception e) {
                 LOGGER.error("[BazaarPriceManager] Failed to fetch block prices: " + e.getMessage());
             }
+            blockFetchInProgress = false;
             return false;
         });
     }
