@@ -38,6 +38,7 @@ public class MiningqolClient implements ClientModInitializer {
     private static final Pattern PRISTINE_PATTERN = Pattern.compile("PRISTINE! You found . Flawed (.+) Gemstone x(\\d+)!");
     private static MiningConfig config;
     private static KeyBinding toggleAutoClickerKey;
+    private static KeyBinding toggleShaftClickerKey;
     private static KeyBinding commClaimKey;
     private static boolean updateScreenShown = false;
 
@@ -60,6 +61,13 @@ public class MiningqolClient implements ClientModInitializer {
             "key.miningqol.toggle_coalclick",
             InputUtil.Type.KEYSYM,
             GLFW.GLFW_KEY_R,
+            miningqolCategory
+        ));
+
+        toggleShaftClickerKey = KeyBindingHelper.registerKeyBinding(new KeyBinding(
+            "key.miningqol.toggle_shaftclick",
+            InputUtil.Type.KEYSYM,
+            GLFW.GLFW_KEY_V,
             miningqolCategory
         ));
 
@@ -329,6 +337,10 @@ public class MiningqolClient implements ClientModInitializer {
                 AutoClickerManager.toggle();
             }
 
+            while (toggleShaftClickerKey.wasPressed()) {
+                ShaftClickerManager.toggle();
+            }
+
             while (commClaimKey.wasPressed()) {
                 if (CommClaimManager.isRunning()) {
                     CommClaimManager.stop();
@@ -348,6 +360,7 @@ public class MiningqolClient implements ClientModInitializer {
                 LobbyFinder.tick();
                 OrderedWaypointManager.tick();
                 CommClaimManager.tick();
+                ShaftClickerManager.tick();
 
                 // Show update screen once when update is available (unless dismissed)
                 if (!updateScreenShown && UpdateChecker.isCheckComplete() && UpdateChecker.isUpdateAvailable()) {
@@ -428,6 +441,7 @@ public class MiningqolClient implements ClientModInitializer {
         net.fabricmc.fabric.api.client.event.lifecycle.v1.ClientLifecycleEvents.CLIENT_STOPPING.register(client -> {
             CorpseESP.onWorldUnload();
             AutoClickerManager.cleanup();
+            ShaftClickerManager.cleanup();
 
             config.loadFromGame();
             config.save();

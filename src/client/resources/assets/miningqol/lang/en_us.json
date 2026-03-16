@@ -1,5 +1,6 @@
 {
   "key.miningqol.toggle_coalclick": "Toggle CoalClick",
+  "key.miningqol.toggle_shaftclick": "Toggle Shaft Clicker",
   "key.miningqol.comm_claim": "Commission Claim",
   "category.miningqol": "Mining QOL"
 }

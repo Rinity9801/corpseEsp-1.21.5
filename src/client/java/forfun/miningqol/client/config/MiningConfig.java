@@ -9,6 +9,7 @@ import forfun.miningqol.client.CommClaimManager;
 import forfun.miningqol.client.CorpseESP;
 import forfun.miningqol.client.EfficientMinerOverlay;
 import forfun.miningqol.client.GlassSync;
+import forfun.miningqol.client.ShaftClickerManager;
 import forfun.miningqol.client.NameHider;
 import forfun.miningqol.client.PickaxeCooldownHUD;
 import forfun.miningqol.client.profit.BazaarPriceManager;
@@ -83,6 +84,10 @@ public class MiningConfig {
     public boolean autoClickerHudEnabled = true;
 
     public Map<String, String> commandKeybinds = new HashMap<>();
+
+    // Shaft Clicker
+    public boolean shaftClickerEnabled = false;
+    public int shaftClickerMiningSlot = 0;
 
     public boolean autoSkipShoLoad = false;
 
@@ -245,6 +250,9 @@ public class MiningConfig {
         }
         forfun.miningqol.client.LobbyFinder.setTrackedBlocks(blocks);
 
+        ShaftClickerManager.setEnabled(shaftClickerEnabled);
+        ShaftClickerManager.setMiningSlot(shaftClickerMiningSlot);
+
         GlassSync.setEnabled(glassSyncEnabled);
 
         // Ordered Waypoints
@@ -342,6 +350,9 @@ public class MiningConfig {
         for (net.minecraft.util.math.BlockPos pos : forfun.miningqol.client.LobbyFinder.getTrackedBlocks()) {
             lobbyFinderBlocks.add(pos.getX() + "," + pos.getY() + "," + pos.getZ());
         }
+
+        shaftClickerEnabled = ShaftClickerManager.isEnabled();
+        shaftClickerMiningSlot = ShaftClickerManager.getMiningSlot();
 
         glassSyncEnabled = GlassSync.isEnabled();
 

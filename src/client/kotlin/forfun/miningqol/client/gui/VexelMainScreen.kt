@@ -193,6 +193,12 @@ class VexelMainScreen : VexelScreen("MiningQOL Settings") {
                 "Auto-claim commissions with armor swap",
                 0xFFFFD700.toInt(),
                 listOf("comm", "claim", "commission", "wardrobe", "armor", "bat person", "divan", "pigeon", "royal pigeon", "refined")
+            ),
+            CardInfo(
+                "Shaft Clicker",
+                "Auto-click that pauses in Mineshafts",
+                0xFF5BFF7C.toInt(),
+                listOf("shaft", "clicker", "auto", "click", "mineshaft", "pause", "mining")
             )
         )
 
@@ -209,7 +215,8 @@ class VexelMainScreen : VexelScreen("MiningQOL Settings") {
             { AutoClickerCategoryScreen(this) },
             { CommandKeybindCategoryScreen(this) },
             { MiscCategoryScreen(this) },
-            { CommClaimCategoryScreen(this) }
+            { CommClaimCategoryScreen(this) },
+            { ShaftClickerCategoryScreen(this) }
         )
 
         // Create left column cards
