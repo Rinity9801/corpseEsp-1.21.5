@@ -12,6 +12,7 @@ public class ShaftClickerManager {
     private static boolean enabled = false;
     private static int miningSlot = 0;
     private static boolean paused = false;
+    private static boolean abilityPaused = false; // Paused because ability is ready
     private static int locationCheckCooldown = 0;
     private static boolean inMineshaft = false;
     private static boolean wasInMineshaft = false;
@@ -94,11 +95,20 @@ public class ShaftClickerManager {
             }
         }
 
-        if (paused) {
+        // Pause when ability is ready
+        if (!paused && !abilityPaused && !PickaxeCooldownHUD.isOnCooldown()) {
+            abilityPaused = true;
+            client.options.attackKey.setPressed(false);
+        }
+
+        int currentSlot = client.player.getInventory().getSelectedSlot();
+
+        if (paused || abilityPaused) {
             // Resume when player switches back to mining slot
-            int currentSlot = client.player.getInventory().getSelectedSlot();
-            if (!inMineshaft && currentSlot == miningSlot) {
+            // (they swapped away to use ability or handle mineshaft, then came back)
+            if (currentSlot == miningSlot && (abilityPaused ? PickaxeCooldownHUD.isOnCooldown() : !inMineshaft)) {
                 paused = false;
+                abilityPaused = false;
             } else {
                 client.options.attackKey.setPressed(false);
                 return;
@@ -106,7 +116,6 @@ public class ShaftClickerManager {
         }
 
         // Auto click when on the mining slot
-        int currentSlot = client.player.getInventory().getSelectedSlot();
         client.options.attackKey.setPressed(currentSlot == miningSlot);
     }
 
