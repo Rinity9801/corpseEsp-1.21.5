@@ -452,6 +452,25 @@ public class OrderedWaypointManager {
         sendMessage("\u00A7aRemoved waypoint \u00A7e#" + number);
     }
 
+    public static void move(int number) {
+        MinecraftClient client = MinecraftClient.getInstance();
+        if (client.player == null) return;
+
+        if (currentRoute.isEmpty()) {
+            sendMessage("\u00A7cNo route loaded.");
+            return;
+        }
+
+        if (number < 1 || number > currentRoute.size()) {
+            sendMessage("\u00A7cInvalid waypoint number. Must be between 1 and " + currentRoute.size());
+            return;
+        }
+
+        BlockPos pos = client.player.getBlockPos().down();
+        currentRoute.get(number - 1).setPosition(pos);
+        sendMessage("\u00A7aMoved waypoint \u00A7e#" + number + " \u00A7ato \u00A7f" + pos.getX() + ", " + pos.getY() + ", " + pos.getZ());
+    }
+
     public static void skip(int amount) {
         if (currentRoute.isEmpty()) {
             sendMessage("\u00A7cNo route loaded.");

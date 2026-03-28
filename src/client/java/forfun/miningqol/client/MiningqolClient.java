@@ -40,6 +40,7 @@ public class MiningqolClient implements ClientModInitializer {
     private static KeyBinding toggleAutoClickerKey;
     private static KeyBinding toggleShaftClickerKey;
     private static KeyBinding commClaimKey;
+    private static KeyBinding abilitySwitchKey;
     private static boolean updateScreenShown = false;
 
     @Override
@@ -75,6 +76,13 @@ public class MiningqolClient implements ClientModInitializer {
             "key.miningqol.comm_claim",
             InputUtil.Type.KEYSYM,
             GLFW.GLFW_KEY_G,
+            miningqolCategory
+        ));
+
+        abilitySwitchKey = KeyBindingHelper.registerKeyBinding(new KeyBinding(
+            "key.miningqol.ability_switch",
+            InputUtil.Type.KEYSYM,
+            GLFW.GLFW_KEY_H,
             miningqolCategory
         ));
 
@@ -261,6 +269,13 @@ public class MiningqolClient implements ClientModInitializer {
                             OrderedWaypointManager.remove(num);
                             return 1;
                         })))
+                .then(ClientCommandManager.literal("move")
+                    .then(ClientCommandManager.argument("number", IntegerArgumentType.integer(1))
+                        .executes(context -> {
+                            int num = IntegerArgumentType.getInteger(context, "number");
+                            OrderedWaypointManager.move(num);
+                            return 1;
+                        })))
                 .then(ClientCommandManager.literal("skip")
                     .executes(context -> {
                         OrderedWaypointManager.skip(1);
@@ -349,6 +364,10 @@ public class MiningqolClient implements ClientModInitializer {
                 }
             }
 
+            while (abilitySwitchKey.wasPressed()) {
+                AbilitySwitchManager.toggle();
+            }
+
             if (client.world != null && client.player != null) {
                 CorpseESP.tick();
                 GemstoneTracker.tick();
@@ -360,6 +379,7 @@ public class MiningqolClient implements ClientModInitializer {
                 LobbyFinder.tick();
                 OrderedWaypointManager.tick();
                 CommClaimManager.tick();
+                AbilitySwitchManager.tick();
                 ShaftClickerManager.tick();
 
                 // Show update screen once when update is available (unless dismissed)
