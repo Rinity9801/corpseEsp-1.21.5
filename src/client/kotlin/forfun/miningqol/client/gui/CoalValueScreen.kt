@@ -4,6 +4,7 @@ import forfun.miningqol.client.MiningqolClient
 import forfun.miningqol.client.sacks.BazaarAPI
 import forfun.miningqol.client.sacks.CoalValueCommand
 import net.minecraft.client.MinecraftClient
+import net.minecraft.client.input.KeyInput
 import xyz.meowing.knit.api.input.KnitKeys
 import xyz.meowing.vexel.core.VexelScreen
 import xyz.meowing.vexel.components.core.Rectangle
@@ -426,12 +427,12 @@ class CoalValueScreen : VexelScreen {
         }
     }
 
-    override fun keyPressed(keyCode: Int, scanCode: Int, modifiers: Int): Boolean {
-        if (keyCode == KnitKeys.KEY_ESCAPE.code) {
+    override fun keyPressed(input: KeyInput?): Boolean {
+        if (input?.key() == KnitKeys.KEY_ESCAPE.code) {
             close()
             return true
         }
-        return super.keyPressed(keyCode, scanCode, modifiers)
+        return super.keyPressed(input)
     }
 
     override fun shouldCloseOnEsc(): Boolean = false

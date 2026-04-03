@@ -4,6 +4,7 @@ import forfun.miningqol.client.MiningqolClient
 import forfun.miningqol.client.waypoints.OrderedWaypointManager
 import net.minecraft.client.MinecraftClient
 import net.minecraft.client.gui.screen.Screen
+import net.minecraft.client.input.KeyInput
 import xyz.meowing.knit.api.input.KnitKeys
 import xyz.meowing.vexel.core.VexelScreen
 import xyz.meowing.vexel.components.core.Rectangle
@@ -37,7 +38,7 @@ class OrderedWaypointsCategoryScreen(private val parentScreen: Screen) : VexelSc
 
         // Main panel - wider for 2 columns
         val panelWidth = 900f
-        val panelHeight = 660f
+        val panelHeight = 650f
         mainPanel = Rectangle(
             backgroundColor = 0xF0121212.toInt(),
             borderColor = 0xFF2A2A2A.toInt(),
@@ -161,25 +162,25 @@ class OrderedWaypointsCategoryScreen(private val parentScreen: Screen) : VexelSc
         )
         leftY += sliderHeight + spacing
 
+        // Waypoint reach radius slider
+        createSliderCard(
+            "Reach Radius (blocks)",
+            1f, 5f,
+            OrderedWaypointManager.getWaypointRange(),
+            { value -> OrderedWaypointManager.setWaypointRange(value) },
+            "",
+            leftX, leftY, cardWidth, sliderHeight, 450L,
+            step = 0.1f
+        )
+        leftY += sliderHeight + spacing
+
         // Trace line toggle
         createToggleCard(
             "Enable Trace Line",
             0xFF55FFFF.toInt(),
             { OrderedWaypointManager.isTraceLineEnabled() },
             { OrderedWaypointManager.setTraceLineEnabled(!OrderedWaypointManager.isTraceLineEnabled()) },
-            leftX, leftY, cardWidth, toggleHeight, 450L
-        )
-        leftY += toggleHeight + spacing
-
-        // Waypoint reach radius slider
-        createSliderCard(
-            "Reach Radius",
-            1f, 5f,
-            OrderedWaypointManager.getWaypointRange(),
-            { value -> OrderedWaypointManager.setWaypointRange(value) },
-            " blocks",
-            leftX, leftY, cardWidth, sliderHeight, 500L,
-            0.1f
+            leftX, leftY, cardWidth, toggleHeight, 500L
         )
 
         // ===== RIGHT COLUMN =====
@@ -601,12 +602,12 @@ class OrderedWaypointsCategoryScreen(private val parentScreen: Screen) : VexelSc
         mc.setScreen(parentScreen)
     }
 
-    override fun keyPressed(keyCode: Int, scanCode: Int, modifiers: Int): Boolean {
-        if (keyCode == KnitKeys.KEY_ESCAPE.code) {
+    override fun keyPressed(input: KeyInput?): Boolean {
+        if (input?.key() == KnitKeys.KEY_ESCAPE.code) {
             closeWithAnimation()
             return true
         }
-        return super.keyPressed(keyCode, scanCode, modifiers)
+        return super.keyPressed(input)
     }
 
     override fun onKeyType(typedChar: Char, keyCode: Int, scanCode: Int) {

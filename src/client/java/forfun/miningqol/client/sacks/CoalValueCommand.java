@@ -32,7 +32,7 @@ public class CoalValueCommand {
         if (client.player == null) return;
 
         if (!SackTracker.hasData()) {
-            client.player.sendMessage(Text.literal("§c[CoalValue] No sack data! Open your Enchanted Mining Sack first."), false);
+            client.player.sendMessage(Text.literal("\u00A7c[CoalValue] No sack data! Open your Enchanted Mining Sack first."), false);
             return;
         }
 
@@ -40,7 +40,7 @@ public class CoalValueCommand {
         long enchantedCoal = sackContents.getOrDefault("ENCHANTED_COAL", 0L);
 
         if (enchantedCoal == 0) {
-            client.player.sendMessage(Text.literal("§c[CoalValue] No Enchanted Coal in sack!"), false);
+            client.player.sendMessage(Text.literal("\u00A7c[CoalValue] No Enchanted Coal in sack!"), false);
             return;
         }
 
@@ -51,7 +51,7 @@ public class CoalValueCommand {
         if (config.coalValueShowSettings) {
             client.send(() -> client.setScreen(new CoalValueScreen(enchantedCoal)));
         } else {
-            client.player.sendMessage(Text.literal("§6[CoalValue] Fetching Bazaar prices..."), false);
+            client.player.sendMessage(Text.literal("\u00A76[CoalValue] Fetching Bazaar prices..."), false);
             fetchAndShowResults(client, enchantedCoal);
         }
     }
@@ -61,7 +61,7 @@ public class CoalValueCommand {
             client.execute(() -> {
                 if (products.isEmpty()) {
                     if (client.player != null) {
-                        client.player.sendMessage(Text.literal("§c[CoalValue] Failed to fetch Bazaar prices!"), false);
+                        client.player.sendMessage(Text.literal("\u00A7c[CoalValue] Failed to fetch Bazaar prices!"), false);
                     }
                     return;
                 }
@@ -144,7 +144,7 @@ public class CoalValueCommand {
             option4Profit
         ));
 
-        // Option 5: Full craft chain - Crude → Fuel → Heavy → Hypergolic
+        // Option 5: Full craft chain - Crude -> Fuel -> Heavy -> Hypergolic
         long option5Hypergolic = sulphuricCoalOutput / 301;
         long option5Heavy = option5Hypergolic * 12;
         long option5Fuel = option5Heavy * 24;

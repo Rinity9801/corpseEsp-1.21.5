@@ -80,22 +80,72 @@ public class ProfitTrackerHUD {
         }
     }
 
-    private static void renderGemstoneMode(DrawContext context, TextRenderer textRenderer) {
-        String uptime = "§6Uptime: §f" + GemstoneTracker.formatTime(GemstoneTracker.getSessionTime());
-        String coinsPerHour = "§e$/hr: §a" + GemstoneTracker.formatCoins(GemstoneTracker.getCoinsPerHour());
-        String flawlessPerHour = "§d fl/hr: §b" + String.format("%.1f", GemstoneTracker.getFlawlessPerHour());
+    public static void renderPreview(DrawContext context) {
+        MinecraftClient client = MinecraftClient.getInstance();
+        if (client == null) return;
 
-        String tierIndicator = " §7(" + GemstoneTracker.getGemTierName() + ")";
+        TextRenderer textRenderer = client.textRenderer;
+
+        if (isBlockMode()) {
+            renderBlockModePreview(context, textRenderer);
+        } else {
+            renderGemstoneModePreview(context, textRenderer);
+        }
+    }
+
+    private static void renderGemstoneModePreview(DrawContext context, TextRenderer textRenderer) {
+        String uptime = "\u00A76Uptime: \u00A7f1h 23m 45s";
+        String coinsPerHour = "\u00A7e$/hr: \u00A7a1,234,567 \u00A77(Flawless)";
+        String flawlessPerHour = "\u00A7d fl/hr: \u00A7b42.5 \u00A77(Flawless)";
+
+        int lineHeight = (int)(10 * scale);
+        int y = hudY;
+        drawScaledText(context, textRenderer, uptime, hudX, y);
+        y += lineHeight;
+        drawScaledText(context, textRenderer, coinsPerHour, hudX, y);
+        y += lineHeight;
+        drawScaledText(context, textRenderer, flawlessPerHour, hudX, y);
+    }
+
+    private static void renderBlockModePreview(DrawContext context, TextRenderer textRenderer) {
+        int lineHeight = (int)(10 * scale);
+        int y = hudY;
+
+        // Show a sample combined view
+        ItemStack diamondIcon = new ItemStack(Items.DIAMOND);
+        context.drawItem(diamondIcon, hudX, y - 4);
+
+        String title = "\u00A7fDiamond Profit";
+        drawScaledText(context, textRenderer, title, hudX + 18, y);
+        y += lineHeight + 4;
+
+        drawScaledText(context, textRenderer, "\u00A77Ench. Diamond: \u00A7f1,234", hudX, y);
+        y += lineHeight;
+        drawScaledText(context, textRenderer, "\u00A77Total: \u00A761,234,567", hudX, y);
+        y += lineHeight;
+        drawScaledText(context, textRenderer, "\u00A77Per Hour: \u00A76987,654", hudX, y);
+        y += lineHeight;
+        drawScaledText(context, textRenderer, "\u00A77Ench/hr: \u00A7a456", hudX, y);
+        y += lineHeight;
+        drawScaledText(context, textRenderer, "\u00A77Coll/hr: \u00A7b12,345", hudX, y);
+    }
+
+    private static void renderGemstoneMode(DrawContext context, TextRenderer textRenderer) {
+        String uptime = "\u00A76Uptime: \u00A7f" + GemstoneTracker.formatTime(GemstoneTracker.getSessionTime());
+        String coinsPerHour = "\u00A7e$/hr: \u00A7a" + GemstoneTracker.formatCoins(GemstoneTracker.getCoinsPerHour());
+        String flawlessPerHour = "\u00A7d fl/hr: \u00A7b" + String.format("%.1f", GemstoneTracker.getFlawlessPerHour());
+
+        String tierIndicator = " \u00A77(" + GemstoneTracker.getGemTierName() + ")";
         coinsPerHour += tierIndicator;
         flawlessPerHour += tierIndicator;
 
         if (GemstoneTracker.isIncludingRough()) {
-            coinsPerHour += " §7+r";
-            flawlessPerHour += " §7+r";
+            coinsPerHour += " \u00A77+r";
+            flawlessPerHour += " \u00A77+r";
         }
 
         if (BazaarPriceManager.isUsingNPCPrices()) {
-            coinsPerHour += " §7npc";
+            coinsPerHour += " \u00A77npc";
         }
 
         int lineHeight = (int)(10 * scale);
@@ -136,34 +186,35 @@ public class ProfitTrackerHUD {
             context.drawItem(itemIcon, x, y - 4);
 
             String materialName = BlockTracker.getMaterialDisplayName(material);
-            String title = "§f" + materialName + " Profit";
+            String npcTag = BazaarPriceManager.isUsingNPCPrices() ? " \u00A77(npc)" : "";
+            String title = "\u00A7f" + materialName + " Profit" + npcTag;
             drawScaledText(context, textRenderer, title, x + 18, y);
             y += lineHeight + 4;
 
             // Enchanted item count
             String enchName = "Ench. " + materialName;
-            String enchantedLine = "§7" + enchName + ": §f" +
+            String enchantedLine = "\u00A77" + enchName + ": \u00A7f" +
                     BlockTracker.formatWithCommas(BlockTracker.getTotalEnchantedItems(material));
             drawScaledText(context, textRenderer, enchantedLine, x, y);
             y += lineHeight;
 
             // Total value
-            String totalLine = "§7Total: §6" + BlockTracker.formatWithCommas((long) BlockTracker.getTotalValue(material));
+            String totalLine = "\u00A77Total: \u00A76" + BlockTracker.formatWithCommas((long) BlockTracker.getTotalValue(material));
             drawScaledText(context, textRenderer, totalLine, x, y);
             y += lineHeight;
 
             // Per hour
-            String perHourLine = "§7Per Hour: §6" + BlockTracker.formatWithCommas((long) BlockTracker.getCoinsPerHour(material));
+            String perHourLine = "\u00A77Per Hour: \u00A76" + BlockTracker.formatWithCommas((long) BlockTracker.getCoinsPerHour(material));
             drawScaledText(context, textRenderer, perHourLine, x, y);
             y += lineHeight;
 
             // Enchanted per hour
-            String enchPerHourLine = "§7Ench/hr: §a" + BlockTracker.formatWithCommas((long) BlockTracker.getEnchantedPerHour(material));
+            String enchPerHourLine = "\u00A77Ench/hr: \u00A7a" + BlockTracker.formatWithCommas((long) BlockTracker.getEnchantedPerHour(material));
             drawScaledText(context, textRenderer, enchPerHourLine, x, y);
             y += lineHeight;
 
             // Collection per hour
-            String collPerHourLine = "§7Coll/hr: §b" + BlockTracker.formatWithCommas((long) BlockTracker.getCollectionPerHour(material));
+            String collPerHourLine = "\u00A77Coll/hr: \u00A7b" + BlockTracker.formatWithCommas((long) BlockTracker.getCollectionPerHour(material));
             drawScaledText(context, textRenderer, collPerHourLine, x, y);
 
             xOffset += trackerWidth;
@@ -182,22 +233,23 @@ public class ProfitTrackerHUD {
             iconX += 18;
         }
 
-        String title = "§fCombined Profit";
+        String npcTag = BazaarPriceManager.isUsingNPCPrices() ? " \u00A77(npc)" : "";
+        String title = "\u00A7fCombined Profit" + npcTag;
         drawScaledText(context, textRenderer, title, iconX, y);
         y += lineHeight + 4;
 
         // Total value
-        String totalLine = "§7Total: §6" + BlockTracker.formatWithCommas((long) BlockTracker.getCombinedTotalValue());
+        String totalLine = "\u00A77Total: \u00A76" + BlockTracker.formatWithCommas((long) BlockTracker.getCombinedTotalValue());
         drawScaledText(context, textRenderer, totalLine, hudX, y);
         y += lineHeight;
 
         // Per hour
-        String perHourLine = "§7Per Hour: §6" + BlockTracker.formatWithCommas((long) BlockTracker.getCombinedCoinsPerHour());
+        String perHourLine = "\u00A77Per Hour: \u00A76" + BlockTracker.formatWithCommas((long) BlockTracker.getCombinedCoinsPerHour());
         drawScaledText(context, textRenderer, perHourLine, hudX, y);
         y += lineHeight;
 
         // Session time
-        String timeLine = "§7Uptime: §f" + BlockTracker.formatTime(BlockTracker.getCombinedSessionTime());
+        String timeLine = "\u00A77Uptime: \u00A7f" + BlockTracker.formatTime(BlockTracker.getCombinedSessionTime());
         drawScaledText(context, textRenderer, timeLine, hudX, y);
         y += lineHeight;
 
@@ -208,7 +260,7 @@ public class ProfitTrackerHUD {
             context.drawItem(itemIcon, hudX, y - 4);
 
             String materialName = BlockTracker.getMaterialDisplayName(material);
-            String materialLine = "§7" + materialName + ": §6" +
+            String materialLine = "\u00A77" + materialName + ": \u00A76" +
                     BlockTracker.formatWithCommas((long) BlockTracker.getTotalValue(material));
             drawScaledText(context, textRenderer, materialLine, hudX + 18, y);
             y += lineHeight;
@@ -227,6 +279,9 @@ public class ProfitTrackerHUD {
             case "GOLD":
                 item = Items.GOLD_INGOT;
                 break;
+            case "IRON":
+                item = Items.IRON_INGOT;
+                break;
             case "EMERALD":
                 item = Items.EMERALD;
                 break;
@@ -241,6 +296,30 @@ public class ProfitTrackerHUD {
                 break;
             case "RED_SAND":
                 item = Items.RED_SAND;
+                break;
+            case "LAPIS":
+                item = Items.LAPIS_LAZULI;
+                break;
+            case "REDSTONE":
+                item = Items.REDSTONE;
+                break;
+            case "GLOWSTONE":
+                item = Items.GLOWSTONE_DUST;
+                break;
+            case "HARDSTONE":
+                item = Items.STONE;
+                break;
+            case "MITHRIL":
+                item = Items.PRISMARINE_CRYSTALS;
+                break;
+            case "TITANIUM":
+                item = Items.IRON_INGOT;
+                break;
+            case "SULPHUR":
+                item = Items.GLOWSTONE_DUST;
+                break;
+            case "UMBER":
+                item = Items.BROWN_TERRACOTTA;
                 break;
             default:
                 item = Items.COAL;

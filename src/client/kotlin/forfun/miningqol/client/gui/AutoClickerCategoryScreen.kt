@@ -5,6 +5,7 @@ import forfun.miningqol.client.AutoClickerManager
 import forfun.miningqol.client.MiningqolClient
 import net.minecraft.client.MinecraftClient
 import net.minecraft.client.gui.screen.Screen
+import net.minecraft.client.input.KeyInput
 import xyz.meowing.knit.api.input.KnitKeys
 import xyz.meowing.vexel.core.VexelScreen
 import xyz.meowing.vexel.components.core.Rectangle
@@ -333,12 +334,12 @@ class AutoClickerCategoryScreen(private val parentScreen: Screen) : VexelScreen(
         MinecraftClient.getInstance().setScreen(parentScreen)
     }
 
-    override fun keyPressed(keyCode: Int, scanCode: Int, modifiers: Int): Boolean {
-        if (keyCode == KnitKeys.KEY_ESCAPE.code) {
+    override fun keyPressed(input: KeyInput?): Boolean {
+        if (input?.key() == KnitKeys.KEY_ESCAPE.code) {
             closeWithAnimation()
             return true  // Consume the event to prevent pause menu
         }
-        return super.keyPressed(keyCode, scanCode, modifiers)
+        return super.keyPressed(input)
     }
 
     override fun onKeyType(typedChar: Char, keyCode: Int, scanCode: Int) {

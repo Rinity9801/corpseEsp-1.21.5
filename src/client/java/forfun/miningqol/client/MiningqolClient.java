@@ -2,15 +2,14 @@ package forfun.miningqol.client;
 
 import forfun.miningqol.client.config.MiningConfig;
 import forfun.miningqol.client.gui.VexelMainScreen;
-import forfun.miningqol.client.gui.UpdateScreen;
 import forfun.miningqol.client.profit.BlockTracker;
 import forfun.miningqol.client.profit.GemstoneTracker;
 import forfun.miningqol.client.profit.ProfitTrackerHUD;
 import forfun.miningqol.client.profit.ProfitDebugger;
 import forfun.miningqol.client.sacks.CoalValueCommand;
-import forfun.miningqol.client.update.UpdateChecker;
+
+import forfun.miningqol.client.hotm.HotmManager;
 import forfun.miningqol.client.waypoints.OrderedWaypointManager;
-import forfun.miningqol.client.waypoints.OrderedWaypointRenderer;
 import com.mojang.brigadier.arguments.IntegerArgumentType;
 import com.mojang.brigadier.arguments.StringArgumentType;
 import net.fabricmc.api.ClientModInitializer;
@@ -19,13 +18,19 @@ import net.fabricmc.fabric.api.client.command.v2.ClientCommandRegistrationCallba
 import net.fabricmc.fabric.api.client.event.lifecycle.v1.ClientTickEvents;
 import net.fabricmc.fabric.api.client.keybinding.v1.KeyBindingHelper;
 import net.fabricmc.fabric.api.client.rendering.v1.HudRenderCallback;
-import net.fabricmc.fabric.api.client.rendering.v1.WorldRenderEvents;
 import net.fabricmc.fabric.api.client.message.v1.ClientReceiveMessageEvents;
 import net.fabricmc.fabric.api.client.message.v1.ClientSendMessageEvents;
 import net.minecraft.client.MinecraftClient;
 import net.minecraft.client.option.KeyBinding;
 import net.minecraft.client.util.InputUtil;
+import net.minecraft.entity.Entity;
+import net.minecraft.entity.decoration.ArmorStandEntity;
+import net.minecraft.item.ItemStack;
 import net.minecraft.text.Text;
+import net.minecraft.util.Identifier;
+import net.minecraft.util.math.Box;
+import net.minecraft.util.math.Vec3d;
+import net.fabricmc.fabric.api.client.command.v2.FabricClientCommandSource;
 import org.lwjgl.glfw.GLFW;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -39,7 +44,10 @@ public class MiningqolClient implements ClientModInitializer {
     private static final Pattern PRISTINE_PATTERN = Pattern.compile("PRISTINE! You found . Flawed (.+) Gemstone x(\\d+)!");
     private static MiningConfig config;
     private static KeyBinding toggleAutoClickerKey;
-    private static boolean updateScreenShown = false;
+    private static KeyBinding toggleShaftClickerKey;
+    private static KeyBinding commClaimKey;
+    private static KeyBinding abilitySwitchKey;
+
 
     @Override
     public void onInitializeClient() {
@@ -49,15 +57,37 @@ public class MiningqolClient implements ClientModInitializer {
         config.applyToGame();
 
         OrderedWaypointManager.init();
+        HotmManager.init();
 
-        // Check for updates
-        UpdateChecker.checkForUpdates();
+        // Create category once and reuse for all keybinds
+        KeyBinding.Category miningqolCategory = KeyBinding.Category.create(Identifier.of("miningqol", "category"));
 
         toggleAutoClickerKey = KeyBindingHelper.registerKeyBinding(new KeyBinding(
             "key.miningqol.toggle_coalclick",
             InputUtil.Type.KEYSYM,
             GLFW.GLFW_KEY_R,
-            "category.miningqol"
+            miningqolCategory
+        ));
+
+        toggleShaftClickerKey = KeyBindingHelper.registerKeyBinding(new KeyBinding(
+            "key.miningqol.toggle_shaftclick",
+            InputUtil.Type.KEYSYM,
+            GLFW.GLFW_KEY_V,
+            miningqolCategory
+        ));
+
+        commClaimKey = KeyBindingHelper.registerKeyBinding(new KeyBinding(
+            "key.miningqol.comm_claim",
+            InputUtil.Type.KEYSYM,
+            GLFW.GLFW_KEY_G,
+            miningqolCategory
+        ));
+
+        abilitySwitchKey = KeyBindingHelper.registerKeyBinding(new KeyBinding(
+            "key.miningqol.ability_switch",
+            InputUtil.Type.KEYSYM,
+            GLFW.GLFW_KEY_H,
+            miningqolCategory
         ));
 
         ClientCommandRegistrationCallback.EVENT.register((dispatcher, registryAccess) -> {
@@ -73,6 +103,26 @@ public class MiningqolClient implements ClientModInitializer {
                         client.setScreen(new VexelMainScreen());
                     });
                     return 1;
+                })
+                .then(ClientCommandManager.literal("hotm")
+                    .executes(context -> {
+                        forfun.miningqol.client.hotm.HotmChestScreen.open();
+                        return 1;
+                    })));
+            dispatcher.register(ClientCommandManager.literal("hotmconfig")
+                .executes(context -> {
+                    forfun.miningqol.client.hotm.HotmChestScreen.open();
+                    return 1;
+                }));
+            dispatcher.register(ClientCommandManager.literal("getstand")
+                .executes(context -> {
+                    getArmorStandData(context.getSource());
+                    return 1;
+                }));
+            dispatcher.register(ClientCommandManager.literal("testlittlefoot")
+                .executes(context -> {
+                    ShaftESP.spawnTestEntity();
+                    return 1;
                 }));
             dispatcher.register(ClientCommandManager.literal("profitreset")
                 .executes(context -> {
@@ -82,6 +132,18 @@ public class MiningqolClient implements ClientModInitializer {
             dispatcher.register(ClientCommandManager.literal("profitdebug")
                 .executes(context -> {
                     ProfitDebugger.showCalculationDetails();
+                    return 1;
+                }));
+            dispatcher.register(ClientCommandManager.literal("trackerdebug")
+                .executes(context -> {
+                    boolean newState = !BlockTracker.isDebugEnabled();
+                    BlockTracker.setDebugEnabled(newState);
+                    MinecraftClient client = MinecraftClient.getInstance();
+                    if (client.player != null) {
+                        client.player.sendMessage(Text.literal(
+                            newState ? "\u00A7aBlock tracker debug enabled" : "\u00A7cBlock tracker debug disabled"
+                        ), false);
+                    }
                     return 1;
                 }));
             dispatcher.register(ClientCommandManager.literal("coalvalue")
@@ -113,7 +175,7 @@ public class MiningqolClient implements ClientModInitializer {
                     sb.append("[minecraft:profile={");
 
                     // Add UUID as int array
-                    java.util.UUID uuid = profile.gameProfile().getId();
+                    java.util.UUID uuid = profile.getGameProfile().id();
                     if (uuid != null) {
                         long mostSig = uuid.getMostSignificantBits();
                         long leastSig = uuid.getLeastSignificantBits();
@@ -129,13 +191,13 @@ public class MiningqolClient implements ClientModInitializer {
                     }
 
                     // Add name
-                    String name = profile.gameProfile().getName();
+                    String name = profile.getGameProfile().name();
                     if (name == null) name = "";
                     sb.append(",name:\"").append(name).append("\"");
 
                     // Add properties
                     sb.append(",properties:[");
-                    com.mojang.authlib.properties.PropertyMap properties = profile.gameProfile().getProperties();
+                    com.mojang.authlib.properties.PropertyMap properties = profile.getGameProfile().properties();
                     if (!properties.isEmpty()) {
                         boolean first = true;
                         for (com.mojang.authlib.properties.Property prop : properties.values()) {
@@ -231,6 +293,13 @@ public class MiningqolClient implements ClientModInitializer {
                             OrderedWaypointManager.remove(num);
                             return 1;
                         })))
+                .then(ClientCommandManager.literal("move")
+                    .then(ClientCommandManager.argument("number", IntegerArgumentType.integer(1))
+                        .executes(context -> {
+                            int num = IntegerArgumentType.getInteger(context, "number");
+                            OrderedWaypointManager.move(num);
+                            return 1;
+                        })))
                 .then(ClientCommandManager.literal("skip")
                     .executes(context -> {
                         OrderedWaypointManager.skip(1);
@@ -272,11 +341,6 @@ public class MiningqolClient implements ClientModInitializer {
                         OrderedWaypointManager.unload();
                         return 1;
                     }))
-                .then(ClientCommandManager.literal("export")
-                    .executes(context -> {
-                        OrderedWaypointManager.exportToClipboard();
-                        return 1;
-                    }))
                 .then(ClientCommandManager.literal("delete")
                     .then(ClientCommandManager.argument("name", StringArgumentType.word())
                         .executes(context -> {
@@ -298,6 +362,11 @@ public class MiningqolClient implements ClientModInitializer {
                     .executes(context -> {
                         OrderedWaypointManager.toggle();
                         return 1;
+                    }))
+                .then(ClientCommandManager.literal("export")
+                    .executes(context -> {
+                        OrderedWaypointManager.export();
+                        return 1;
                     })));
             });
 
@@ -307,8 +376,25 @@ public class MiningqolClient implements ClientModInitializer {
                 AutoClickerManager.toggle();
             }
 
+            while (toggleShaftClickerKey.wasPressed()) {
+                ShaftClickerManager.toggle();
+            }
+
+            while (commClaimKey.wasPressed()) {
+                if (CommClaimManager.isRunning()) {
+                    CommClaimManager.stop();
+                } else {
+                    CommClaimManager.start();
+                }
+            }
+
+            while (abilitySwitchKey.wasPressed()) {
+                AbilitySwitchManager.toggle();
+            }
+
             if (client.world != null && client.player != null) {
                 CorpseESP.tick();
+                ShaftESP.tick();
                 GemstoneTracker.tick();
                 BlockTracker.tick();
                 EfficientMinerOverlay.tick();
@@ -317,28 +403,21 @@ public class MiningqolClient implements ClientModInitializer {
                 CommandKeybindManager.tick(client);
                 LobbyFinder.tick();
                 OrderedWaypointManager.tick();
+                CommClaimManager.tick();
+                AbilitySwitchManager.tick();
+                ShaftClickerManager.tick();
+                forfun.miningqol.client.hotm.AutoHotmManager.tick();
 
-                // Show update screen once when update is available (unless dismissed)
-                if (!updateScreenShown && UpdateChecker.isCheckComplete() && UpdateChecker.isUpdateAvailable()) {
-                    String latestVersion = UpdateChecker.getLatestVersion();
-                    if (latestVersion != null && !latestVersion.equals(config.dismissedUpdateVersion)) {
-                        updateScreenShown = true;
-                        client.send(() -> client.setScreen(new UpdateScreen()));
-                    }
-                }
             }
         });
 
         net.fabricmc.fabric.api.client.event.lifecycle.v1.ClientTickEvents.START_WORLD_TICK.register(world -> {
             LobbyFinder.onWorldChange();
+            BlockTracker.onWorldChange();
+            OrderedWaypointManager.onWorldChange();
         });
 
-        WorldRenderEvents.LAST.register(context -> {
-            CorpseESP.render(context.matrixStack(), context.camera());
-            BlockOutlineRenderer.render(context.matrixStack(), context.camera());
-            EfficientMinerOverlay.render(context.matrixStack(), context.camera());
-            OrderedWaypointRenderer.render(context.matrixStack(), context.camera());
-        });
+        // WorldRenderEvents.LAST removed in 1.21.10 - now handled by WorldRendererMixin
 
         ClientReceiveMessageEvents.GAME.register((message, overlay) -> {
             if (overlay) return;
@@ -354,6 +433,17 @@ public class MiningqolClient implements ClientModInitializer {
                 String gemType = pristineMatcher.group(1);
                 int amount = Integer.parseInt(pristineMatcher.group(2));
                 GemstoneTracker.onPristineGem(gemType, amount);
+            }
+
+            // Forward chat to AutoHotm for "already purchased" detection
+            forfun.miningqol.client.hotm.AutoHotmManager.onChatMessage(messageText);
+
+            // Auto-trigger commission claim on completion message
+            if (CommClaimManager.isAutoTrigger() && !CommClaimManager.isRunning()) {
+                if (messageText.contains("Commission Complete! Visit the King to claim your rewards!")) {
+                    LOGGER.info("[MiningqolClient] Commission complete message detected, auto-starting CommClaim");
+                    CommClaimManager.start();
+                }
             }
 
             // Block tracker for sack messages
@@ -391,7 +481,9 @@ public class MiningqolClient implements ClientModInitializer {
 
         net.fabricmc.fabric.api.client.event.lifecycle.v1.ClientLifecycleEvents.CLIENT_STOPPING.register(client -> {
             CorpseESP.onWorldUnload();
+            ShaftESP.onWorldUnload();
             AutoClickerManager.cleanup();
+            ShaftClickerManager.cleanup();
 
             config.loadFromGame();
             config.save();
@@ -402,5 +494,61 @@ public class MiningqolClient implements ClientModInitializer {
 
     public static MiningConfig getConfig() {
         return config;
+    }
+
+    private static void getArmorStandData(FabricClientCommandSource source) {
+        MinecraftClient client = MinecraftClient.getInstance();
+        if (client.player == null || client.world == null) return;
+
+        Vec3d eyePos = client.player.getCameraPosVec(1.0f);
+        Vec3d lookVec = client.player.getRotationVec(1.0f);
+        Vec3d endPos = eyePos.add(lookVec.multiply(100.0)); // No range limit
+
+        ArmorStandEntity closestStand = null;
+        double closestDistance = Double.MAX_VALUE;
+
+        for (Entity entity : client.world.getEntities()) {
+            if (entity instanceof ArmorStandEntity stand) {
+                Box box = stand.getBoundingBox().expand(0.5);
+                java.util.Optional<Vec3d> hit = box.raycast(eyePos, endPos);
+                if (hit.isPresent()) {
+                    double dist = eyePos.distanceTo(hit.get());
+                    if (dist < closestDistance) {
+                        closestDistance = dist;
+                        closestStand = stand;
+                    }
+                }
+            }
+        }
+
+        if (closestStand == null) {
+            source.sendFeedback(Text.literal("\u00A7cNo armor stand found in view"));
+            return;
+        }
+
+        source.sendFeedback(Text.literal("\u00A7a=== Armor Stand Data ==="));
+        source.sendFeedback(Text.literal("\u00A7ePosition: \u00A7f" + String.format("[%.2f, %.2f, %.2f]",
+            closestStand.getX(), closestStand.getY(), closestStand.getZ())));
+        source.sendFeedback(Text.literal("\u00A7eCustom Name: \u00A7f" +
+            (closestStand.hasCustomName() ? closestStand.getCustomName().getString() : "None")));
+        source.sendFeedback(Text.literal("\u00A7eInvisible: \u00A7f" + closestStand.isInvisible()));
+        source.sendFeedback(Text.literal("\u00A7eSmall: \u00A7f" + closestStand.isSmall()));
+        source.sendFeedback(Text.literal("\u00A7eMarker: \u00A7f" + closestStand.isMarker()));
+        source.sendFeedback(Text.literal("\u00A7eNo Gravity: \u00A7f" + closestStand.hasNoGravity()));
+
+        source.sendFeedback(Text.literal("\u00A7e--- Equipment ---"));
+        ItemStack head = closestStand.getEquippedStack(net.minecraft.entity.EquipmentSlot.HEAD);
+        ItemStack chest = closestStand.getEquippedStack(net.minecraft.entity.EquipmentSlot.CHEST);
+        ItemStack legs = closestStand.getEquippedStack(net.minecraft.entity.EquipmentSlot.LEGS);
+        ItemStack feet = closestStand.getEquippedStack(net.minecraft.entity.EquipmentSlot.FEET);
+        ItemStack mainHand = closestStand.getEquippedStack(net.minecraft.entity.EquipmentSlot.MAINHAND);
+        ItemStack offHand = closestStand.getEquippedStack(net.minecraft.entity.EquipmentSlot.OFFHAND);
+
+        if (!head.isEmpty()) source.sendFeedback(Text.literal("\u00A77Head: \u00A7f" + head.getName().getString()));
+        if (!chest.isEmpty()) source.sendFeedback(Text.literal("\u00A77Chest: \u00A7f" + chest.getName().getString()));
+        if (!legs.isEmpty()) source.sendFeedback(Text.literal("\u00A77Legs: \u00A7f" + legs.getName().getString()));
+        if (!feet.isEmpty()) source.sendFeedback(Text.literal("\u00A77Feet: \u00A7f" + feet.getName().getString()));
+        if (!mainHand.isEmpty()) source.sendFeedback(Text.literal("\u00A77Main Hand: \u00A7f" + mainHand.getName().getString()));
+        if (!offHand.isEmpty()) source.sendFeedback(Text.literal("\u00A77Off Hand: \u00A7f" + offHand.getName().getString()));
     }
 }

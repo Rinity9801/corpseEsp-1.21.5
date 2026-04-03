@@ -5,7 +5,6 @@ import net.minecraft.block.BlockState;
 import net.minecraft.client.MinecraftClient;
 import net.minecraft.client.font.TextRenderer;
 import net.minecraft.client.render.*;
-import net.minecraft.client.render.debug.DebugRenderer;
 import net.minecraft.client.util.math.MatrixStack;
 import net.minecraft.registry.Registries;
 import net.minecraft.util.Identifier;
@@ -267,21 +266,26 @@ public class OrderedWaypointRenderer {
         camera.getRotation().transform(forward);
         Vec3d cursorPoint = cameraPos.add(forward.x, forward.y, forward.z);
 
-        // Calculate normal from cursor to target
-        Vector3f normal = targetPos.toVector3f()
-            .sub((float) cursorPoint.x, (float) cursorPoint.y, (float) cursorPoint.z)
-            .normalize();
+        // Calculate positions relative to camera (same as waypoint boxes)
+        float startX = (float) (cursorPoint.x - cameraPos.x);
+        float startY = (float) (cursorPoint.y - cameraPos.y);
+        float startZ = (float) (cursorPoint.z - cameraPos.z);
+        float endX = (float) (targetPos.x - cameraPos.x);
+        float endY = (float) (targetPos.y - cameraPos.y);
+        float endZ = (float) (targetPos.z - cameraPos.z);
 
-        // Position matrix translated by negative camera position
-        Matrix4f positionMatrix = new Matrix4f()
-            .translate((float) -cameraPos.x, (float) -cameraPos.y, (float) -cameraPos.z);
+        // Calculate normal from cursor to target
+        Vector3f normal = new Vector3f(endX - startX, endY - startY, endZ - startZ).normalize();
+
+        // Use the matrices from the render context (same as waypoint boxes)
+        Matrix4f posMatrix = matrices.peek().getPositionMatrix();
 
         // Draw line from cursor point to target
-        buffer.vertex(positionMatrix, (float) cursorPoint.x, (float) cursorPoint.y, (float) cursorPoint.z)
+        buffer.vertex(posMatrix, startX, startY, startZ)
               .color(color[0], color[1], color[2], alpha)
               .normal(normal.x(), normal.y(), normal.z());
 
-        buffer.vertex(positionMatrix, (float) targetPos.x, (float) targetPos.y, (float) targetPos.z)
+        buffer.vertex(posMatrix, endX, endY, endZ)
               .color(color[0], color[1], color[2], alpha)
               .normal(normal.x(), normal.y(), normal.z());
 
@@ -293,20 +297,25 @@ public class OrderedWaypointRenderer {
         VertexConsumerProvider.Immediate immediate = client.getBufferBuilders().getEntityVertexConsumers();
         VertexConsumer buffer = immediate.getBuffer(RenderLayer.getLines());
 
+        // Calculate positions relative to camera (same as waypoint boxes)
+        float startX = (float) (from.x - cameraPos.x);
+        float startY = (float) (from.y - cameraPos.y);
+        float startZ = (float) (from.z - cameraPos.z);
+        float endX = (float) (to.x - cameraPos.x);
+        float endY = (float) (to.y - cameraPos.y);
+        float endZ = (float) (to.z - cameraPos.z);
+
         // Calculate normal from start to end
-        Vector3f normal = to.toVector3f()
-            .sub((float) from.x, (float) from.y, (float) from.z)
-            .normalize();
+        Vector3f normal = new Vector3f(endX - startX, endY - startY, endZ - startZ).normalize();
 
-        // Position matrix translated by negative camera position
-        Matrix4f positionMatrix = new Matrix4f()
-            .translate((float) -cameraPos.x, (float) -cameraPos.y, (float) -cameraPos.z);
+        // Use the matrices from the render context (same as waypoint boxes)
+        Matrix4f posMatrix = matrices.peek().getPositionMatrix();
 
-        buffer.vertex(positionMatrix, (float) from.x, (float) from.y, (float) from.z)
+        buffer.vertex(posMatrix, startX, startY, startZ)
               .color(color[0], color[1], color[2], alpha)
               .normal(normal.x(), normal.y(), normal.z());
 
-        buffer.vertex(positionMatrix, (float) to.x, (float) to.y, (float) to.z)
+        buffer.vertex(posMatrix, endX, endY, endZ)
               .color(color[0], color[1], color[2], alpha)
               .normal(normal.x(), normal.y(), normal.z());
 
@@ -318,7 +327,7 @@ public class OrderedWaypointRenderer {
         MinecraftClient client = MinecraftClient.getInstance();
         if (client.player == null) return;
 
-        Vec3d playerPos = client.player.getPos();
+        Vec3d playerPos = client.player.getEyePos();
         float setupRange = OrderedWaypointManager.getSetupModeRange();
         float[] setupColor = OrderedWaypointManager.getSetupModeColor();
         float setupAlpha = OrderedWaypointManager.getSetupModeAlpha();
@@ -389,16 +398,14 @@ public class OrderedWaypointRenderer {
 
         Vec3d cameraPos = camera.getPos();
         VertexConsumerProvider.Immediate immediate = client.getBufferBuilders().getEntityVertexConsumers();
+        VertexConsumer buffer = immediate.getBuffer(RenderLayer.getLines());
         Matrix4f posMatrix = matrices.peek().getPositionMatrix();
 
         float r = color[0];
         float g = color[1];
         float b = color[2];
 
-        VertexConsumer buffer = immediate.getBuffer(RenderLayer.getLines());
-
         // Draw connected outlines - only draw external edges
-        // An edge is internal if the adjacent block in that direction also has the same face exposed
         for (BlockPos pos : matchingBlocks) {
             float minX = (float) (pos.getX() - cameraPos.x);
             float minY = (float) (pos.getY() - cameraPos.y);
@@ -415,8 +422,7 @@ public class OrderedWaypointRenderer {
             boolean westExposed = !matchingBlocks.contains(pos.west());
             boolean eastExposed = !matchingBlocks.contains(pos.east());
 
-            // Helper: check if neighbor also has the same face exposed
-            // If so, the edge between them is internal and should not be drawn
+            // Helper positions
             BlockPos northPos = pos.north();
             BlockPos southPos = pos.south();
             BlockPos westPos = pos.west();
@@ -452,28 +458,26 @@ public class OrderedWaypointRenderer {
             boolean eastHasNorthExposed = matchingBlocks.contains(eastPos) && !matchingBlocks.contains(eastPos.north());
             boolean eastHasSouthExposed = matchingBlocks.contains(eastPos) && !matchingBlocks.contains(eastPos.south());
 
-            // Bottom face edges - only draw if neighbor doesn't share the same exposed bottom face
+            // Bottom face edges
             if (downExposed) {
-                if (!northHasDownExposed) drawEdge(buffer, posMatrix, minX, minY, minZ, maxX, minY, minZ, r, g, b, alpha); // north edge
-                if (!southHasDownExposed) drawEdge(buffer, posMatrix, minX, minY, maxZ, maxX, minY, maxZ, r, g, b, alpha); // south edge
-                if (!westHasDownExposed) drawEdge(buffer, posMatrix, minX, minY, minZ, minX, minY, maxZ, r, g, b, alpha); // west edge
-                if (!eastHasDownExposed) drawEdge(buffer, posMatrix, maxX, minY, minZ, maxX, minY, maxZ, r, g, b, alpha); // east edge
+                if (!northHasDownExposed) drawEdge(buffer, posMatrix, minX, minY, minZ, maxX, minY, minZ, r, g, b, alpha);
+                if (!southHasDownExposed) drawEdge(buffer, posMatrix, minX, minY, maxZ, maxX, minY, maxZ, r, g, b, alpha);
+                if (!westHasDownExposed) drawEdge(buffer, posMatrix, minX, minY, minZ, minX, minY, maxZ, r, g, b, alpha);
+                if (!eastHasDownExposed) drawEdge(buffer, posMatrix, maxX, minY, minZ, maxX, minY, maxZ, r, g, b, alpha);
             }
 
-            // Top face edges - only draw if neighbor doesn't share the same exposed top face
+            // Top face edges
             if (upExposed) {
-                if (!northHasUpExposed) drawEdge(buffer, posMatrix, minX, maxY, minZ, maxX, maxY, minZ, r, g, b, alpha); // north edge
-                if (!southHasUpExposed) drawEdge(buffer, posMatrix, minX, maxY, maxZ, maxX, maxY, maxZ, r, g, b, alpha); // south edge
-                if (!westHasUpExposed) drawEdge(buffer, posMatrix, minX, maxY, minZ, minX, maxY, maxZ, r, g, b, alpha); // west edge
-                if (!eastHasUpExposed) drawEdge(buffer, posMatrix, maxX, maxY, minZ, maxX, maxY, maxZ, r, g, b, alpha); // east edge
+                if (!northHasUpExposed) drawEdge(buffer, posMatrix, minX, maxY, minZ, maxX, maxY, minZ, r, g, b, alpha);
+                if (!southHasUpExposed) drawEdge(buffer, posMatrix, minX, maxY, maxZ, maxX, maxY, maxZ, r, g, b, alpha);
+                if (!westHasUpExposed) drawEdge(buffer, posMatrix, minX, maxY, minZ, minX, maxY, maxZ, r, g, b, alpha);
+                if (!eastHasUpExposed) drawEdge(buffer, posMatrix, maxX, maxY, minZ, maxX, maxY, maxZ, r, g, b, alpha);
             }
 
             // North face edges
             if (northExposed) {
-                // Horizontal edges - avoid duplicates with top/bottom faces
                 if (!downExposed && !downHasNorthExposed) drawEdge(buffer, posMatrix, minX, minY, minZ, maxX, minY, minZ, r, g, b, alpha);
                 if (!upExposed && !upHasNorthExposed) drawEdge(buffer, posMatrix, minX, maxY, minZ, maxX, maxY, minZ, r, g, b, alpha);
-                // Vertical edges - only draw if neighbor doesn't share the same exposed north face
                 if (!westHasNorthExposed) drawEdge(buffer, posMatrix, minX, minY, minZ, minX, maxY, minZ, r, g, b, alpha);
                 if (!eastHasNorthExposed) drawEdge(buffer, posMatrix, maxX, minY, minZ, maxX, maxY, minZ, r, g, b, alpha);
             }
@@ -510,7 +514,6 @@ public class OrderedWaypointRenderer {
     private static void drawEdge(VertexConsumer buffer, Matrix4f posMatrix,
                                  float x1, float y1, float z1, float x2, float y2, float z2,
                                  float r, float g, float b, float alpha) {
-        // Calculate normal
         float nx = x2 - x1;
         float ny = y2 - y1;
         float nz = z2 - z1;

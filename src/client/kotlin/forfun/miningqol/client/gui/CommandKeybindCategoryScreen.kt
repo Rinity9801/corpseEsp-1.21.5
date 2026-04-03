@@ -5,6 +5,7 @@ import forfun.miningqol.client.MiningqolClient
 import net.minecraft.client.MinecraftClient
 import net.minecraft.client.gui.screen.Screen
 import net.minecraft.client.util.InputUtil
+import net.minecraft.client.input.KeyInput
 import xyz.meowing.knit.api.input.KnitKeys
 import xyz.meowing.vexel.core.VexelScreen
 import xyz.meowing.vexel.components.core.Rectangle
@@ -384,10 +385,11 @@ class CommandKeybindCategoryScreen(private val parentScreen: Screen) : VexelScre
         MinecraftClient.getInstance().setScreen(parentScreen)
     }
 
-    override fun keyPressed(keyCode: Int, scanCode: Int, modifiers: Int): Boolean {
+    override fun keyPressed(input: KeyInput?): Boolean {
         // If we're capturing a key for a keybind
         val entry = capturingEntry
         if (entry != null) {
+            val keyCode = input?.key() ?: return super.keyPressed(input)
             if (keyCode == GLFW.GLFW_KEY_ESCAPE) {
                 // Cancel capturing on ESC
                 entry.keyText?.text = getKeyDisplayName(entry.keyCode)
@@ -406,11 +408,11 @@ class CommandKeybindCategoryScreen(private val parentScreen: Screen) : VexelScre
             return true
         }
 
-        if (keyCode == KnitKeys.KEY_ESCAPE.code) {
+        if (input?.key() == KnitKeys.KEY_ESCAPE.code) {
             closeWithAnimation()
             return true
         }
-        return super.keyPressed(keyCode, scanCode, modifiers)
+        return super.keyPressed(input)
     }
 
     override fun onKeyType(typedChar: Char, keyCode: Int, scanCode: Int) {
@@ -426,8 +428,6 @@ class CommandKeybindCategoryScreen(private val parentScreen: Screen) : VexelScre
 
     private fun getKeyDisplayName(keyCode: Int): String {
         if (keyCode == -1) return "Click to bind"
-        if (keyCode == CommandKeybindManager.SCROLL_UP) return "Scroll Up"
-        if (keyCode == CommandKeybindManager.SCROLL_DOWN) return "Scroll Down"
         if (keyCode > GLFW.GLFW_KEY_LAST) {
             val mouseButton = keyCode - GLFW.GLFW_KEY_LAST - 1
             return when (mouseButton) {
@@ -443,21 +443,6 @@ class CommandKeybindCategoryScreen(private val parentScreen: Screen) : VexelScre
         } catch (e: Exception) {
             "Key $keyCode"
         }
-    }
-
-    override fun mouseScrolled(mouseX: Double, mouseY: Double, horizontalAmount: Double, verticalAmount: Double): Boolean {
-        val entry = capturingEntry
-        if (entry != null) {
-            val scrollCode = if (verticalAmount > 0) CommandKeybindManager.SCROLL_UP else CommandKeybindManager.SCROLL_DOWN
-            entry.keyCode = scrollCode
-            entry.keyText?.text = getKeyDisplayName(scrollCode)
-            entry.keyBox?.backgroundColor = 0xFF252525.toInt()
-            entry.keyBox?.borderColor = 0xFF404040.toInt()
-            capturingEntry = null
-            saveKeybinds()
-            return true
-        }
-        return super.mouseScrolled(mouseX, mouseY, horizontalAmount, verticalAmount)
     }
 
     override fun shouldCloseOnEsc(): Boolean = false

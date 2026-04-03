@@ -5,9 +5,12 @@ import com.google.gson.GsonBuilder;
 import forfun.miningqol.client.AutoClickerHUD;
 import forfun.miningqol.client.AutoClickerManager;
 import forfun.miningqol.client.BlockOutlineRenderer;
+import forfun.miningqol.client.CommClaimManager;
 import forfun.miningqol.client.CorpseESP;
 import forfun.miningqol.client.EfficientMinerOverlay;
 import forfun.miningqol.client.GlassSync;
+import forfun.miningqol.client.ShaftClickerManager;
+import forfun.miningqol.client.ShaftESP;
 import forfun.miningqol.client.NameHider;
 import forfun.miningqol.client.PickaxeCooldownHUD;
 import forfun.miningqol.client.profit.BazaarPriceManager;
@@ -83,6 +86,13 @@ public class MiningConfig {
 
     public Map<String, String> commandKeybinds = new HashMap<>();
 
+    // Shaft ESP
+    public boolean shaftESPEnabled = true;
+
+    // Shaft Clicker
+    public boolean shaftClickerEnabled = false;
+    public int shaftClickerMiningSlot = 0;
+
     public boolean autoSkipShoLoad = false;
 
     public boolean glassSyncEnabled = false;
@@ -91,6 +101,7 @@ public class MiningConfig {
 
     // Ordered Waypoints
     public boolean orderedWaypointsEnabled = true;
+    public float orderedWaypointRange = 4.5f;
     public float[] orderedWaypointCurrentColor = {85f/255f, 1f, 85f/255f};
     public float[] orderedWaypointNextColor = {1f, 1f, 85f/255f};
     public float[] orderedWaypointPreviousColor = {85f/255f, 85f/255f, 1f};
@@ -103,7 +114,6 @@ public class MiningConfig {
     public float orderedWaypointTraceLineAlpha = 1f;
     public boolean orderedWaypointShowDistance = true;
     public boolean orderedWaypointShowName = true;
-    public float orderedWaypointRange = 4.5f;
     public boolean orderedWaypointLobbyCheckEnabled = false;
     public String orderedWaypointLobbyCheckBlock = "minecraft:coal_ore";
     public int orderedWaypointLobbyCheckInterval = 10;
@@ -113,9 +123,6 @@ public class MiningConfig {
     public float[] orderedWaypointBlockOutlineColor = {1f, 1f, 1f};
     public float orderedWaypointBlockOutlineAlpha = 0.8f;
 
-    // Update checker - remember dismissed version
-    public String dismissedUpdateVersion = "";
-
     // Coal value calculator settings
     public String coalValueSellMethod = "SELLOFFER"; // INSTASELL or SELLOFFER
     public String coalValueSulphurBuy = "BUY_ORDER"; // BUY_ORDER or INSTA_BUY
@@ -123,6 +130,15 @@ public class MiningConfig {
     public String coalValueFuelBuy = "BUY_ORDER";
     public String coalValueHeavyBuy = "BUY_ORDER";
     public boolean coalValueShowSettings = true; // Show settings first time, then go to results
+
+    // Comm Claim settings
+    public int commClaimBatPersonSlot = 1; // 1-9, wardrobe slot
+    public int commClaimDivanSlot = 2; // 1-9, wardrobe slot
+    public int commClaimRefinedToolSlot = 0; // 0-8, hotbar slot
+    public int commClaimTickDelay = 2; // 1-10 ticks
+    public int commClaimGuiWaitDelay = 3; // 1-10 ticks
+    public boolean commClaimAutoTrigger = false; // Auto-trigger on commission complete message
+    public boolean commClaimWardrobeSwap = true; // Enable wardrobe armor swapping
 
     public static MiningConfig load() {
         if (!CONFIG_FILE.exists()) {
@@ -134,12 +150,75 @@ public class MiningConfig {
 
         try (FileReader reader = new FileReader(CONFIG_FILE)) {
             MiningConfig config = GSON.fromJson(reader, MiningConfig.class);
+            if (config == null) {
+                LOGGER.warn("[MiningConfig] Config deserialized as null, using defaults");
+                config = new MiningConfig();
+            }
+            config.ensureDefaults();
             LOGGER.info("[MiningConfig] Config loaded successfully");
             return config;
         } catch (Exception e) {
-            LOGGER.error("[MiningConfig] Failed to load config: " + e.getMessage());
-            return new MiningConfig();
+            LOGGER.error("[MiningConfig] Failed to load config, attempting recovery: " + e.getMessage());
+            // Try to recover by loading into a JsonObject and applying manually
+            try {
+                return recoverConfig();
+            } catch (Exception e2) {
+                LOGGER.error("[MiningConfig] Recovery failed, using defaults: " + e2.getMessage());
+                return new MiningConfig();
+            }
         }
+    }
+
+    /**
+     * Ensures all collection fields are non-null after Gson deserialization.
+     * Gson can set fields to null if the JSON value is null or on type mismatch.
+     */
+    private void ensureDefaults() {
+        if (commandKeybinds == null) commandKeybinds = new HashMap<>();
+        if (lobbyFinderBlocks == null) lobbyFinderBlocks = new java.util.ArrayList<>();
+        if (orderedWaypointCurrentColor == null) orderedWaypointCurrentColor = new float[]{85f/255f, 1f, 85f/255f};
+        if (orderedWaypointNextColor == null) orderedWaypointNextColor = new float[]{1f, 1f, 85f/255f};
+        if (orderedWaypointPreviousColor == null) orderedWaypointPreviousColor = new float[]{85f/255f, 85f/255f, 1f};
+        if (orderedWaypointTraceLineColor == null) orderedWaypointTraceLineColor = new float[]{85f/255f, 1f, 85f/255f};
+        if (orderedWaypointBlockOutlineColor == null) orderedWaypointBlockOutlineColor = new float[]{1f, 1f, 1f};
+        if (profitTrackerMode == null) profitTrackerMode = "GEMSTONES";
+        if (blockTrackerDisplayMode == null) blockTrackerDisplayMode = "SEPARATE";
+        if (blockOutlineMode == null) blockOutlineMode = "BOTH";
+        if (replacementName == null) replacementName = "Player";
+        if (coalValueSellMethod == null) coalValueSellMethod = "SELLOFFER";
+        if (coalValueSulphurBuy == null) coalValueSulphurBuy = "BUY_ORDER";
+        if (coalValueCrudeBuy == null) coalValueCrudeBuy = "BUY_ORDER";
+        if (coalValueFuelBuy == null) coalValueFuelBuy = "BUY_ORDER";
+        if (coalValueHeavyBuy == null) coalValueHeavyBuy = "BUY_ORDER";
+    }
+
+    /**
+     * Attempts to recover config by parsing JSON field-by-field,
+     * so one bad field doesn't nuke the entire config.
+     */
+    private static MiningConfig recoverConfig() throws Exception {
+        MiningConfig config = new MiningConfig();
+        try (FileReader reader = new FileReader(CONFIG_FILE)) {
+            com.google.gson.JsonObject json = com.google.gson.JsonParser.parseReader(reader).getAsJsonObject();
+
+            for (java.lang.reflect.Field field : MiningConfig.class.getDeclaredFields()) {
+                if (java.lang.reflect.Modifier.isStatic(field.getModifiers())) continue;
+                if (!json.has(field.getName())) continue;
+
+                try {
+                    Object value = GSON.fromJson(json.get(field.getName()), field.getGenericType());
+                    if (value != null) {
+                        field.setAccessible(true);
+                        field.set(config, value);
+                    }
+                } catch (Exception e) {
+                    LOGGER.warn("[MiningConfig] Could not recover field '{}': {}", field.getName(), e.getMessage());
+                }
+            }
+        }
+        config.ensureDefaults();
+        LOGGER.info("[MiningConfig] Config recovered successfully");
+        return config;
     }
 
     public void save() {
@@ -235,10 +314,16 @@ public class MiningConfig {
         }
         forfun.miningqol.client.LobbyFinder.setTrackedBlocks(blocks);
 
+        ShaftESP.setEnabled(shaftESPEnabled);
+
+        ShaftClickerManager.setEnabled(shaftClickerEnabled);
+        ShaftClickerManager.setMiningSlot(shaftClickerMiningSlot);
+
         GlassSync.setEnabled(glassSyncEnabled);
 
         // Ordered Waypoints
         OrderedWaypointManager.setEnabled(orderedWaypointsEnabled);
+        OrderedWaypointManager.setWaypointRange(orderedWaypointRange);
         OrderedWaypointManager.setCurrentWaypointColor(orderedWaypointCurrentColor[0], orderedWaypointCurrentColor[1], orderedWaypointCurrentColor[2]);
         OrderedWaypointManager.setNextWaypointColor(orderedWaypointNextColor[0], orderedWaypointNextColor[1], orderedWaypointNextColor[2]);
         OrderedWaypointManager.setPreviousWaypointColor(orderedWaypointPreviousColor[0], orderedWaypointPreviousColor[1], orderedWaypointPreviousColor[2]);
@@ -251,7 +336,6 @@ public class MiningConfig {
         OrderedWaypointManager.setTraceLineAlpha(orderedWaypointTraceLineAlpha);
         OrderedWaypointManager.setShowDistance(orderedWaypointShowDistance);
         OrderedWaypointManager.setShowName(orderedWaypointShowName);
-        OrderedWaypointManager.setWaypointRange(orderedWaypointRange);
         OrderedWaypointManager.setLobbyCheckEnabled(orderedWaypointLobbyCheckEnabled);
         OrderedWaypointManager.setLobbyCheckBlock(orderedWaypointLobbyCheckBlock);
         OrderedWaypointManager.setLobbyCheckInterval(orderedWaypointLobbyCheckInterval);
@@ -260,6 +344,15 @@ public class MiningConfig {
         OrderedWaypointManager.setBlockOutlineRadius(orderedWaypointBlockOutlineRadius);
         OrderedWaypointManager.setBlockOutlineColor(orderedWaypointBlockOutlineColor[0], orderedWaypointBlockOutlineColor[1], orderedWaypointBlockOutlineColor[2]);
         OrderedWaypointManager.setBlockOutlineAlpha(orderedWaypointBlockOutlineAlpha);
+
+        // Comm Claim
+        CommClaimManager.setBatPersonSlot(commClaimBatPersonSlot);
+        CommClaimManager.setDivanSlot(commClaimDivanSlot);
+        CommClaimManager.setRefinedToolSlot(commClaimRefinedToolSlot);
+        CommClaimManager.setTickDelay(commClaimTickDelay);
+        CommClaimManager.setGuiWaitDelay(commClaimGuiWaitDelay);
+        CommClaimManager.setAutoTrigger(commClaimAutoTrigger);
+        CommClaimManager.setWardrobeSwap(commClaimWardrobeSwap);
     }
 
     public void loadFromGame() {
@@ -324,10 +417,16 @@ public class MiningConfig {
             lobbyFinderBlocks.add(pos.getX() + "," + pos.getY() + "," + pos.getZ());
         }
 
+        shaftESPEnabled = ShaftESP.isEnabled();
+
+        shaftClickerEnabled = ShaftClickerManager.isEnabled();
+        shaftClickerMiningSlot = ShaftClickerManager.getMiningSlot();
+
         glassSyncEnabled = GlassSync.isEnabled();
 
         // Ordered Waypoints
         orderedWaypointsEnabled = OrderedWaypointManager.isEnabledRaw();
+        orderedWaypointRange = OrderedWaypointManager.getWaypointRange();
         orderedWaypointCurrentColor = OrderedWaypointManager.getCurrentWaypointColor();
         orderedWaypointNextColor = OrderedWaypointManager.getNextWaypointColor();
         orderedWaypointPreviousColor = OrderedWaypointManager.getPreviousWaypointColor();
@@ -340,7 +439,6 @@ public class MiningConfig {
         orderedWaypointTraceLineAlpha = OrderedWaypointManager.getTraceLineAlpha();
         orderedWaypointShowDistance = OrderedWaypointManager.isShowDistance();
         orderedWaypointShowName = OrderedWaypointManager.isShowName();
-        orderedWaypointRange = OrderedWaypointManager.getWaypointRange();
         orderedWaypointLobbyCheckEnabled = OrderedWaypointManager.isLobbyCheckEnabled();
         orderedWaypointLobbyCheckBlock = OrderedWaypointManager.getLobbyCheckBlock();
         orderedWaypointLobbyCheckInterval = OrderedWaypointManager.getLobbyCheckInterval();
@@ -349,5 +447,14 @@ public class MiningConfig {
         orderedWaypointBlockOutlineRadius = OrderedWaypointManager.getBlockOutlineRadius();
         orderedWaypointBlockOutlineColor = OrderedWaypointManager.getBlockOutlineColor();
         orderedWaypointBlockOutlineAlpha = OrderedWaypointManager.getBlockOutlineAlpha();
+
+        // Comm Claim
+        commClaimBatPersonSlot = CommClaimManager.getBatPersonSlot();
+        commClaimDivanSlot = CommClaimManager.getDivanSlot();
+        commClaimRefinedToolSlot = CommClaimManager.getRefinedToolSlot();
+        commClaimTickDelay = CommClaimManager.getTickDelay();
+        commClaimGuiWaitDelay = CommClaimManager.getGuiWaitDelay();
+        commClaimAutoTrigger = CommClaimManager.isAutoTrigger();
+        commClaimWardrobeSwap = CommClaimManager.isWardrobeSwap();
     }
 }

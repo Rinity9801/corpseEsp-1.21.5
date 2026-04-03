@@ -31,7 +31,7 @@ public class LobbyFinderHUD {
         context.fill(x - 4, y - 2, x + textWidth + 4, y + textRenderer.fontHeight + 2, 0xAA000000);
 
         // Border
-        context.drawBorder(x - 4, y - 2, textWidth + 8, textRenderer.fontHeight + 4, 0xFFFF4444);
+        context.drawStrokedRectangle(x - 4, y - 2, textWidth + 8, textRenderer.fontHeight + 4, 0xFFFF4444);
 
         // Text
         context.drawTextWithShadow(textRenderer, text, x, y, 0xFFFFFFFF);

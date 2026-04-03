@@ -4,6 +4,7 @@ import forfun.miningqol.client.MiningqolClient;
 import forfun.miningqol.client.PickaxeCooldownHUD;
 import net.minecraft.client.gui.DrawContext;
 import net.minecraft.client.gui.screen.Screen;
+import net.minecraft.client.gui.Click;
 import net.minecraft.text.Text;
 
 public class PickaxeCooldownPositionScreen extends Screen {
@@ -54,12 +55,15 @@ public class PickaxeCooldownPositionScreen extends Screen {
     }
 
     @Override
-    public boolean mouseClicked(double mouseX, double mouseY, int button) {
-        if (button == 0) {
+    public boolean mouseClicked(Click click, boolean firstClick) {
+        if (click.button() == 0) {
             int hudX = PickaxeCooldownHUD.getX();
             int hudY = PickaxeCooldownHUD.getY();
             int hudWidth = PickaxeCooldownHUD.getWidth();
             int hudHeight = PickaxeCooldownHUD.getHeight();
+
+            double mouseX = click.x();
+            double mouseY = click.y();
 
             if (mouseX >= hudX - 5 && mouseX <= hudX + hudWidth + 5 &&
                 mouseY >= hudY - 5 && mouseY <= hudY + hudHeight + 5) {
@@ -69,15 +73,15 @@ public class PickaxeCooldownPositionScreen extends Screen {
                 return true;
             }
         }
-        return super.mouseClicked(mouseX, mouseY, button);
+        return super.mouseClicked(click, firstClick);
     }
 
     @Override
-    public boolean mouseReleased(double mouseX, double mouseY, int button) {
-        if (button == 0) {
+    public boolean mouseReleased(Click click) {
+        if (click.button() == 0) {
             dragging = false;
         }
-        return super.mouseReleased(mouseX, mouseY, button);
+        return super.mouseReleased(click);
     }
 
     @Override

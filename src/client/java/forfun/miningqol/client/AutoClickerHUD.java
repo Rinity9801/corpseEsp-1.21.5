@@ -27,7 +27,6 @@ public class AutoClickerHUD {
             color = 0xFFFFFFFF;
         }
 
-        
         int screenWidth = client.getWindow().getScaledWidth();
         int screenHeight = client.getWindow().getScaledHeight();
         int x = screenWidth / 2;

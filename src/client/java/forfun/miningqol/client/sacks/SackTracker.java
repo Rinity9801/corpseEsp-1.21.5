@@ -3,7 +3,6 @@ package forfun.miningqol.client.sacks;
 import net.minecraft.client.MinecraftClient;
 import net.minecraft.client.gui.screen.ingame.GenericContainerScreen;
 import net.minecraft.item.ItemStack;
-import net.minecraft.nbt.NbtCompound;
 import net.minecraft.screen.slot.Slot;
 import net.minecraft.text.Text;
 import org.slf4j.Logger;
@@ -53,7 +52,7 @@ public class SackTracker {
 
             String itemName = stack.getName().getString();
             // Remove color codes and trim
-            itemName = itemName.replaceAll("§[0-9a-fk-or]", "").trim();
+            itemName = itemName.replaceAll("\u00A7[0-9a-fk-or]", "").trim();
 
             // Check if this item is in our mapping
             String bazaarId = ITEM_TO_BAZAAR_ID.get(itemName);

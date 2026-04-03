@@ -1,25 +1,40 @@
-# Build outputs
+# gradle
+
+.gradle/
 build/
 out/
+classes/
 
-# Gradle
-.gradle/
-gradle/wrapper/gradle-wrapper.jar
+# eclipse
 
-# IDE
+*.launch
+
+# idea
+
 .idea/
 *.iml
 *.ipr
 *.iws
+
+# vscode
+
+.settings/
 .vscode/
-*.swp
+bin/
+.classpath
+.project
 
-# macOS
-.DS_Store
+# macos
 
-# Runtime
+*.DS_Store
+
+# fabric
+
 run/
-logs/
 
-# Local development
-*.local
+# java
+
+hs_err_*.log
+replay_*.log
+*.hprof
+*.jfr

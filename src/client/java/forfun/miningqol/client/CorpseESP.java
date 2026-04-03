@@ -152,7 +152,7 @@ public class CorpseESP {
             }
         );
         for (ArmorStandEntity armorStand : armorStands) {
-            Vec3d pos = armorStand.getPos();
+            Vec3d pos = new Vec3d(armorStand.getX(), armorStand.getY(), armorStand.getZ());
             BlockPos blockPos = BlockPos.ofFloored(pos);
 
             ItemStack helmet = armorStand.getEquippedStack(net.minecraft.entity.EquipmentSlot.HEAD);
@@ -203,7 +203,7 @@ public class CorpseESP {
     public static void onCorpseClaimed() {
         ClientPlayerEntity player = MinecraftClient.getInstance().player;
         if (player != null) {
-            claimedPositions.add(player.getPos());
+            claimedPositions.add(new Vec3d(player.getX(), player.getY(), player.getZ()));
         }
     }
 
@@ -275,7 +275,7 @@ public class CorpseESP {
         }
 
         ArmorStandEntity armorStand = (ArmorStandEntity) entity;
-        Vec3d pos = armorStand.getPos();
+        Vec3d pos = new Vec3d(armorStand.getX(), armorStand.getY(), armorStand.getZ());
         BlockPos blockPos = BlockPos.ofFloored(pos);
 
         ItemStack helmet = armorStand.getEquippedStack(net.minecraft.entity.EquipmentSlot.HEAD);

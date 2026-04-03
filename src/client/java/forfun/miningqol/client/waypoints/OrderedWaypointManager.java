@@ -382,12 +382,12 @@ public class OrderedWaypointManager {
 
     public static void manualLobbyCheck() {
         if (!lobbyCheckEnabled) {
-            sendMessage("§cLobby check is disabled. Enable it in settings.");
+            sendMessage("\u00A7cLobby check is disabled. Enable it in settings.");
             return;
         }
         checkRouteBlocks();
         if (wrongWaypoints.isEmpty()) {
-            sendMessage("§aAll waypoints have the correct block!");
+            sendMessage("\u00A7aAll waypoints have the correct block!");
         }
     }
 
@@ -404,7 +404,7 @@ public class OrderedWaypointManager {
         int newIndex = currentRoute.size() + 1;
         currentRoute.add(new OrderedWaypoint(pos, newIndex));
 
-        sendMessage("§aAdded waypoint §e#" + newIndex + " §aat §f" + pos.getX() + ", " + pos.getY() + ", " + pos.getZ());
+        sendMessage("\u00A7aAdded waypoint \u00A7e#" + newIndex + " \u00A7aat \u00A7f" + pos.getX() + ", " + pos.getY() + ", " + pos.getZ());
     }
 
     public static void insert(int number) {
@@ -412,7 +412,7 @@ public class OrderedWaypointManager {
         if (client.player == null) return;
 
         if (number < 1 || number > currentRoute.size() + 1) {
-            sendMessage("§cInvalid position. Must be between 1 and " + (currentRoute.size() + 1));
+            sendMessage("\u00A7cInvalid position. Must be between 1 and " + (currentRoute.size() + 1));
             return;
         }
 
@@ -424,17 +424,17 @@ public class OrderedWaypointManager {
         }
 
         currentRoute.add(number - 1, new OrderedWaypoint(pos, number));
-        sendMessage("§aInserted waypoint §e#" + number + " §aat §f" + pos.getX() + ", " + pos.getY() + ", " + pos.getZ());
+        sendMessage("\u00A7aInserted waypoint \u00A7e#" + number + " \u00A7aat \u00A7f" + pos.getX() + ", " + pos.getY() + ", " + pos.getZ());
     }
 
     public static void remove(int number) {
         if (currentRoute.isEmpty()) {
-            sendMessage("§cNo waypoints to remove.");
+            sendMessage("\u00A7cNo waypoints to remove.");
             return;
         }
 
         if (number < 1 || number > currentRoute.size()) {
-            sendMessage("§cInvalid waypoint number. Must be between 1 and " + currentRoute.size());
+            sendMessage("\u00A7cInvalid waypoint number. Must be between 1 and " + currentRoute.size());
             return;
         }
 
@@ -449,39 +449,58 @@ public class OrderedWaypointManager {
             currentIndex = 0;
         }
 
-        sendMessage("§aRemoved waypoint §e#" + number);
+        sendMessage("\u00A7aRemoved waypoint \u00A7e#" + number);
+    }
+
+    public static void move(int number) {
+        MinecraftClient client = MinecraftClient.getInstance();
+        if (client.player == null) return;
+
+        if (currentRoute.isEmpty()) {
+            sendMessage("\u00A7cNo route loaded.");
+            return;
+        }
+
+        if (number < 1 || number > currentRoute.size()) {
+            sendMessage("\u00A7cInvalid waypoint number. Must be between 1 and " + currentRoute.size());
+            return;
+        }
+
+        BlockPos pos = client.player.getBlockPos().down();
+        currentRoute.get(number - 1).setPosition(pos);
+        sendMessage("\u00A7aMoved waypoint \u00A7e#" + number + " \u00A7ato \u00A7f" + pos.getX() + ", " + pos.getY() + ", " + pos.getZ());
     }
 
     public static void skip(int amount) {
         if (currentRoute.isEmpty()) {
-            sendMessage("§cNo route loaded.");
+            sendMessage("\u00A7cNo route loaded.");
             return;
         }
 
         currentIndex = (currentIndex + amount) % currentRoute.size();
         if (currentIndex < 0) currentIndex += currentRoute.size();
 
-        sendMessage("§aSkipped " + amount + " waypoint(s). Now at §e#" + (currentIndex + 1));
+        sendMessage("\u00A7aSkipped " + amount + " waypoint(s). Now at \u00A7e#" + (currentIndex + 1));
     }
 
     public static void skipTo(int number) {
         if (currentRoute.isEmpty()) {
-            sendMessage("§cNo route loaded.");
+            sendMessage("\u00A7cNo route loaded.");
             return;
         }
 
         if (number < 1 || number > currentRoute.size()) {
-            sendMessage("§cInvalid waypoint number. Must be between 1 and " + currentRoute.size());
+            sendMessage("\u00A7cInvalid waypoint number. Must be between 1 and " + currentRoute.size());
             return;
         }
 
         currentIndex = number - 1;
-        sendMessage("§aSkipped to waypoint §e#" + number);
+        sendMessage("\u00A7aSkipped to waypoint \u00A7e#" + number);
     }
 
     public static void save(String name) {
         if (currentRoute.isEmpty()) {
-            sendMessage("§cNo waypoints to save.");
+            sendMessage("\u00A7cNo waypoints to save.");
             return;
         }
 
@@ -491,10 +510,10 @@ public class OrderedWaypointManager {
                 BlockPos pos = wp.getPosition();
                 writer.println(pos.getX() + "," + pos.getY() + "," + pos.getZ());
             }
-            sendMessage("§aSaved route as §e" + name + ".txt §awith " + currentRoute.size() + " waypoints.");
+            sendMessage("\u00A7aSaved route as \u00A7e" + name + ".txt \u00A7awith " + currentRoute.size() + " waypoints.");
         } catch (IOException e) {
             LOGGER.error("Failed to save route: " + e.getMessage());
-            sendMessage("§cFailed to save route: " + e.getMessage());
+            sendMessage("\u00A7cFailed to save route: " + e.getMessage());
         }
     }
 
@@ -506,7 +525,7 @@ public class OrderedWaypointManager {
             String available = routes != null && routes.length > 0
                 ? String.join(", ", routes).replace(".txt", "")
                 : "none";
-            sendMessage("§cRoute §e" + name + " §cnot found. Available: " + available);
+            sendMessage("\u00A7cRoute \u00A7e" + name + " \u00A7cnot found. Available: " + available);
             return;
         }
 
@@ -532,12 +551,12 @@ public class OrderedWaypointManager {
             }
         } catch (IOException e) {
             LOGGER.error("Failed to load route: " + e.getMessage());
-            sendMessage("§cFailed to load route: " + e.getMessage());
+            sendMessage("\u00A7cFailed to load route: " + e.getMessage());
             return;
         }
 
         if (currentRoute.isEmpty()) {
-            sendMessage("§cNo valid waypoints found in " + name + ".txt");
+            sendMessage("\u00A7cNo valid waypoints found in " + name + ".txt");
             return;
         }
 
@@ -562,7 +581,7 @@ public class OrderedWaypointManager {
 
         enabled = true;
         resetLobbyCheckCounter();
-        sendMessage("§aLoaded route §e" + name + " §awith " + currentRoute.size() + " waypoints. Starting at §e#" + (currentIndex + 1));
+        sendMessage("\u00A7aLoaded route \u00A7e" + name + " \u00A7awith " + currentRoute.size() + " waypoints. Starting at \u00A7e#" + (currentIndex + 1));
 
         // Do initial lobby check if enabled
         if (lobbyCheckEnabled) {
@@ -576,7 +595,7 @@ public class OrderedWaypointManager {
 
         String clipboardContent = client.keyboard.getClipboard();
         if (clipboardContent == null || clipboardContent.trim().isEmpty()) {
-            sendMessage("§cClipboard is empty.");
+            sendMessage("\u00A7cClipboard is empty.");
             return;
         }
 
@@ -591,7 +610,7 @@ public class OrderedWaypointManager {
         }
 
         if (currentRoute.isEmpty()) {
-            sendMessage("§cNo valid waypoints found in clipboard.");
+            sendMessage("\u00A7cNo valid waypoints found in clipboard.");
             return;
         }
 
@@ -611,7 +630,7 @@ public class OrderedWaypointManager {
 
         enabled = true;
         resetLobbyCheckCounter();
-        sendMessage("§aLoaded " + currentRoute.size() + " waypoints from clipboard. Starting at §e#" + (currentIndex + 1));
+        sendMessage("\u00A7aLoaded " + currentRoute.size() + " waypoints from clipboard. Starting at \u00A7e#" + (currentIndex + 1));
 
         // Do initial lobby check if enabled
         if (lobbyCheckEnabled) {
@@ -685,7 +704,7 @@ public class OrderedWaypointManager {
     public static void unload() {
         currentRoute.clear();
         currentIndex = 0;
-        sendMessage("§aRoute unloaded.");
+        sendMessage("\u00A7aRoute unloaded.");
     }
 
     public static void exportToClipboard() {
@@ -693,7 +712,7 @@ public class OrderedWaypointManager {
         if (client.player == null) return;
 
         if (currentRoute.isEmpty()) {
-            sendMessage("§cNo route to export.");
+            sendMessage("\u00A7cNo route to export.");
             return;
         }
 
@@ -704,62 +723,72 @@ public class OrderedWaypointManager {
         }
 
         client.keyboard.setClipboard(sb.toString().trim());
-        sendMessage("§aExported " + currentRoute.size() + " waypoints to clipboard.");
+        sendMessage("\u00A7aExported " + currentRoute.size() + " waypoints to clipboard.");
+    }
+
+    // Alias for exportToClipboard to maintain compatibility
+    public static void export() {
+        exportToClipboard();
     }
 
     public static void deleteRoute(String name) {
         File routeFile = new File(ROUTES_DIR, name + ".txt");
         if (!routeFile.exists()) {
-            sendMessage("§cRoute §e" + name + " §cnot found.");
+            sendMessage("\u00A7cRoute \u00A7e" + name + " \u00A7cnot found.");
             return;
         }
 
         if (routeFile.delete()) {
-            sendMessage("§aDeleted route §e" + name + ".txt");
+            sendMessage("\u00A7aDeleted route \u00A7e" + name + ".txt");
         } else {
-            sendMessage("§cFailed to delete route §e" + name + ".txt");
+            sendMessage("\u00A7cFailed to delete route \u00A7e" + name + ".txt");
         }
     }
 
     public static void listRoutes() {
         File[] files = ROUTES_DIR.listFiles((dir, name) -> name.endsWith(".txt"));
         if (files == null || files.length == 0) {
-            sendMessage("§cNo saved routes.");
+            sendMessage("\u00A7cNo saved routes.");
             return;
         }
 
-        sendMessage("§6Saved routes:");
+        sendMessage("\u00A76Saved routes:");
         for (File file : files) {
             String name = file.getName().replace(".txt", "");
             try {
                 long lineCount = Files.lines(file.toPath()).filter(l -> !l.trim().isEmpty()).count();
-                sendMessage("§e  " + name + " §7(" + lineCount + " waypoints)");
+                sendMessage("\u00A7e  " + name + " \u00A77(" + lineCount + " waypoints)");
             } catch (IOException e) {
-                sendMessage("§e  " + name + " §7(unknown waypoints)");
+                sendMessage("\u00A7e  " + name + " \u00A77(unknown waypoints)");
             }
         }
     }
 
     public static void info() {
         if (currentRoute.isEmpty()) {
-            sendMessage("§cNo route loaded.");
+            sendMessage("\u00A7cNo route loaded.");
             return;
         }
 
-        sendMessage("§6Current route: §f" + currentRoute.size() + " waypoints");
-        sendMessage("§6Current position: §e#" + (currentIndex + 1));
-        sendMessage("§6Enabled: §f" + enabled);
+        sendMessage("\u00A76Current route: \u00A7f" + currentRoute.size() + " waypoints");
+        sendMessage("\u00A76Current position: \u00A7e#" + (currentIndex + 1));
+        sendMessage("\u00A76Enabled: \u00A7f" + enabled);
     }
 
     public static void toggle() {
         enabled = !enabled;
-        sendMessage("§aOrdered waypoints " + (enabled ? "§2enabled" : "§cdisabled"));
+        sendMessage("\u00A7aOrdered waypoints " + (enabled ? "\u00A72enabled" : "\u00A7cdisabled"));
+    }
+
+    public static void onWorldChange() {
+        // This method is now deprecated - world change detection is handled in tick()
+        // Keeping for backwards compatibility but it's a no-op now
     }
 
     private static void sendMessage(String msg) {
         MinecraftClient client = MinecraftClient.getInstance();
         if (client.player != null) {
-            client.player.sendMessage(Text.literal("§6[MQO] " + msg), false);
+            client.player.sendMessage(Text.literal("\u00A76[MQO] " + msg), false);
         }
     }
 }

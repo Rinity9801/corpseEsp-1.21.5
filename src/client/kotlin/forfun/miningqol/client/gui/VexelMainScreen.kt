@@ -1,6 +1,7 @@
 package forfun.miningqol.client.gui
 
 import net.minecraft.client.MinecraftClient
+import net.minecraft.client.input.KeyInput
 import xyz.meowing.knit.api.input.KnitKeys
 import xyz.meowing.vexel.core.VexelScreen
 import xyz.meowing.vexel.components.core.Rectangle
@@ -44,7 +45,7 @@ class VexelMainScreen : VexelScreen("MiningQOL Settings") {
             borderRadius = 16f,
             borderThickness = 1f
         )
-            .setSizing(750f, Size.Pixels, 660f, Size.Pixels)
+            .setSizing(750f, Size.Pixels, 740f, Size.Pixels)
             .childOf(window)
             .apply {
                 dropShadow = true
@@ -59,7 +60,7 @@ class VexelMainScreen : VexelScreen("MiningQOL Settings") {
 
         // Calculate center position (must be done after setting size)
         mainPanel.xConstraint = (mainPanel.screenWidth - 750f) / 2f
-        mainPanel.yConstraint = (mainPanel.screenHeight - 660f) / 2f
+        mainPanel.yConstraint = (mainPanel.screenHeight - 740f) / 2f
 
         // Fade in animation
         mainPanel.fadeIn(500, EasingType.EASE_OUT)
@@ -186,6 +187,24 @@ class VexelMainScreen : VexelScreen("MiningQOL Settings") {
                 "Miscellaneous features and utilities",
                 0xFF888888.toInt(),
                 listOf("misc", "miscellaneous", "auto-skip", "sho", "load", "glass", "pane", "sync", "gemstone", "connection", "utilities")
+            ),
+            CardInfo(
+                "Comm Claim",
+                "Auto-claim commissions with armor swap",
+                0xFFFFD700.toInt(),
+                listOf("comm", "claim", "commission", "wardrobe", "armor", "bat person", "divan", "pigeon", "royal pigeon", "refined")
+            ),
+            CardInfo(
+                "Shaft Clicker",
+                "Auto-click that pauses in Mineshafts",
+                0xFF5BFF7C.toInt(),
+                listOf("shaft", "clicker", "auto", "click", "mineshaft", "pause", "mining")
+            ),
+            CardInfo(
+                "HOTM Presets",
+                "Select and apply HOTM tree presets",
+                0xFF55FFAA.toInt(),
+                listOf("hotm", "heart", "mountain", "perk", "ability", "token", "mining", "tree", "preset", "apply")
             )
         )
 
@@ -201,7 +220,9 @@ class VexelMainScreen : VexelScreen("MiningQOL Settings") {
             { NameHiderCategoryScreen(this) },
             { AutoClickerCategoryScreen(this) },
             { CommandKeybindCategoryScreen(this) },
-            { MiscCategoryScreen(this) }
+            { MiscCategoryScreen(this) },
+            { CommClaimCategoryScreen(this) },
+            { ShaftClickerCategoryScreen(this) }
         )
 
         // Create left column cards
@@ -229,7 +250,12 @@ class VexelMainScreen : VexelScreen("MiningQOL Settings") {
                 mainPanel,
                 delay
             ) {
-                MinecraftClient.getInstance().setScreen(rightScreens[index]())
+                if (index < rightScreens.size) {
+                    MinecraftClient.getInstance().setScreen(rightScreens[index]())
+                } else {
+                    // HOTM Presets - opens chest GUI
+                    forfun.miningqol.client.hotm.HotmPresetScreen.open()
+                }
             }
             allCards.add(card to cardInfo)
         }
@@ -352,12 +378,12 @@ class VexelMainScreen : VexelScreen("MiningQOL Settings") {
         close()
     }
 
-    override fun keyPressed(keyCode: Int, scanCode: Int, modifiers: Int): Boolean {
-        if (keyCode == KnitKeys.KEY_ESCAPE.code) {
+    override fun keyPressed(input: KeyInput?): Boolean {
+        if (input?.key() == KnitKeys.KEY_ESCAPE.code) {
             closeWithAnimation()
             return true  // Consume the event to prevent pause menu
         }
-        return super.keyPressed(keyCode, scanCode, modifiers)
+        return super.keyPressed(input)
     }
 
     override fun onKeyType(typedChar: Char, keyCode: Int, scanCode: Int) {
