@@ -119,11 +119,6 @@ public class MiningqolClient implements ClientModInitializer {
                     getArmorStandData(context.getSource());
                     return 1;
                 }));
-            dispatcher.register(ClientCommandManager.literal("testlittlefoot")
-                .executes(context -> {
-                    ShaftESP.spawnTestEntity();
-                    return 1;
-                }));
             dispatcher.register(ClientCommandManager.literal("profitreset")
                 .executes(context -> {
                     GemstoneTracker.reset();
