@@ -243,11 +243,12 @@ class MiscCategoryScreen(private val parentScreen: Screen) : VexelScreen("Misc S
         return super.keyPressed(input)
     }
 
-    override fun onKeyType(typedChar: Char, keyCode: Int, scanCode: Int) {
+    override fun onKeyType(typedChar: Char, keyCode: Int, scanCode: Int): Boolean {
         if (keyCode == KnitKeys.KEY_ESCAPE.code) {
             closeWithAnimation()
+            return true
         } else {
-            super.onKeyType(typedChar, keyCode, scanCode)
+            return super.onKeyType(typedChar, keyCode, scanCode)
         }
     }
 

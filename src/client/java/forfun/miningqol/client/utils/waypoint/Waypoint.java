@@ -3,7 +3,7 @@ package forfun.miningqol.client.utils.waypoint;
 import net.minecraft.client.MinecraftClient;
 import net.minecraft.client.render.Camera;
 import net.minecraft.client.render.VertexConsumerProvider;
-import net.minecraft.client.render.debug.DebugRenderer;
+import forfun.miningqol.client.utils.RenderHelper;
 import net.minecraft.client.util.math.MatrixStack;
 import net.minecraft.util.math.BlockPos;
 import net.minecraft.util.math.Vec3d;
@@ -48,7 +48,7 @@ public class Waypoint {
     public void render(MatrixStack matrices, Camera camera) {
         if (!shouldRender()) return;
 
-        Vec3d cameraPos = camera.getPos();
+        Vec3d cameraPos = camera.getCameraPos();
         MinecraftClient client = MinecraftClient.getInstance();
         VertexConsumerProvider.Immediate immediate = client.getBufferBuilders().getEntityVertexConsumers();
 
@@ -69,7 +69,7 @@ public class Waypoint {
                 GL11.glEnable(GL11.GL_BLEND);
             }
 
-            DebugRenderer.drawBox(matrices, immediate,
+            RenderHelper.drawBox(matrices, immediate,
                 minX, minY, minZ,
                 maxX, maxY, maxZ,
                 colorComponents[0], colorComponents[1], colorComponents[2], alpha);
@@ -90,7 +90,7 @@ public class Waypoint {
                 GL11.glEnable(GL11.GL_BLEND);
             }
 
-            DebugRenderer.drawBox(matrices, immediate,
+            RenderHelper.drawBox(matrices, immediate,
                 centerX - beaconWidth, minY, centerZ - beaconWidth,
                 centerX + beaconWidth, minY + beaconHeight, centerZ + beaconWidth,
                 colorComponents[0], colorComponents[1], colorComponents[2], alpha * 0.6f);

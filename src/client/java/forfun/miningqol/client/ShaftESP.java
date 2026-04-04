@@ -3,7 +3,7 @@ package forfun.miningqol.client;
 import net.minecraft.client.MinecraftClient;
 import net.minecraft.client.render.Camera;
 import net.minecraft.client.render.VertexConsumerProvider;
-import net.minecraft.client.render.debug.DebugRenderer;
+import forfun.miningqol.client.utils.RenderHelper;
 import net.minecraft.client.util.math.MatrixStack;
 import net.minecraft.entity.Entity;
 import net.minecraft.entity.decoration.ArmorStandEntity;
@@ -111,7 +111,7 @@ public class ShaftESP {
         MinecraftClient client = MinecraftClient.getInstance();
         if (client.world == null) return;
 
-        Vec3d cam = camera.getPos();
+        Vec3d cam = camera.getCameraPos();
         VertexConsumerProvider.Immediate immediate = client.getBufferBuilders().getEntityVertexConsumers();
 
         for (Map.Entry<Integer, float[]> entry : trackedEntities.entrySet()) {
@@ -129,7 +129,7 @@ public class ShaftESP {
             GL11.glEnable(GL11.GL_BLEND);
 
             // Player-sized box: 0.6 wide, 1.8 tall
-            DebugRenderer.drawBox(matrices, immediate,
+            RenderHelper.drawBox(matrices, immediate,
                 x - 0.3, y, z - 0.3,
                 x + 0.3, y + 1.8, z + 0.3,
                 color[0], color[1], color[2], 0.4f);

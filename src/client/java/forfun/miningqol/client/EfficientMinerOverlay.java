@@ -3,7 +3,7 @@ package forfun.miningqol.client;
 import net.minecraft.block.BlockState;
 import net.minecraft.client.MinecraftClient;
 import net.minecraft.client.render.VertexConsumerProvider;
-import net.minecraft.client.render.debug.DebugRenderer;
+import forfun.miningqol.client.utils.RenderHelper;
 import net.minecraft.client.util.math.MatrixStack;
 import net.minecraft.util.math.BlockPos;
 import net.minecraft.world.World;
@@ -89,9 +89,9 @@ public class EfficientMinerOverlay {
 
         VertexConsumerProvider.Immediate immediate = client.getBufferBuilders().getEntityVertexConsumers();
 
-        double cameraX = camera.getPos().x;
-        double cameraY = camera.getPos().y;
-        double cameraZ = camera.getPos().z;
+        double cameraX = camera.getCameraPos().x;
+        double cameraY = camera.getCameraPos().y;
+        double cameraZ = camera.getCameraPos().z;
 
         for (BlockData block : blocks) {
             float[] color = getColorForPriority(block.priority);
@@ -105,7 +105,7 @@ public class EfficientMinerOverlay {
             double maxZ = block.z + 1.001 - cameraZ;
 
             
-            DebugRenderer.drawBox(matrices, immediate,
+            RenderHelper.drawBox(matrices, immediate,
                 minX, minY, minZ,
                 maxX, maxY, maxZ,
                 color[0], color[1], color[2], alpha * 0.5f);

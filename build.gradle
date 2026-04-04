@@ -1,7 +1,7 @@
 plugins {
-    id 'fabric-loom' version '1.11-SNAPSHOT'
+    id 'fabric-loom' version '1.15.5'
     id 'maven-publish'
-    id 'org.jetbrains.kotlin.jvm' version '2.1.0'
+    id 'org.jetbrains.kotlin.jvm' version '2.1.21'
 }
 
 version = project.mod_version
@@ -42,6 +42,7 @@ fabricApi {
 }
 
 repositories {
+    mavenLocal()
     mavenCentral()
     maven {
         url = "https://maven.deftu.dev/snapshots"
@@ -61,10 +62,10 @@ dependencies {
 
     // Kotlin
     implementation "org.jetbrains.kotlin:kotlin-stdlib"
-    modImplementation "net.fabricmc:fabric-language-kotlin:1.13.0+kotlin.2.1.0"
+    modImplementation "net.fabricmc:fabric-language-kotlin:1.13.3+kotlin.2.1.21"
 
-    // Vexel GUI Library
-    modImplementation(include("xyz.meowing:vexel-1.21.10-fabric:121"))
+    // Vexel GUI Library (patched for 1.21.11)
+    modImplementation(include("xyz.meowing:vexel-1.21.11-fabric:127"))
 }
 
 processResources {

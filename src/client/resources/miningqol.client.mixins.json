@@ -11,7 +11,8 @@
     "ClientConnectionGlassSyncMixin",
     "WorldRendererMixin",
     "GenericContainerScreenMixin",
-    "HandledScreenMixin"
+    "HandledScreenMixin",
+    "NVGSamplerFixMixin"
   ],
   "injectors": {
     "defaultRequire": 1

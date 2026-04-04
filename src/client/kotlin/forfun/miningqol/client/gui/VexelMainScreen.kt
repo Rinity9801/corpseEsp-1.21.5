@@ -386,13 +386,14 @@ class VexelMainScreen : VexelScreen("MiningQOL Settings") {
         return super.keyPressed(input)
     }
 
-    override fun onKeyType(typedChar: Char, keyCode: Int, scanCode: Int) {
+    override fun onKeyType(typedChar: Char, keyCode: Int, scanCode: Int): Boolean {
         // Handle ESC key to trigger close animation
         if (keyCode == KnitKeys.KEY_ESCAPE.code) {
             closeWithAnimation()
+            return true
         } else {
             // Let parent handle other keys
-            super.onKeyType(typedChar, keyCode, scanCode)
+            return super.onKeyType(typedChar, keyCode, scanCode)
         }
     }
 
