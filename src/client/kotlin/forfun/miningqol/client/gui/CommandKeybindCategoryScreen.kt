@@ -415,7 +415,20 @@ class CommandKeybindCategoryScreen(private val parentScreen: Screen) : VexelScre
         return super.keyPressed(input)
     }
 
-    override fun onKeyType(typedChar: Char, keyCode: Int, scanCode: Int) {
+    //? if is1_21_11 {
+    override fun onKeyType(typedChar: Char, keyCode: Int, scanCode: Int): Boolean {
+        if (capturingEntry != null) {
+            return true // Don't process key types while capturing
+        }
+        if (keyCode == KnitKeys.KEY_ESCAPE.code) {
+            closeWithAnimation()
+            return true
+        } else {
+            return super.onKeyType(typedChar, keyCode, scanCode)
+        }
+    }
+    //?} else {
+    /*override fun onKeyType(typedChar: Char, keyCode: Int, scanCode: Int) {
         if (capturingEntry != null) {
             return // Don't process key types while capturing
         }
@@ -425,6 +438,7 @@ class CommandKeybindCategoryScreen(private val parentScreen: Screen) : VexelScre
             super.onKeyType(typedChar, keyCode, scanCode)
         }
     }
+    *///?}
 
     private fun getKeyDisplayName(keyCode: Int): String {
         if (keyCode == -1) return "Click to bind"

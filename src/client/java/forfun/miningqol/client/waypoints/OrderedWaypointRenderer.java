@@ -133,7 +133,11 @@ public class OrderedWaypointRenderer {
 
     private static void renderWaypointBox(MatrixStack matrices, VertexConsumerProvider.Immediate immediate,
                                           Camera camera, BlockPos pos, float[] color, float alpha) {
-        Vec3d cameraPos = camera.getPos();
+        //? if is1_21_11 {
+        Vec3d cameraPos = camera.getCameraPos();
+        //?} else {
+        /*Vec3d cameraPos = camera.getPos();
+        *///?}
 
         // Slightly shrink the box to avoid Z-fighting with blocks
         float offset = 0.002f;
@@ -144,7 +148,11 @@ public class OrderedWaypointRenderer {
         float maxY = minY + 1.0f - (offset * 2);
         float maxZ = minZ + 1.0f - (offset * 2);
 
-        VertexConsumer buffer = immediate.getBuffer(RenderLayer.getDebugQuads());
+        //? if is1_21_11 {
+        VertexConsumer buffer = immediate.getBuffer(RenderLayers.debugQuads());
+        //?} else {
+        /*VertexConsumer buffer = immediate.getBuffer(RenderLayer.getDebugQuads());
+        *///?}
         Matrix4f posMatrix = matrices.peek().getPositionMatrix();
 
         float r = color[0];
@@ -189,12 +197,20 @@ public class OrderedWaypointRenderer {
 
         // Disable depth test right before drawing to ensure it renders through walls
         GL11.glDisable(GL11.GL_DEPTH_TEST);
-        immediate.draw(RenderLayer.getDebugQuads());
+        //? if is1_21_11 {
+        immediate.draw(RenderLayers.debugQuads());
+        //?} else {
+        /*immediate.draw(RenderLayer.getDebugQuads());
+        *///?}
     }
 
     private static void renderWaypointLabel(MatrixStack matrices, Camera camera, OrderedWaypoint waypoint) {
         MinecraftClient client = MinecraftClient.getInstance();
-        Vec3d cameraPos = camera.getPos();
+        //? if is1_21_11 {
+        Vec3d cameraPos = camera.getCameraPos();
+        //?} else {
+        /*Vec3d cameraPos = camera.getPos();
+        *///?}
         BlockPos pos = waypoint.getPosition();
 
         double x = pos.getX() + 0.5 - cameraPos.x;
@@ -256,9 +272,17 @@ public class OrderedWaypointRenderer {
     private static void drawLineFromCursor(MatrixStack matrices, Camera camera, BlockPos target, float[] color, float alpha) {
         MinecraftClient client = MinecraftClient.getInstance();
         VertexConsumerProvider.Immediate immediate = client.getBufferBuilders().getEntityVertexConsumers();
-        VertexConsumer buffer = immediate.getBuffer(RenderLayer.getLines());
+        //? if is1_21_11 {
+        VertexConsumer buffer = immediate.getBuffer(RenderLayers.lines());
+        //?} else {
+        /*VertexConsumer buffer = immediate.getBuffer(RenderLayer.getLines());
+        *///?}
 
-        Vec3d cameraPos = camera.getPos();
+        //? if is1_21_11 {
+        Vec3d cameraPos = camera.getCameraPos();
+        //?} else {
+        /*Vec3d cameraPos = camera.getPos();
+        *///?}
         Vec3d targetPos = new Vec3d(target.getX() + 0.5, target.getY() + 0.5, target.getZ() + 0.5);
 
         // Get a point slightly in front of the camera (like Skyblocker)
@@ -289,13 +313,21 @@ public class OrderedWaypointRenderer {
               .color(color[0], color[1], color[2], alpha)
               .normal(normal.x(), normal.y(), normal.z());
 
-        immediate.draw(RenderLayer.getLines());
+        //? if is1_21_11 {
+        immediate.draw(RenderLayers.lines());
+        //?} else {
+        /*immediate.draw(RenderLayer.getLines());
+        *///?}
     }
 
     private static void drawLine(MatrixStack matrices, Vec3d cameraPos, Vec3d from, Vec3d to, float[] color, float alpha) {
         MinecraftClient client = MinecraftClient.getInstance();
         VertexConsumerProvider.Immediate immediate = client.getBufferBuilders().getEntityVertexConsumers();
-        VertexConsumer buffer = immediate.getBuffer(RenderLayer.getLines());
+        //? if is1_21_11 {
+        VertexConsumer buffer = immediate.getBuffer(RenderLayers.lines());
+        //?} else {
+        /*VertexConsumer buffer = immediate.getBuffer(RenderLayer.getLines());
+        *///?}
 
         // Calculate positions relative to camera (same as waypoint boxes)
         float startX = (float) (from.x - cameraPos.x);
@@ -319,7 +351,11 @@ public class OrderedWaypointRenderer {
               .color(color[0], color[1], color[2], alpha)
               .normal(normal.x(), normal.y(), normal.z());
 
-        immediate.draw(RenderLayer.getLines());
+        //? if is1_21_11 {
+        immediate.draw(RenderLayers.lines());
+        //?} else {
+        /*immediate.draw(RenderLayer.getLines());
+        *///?}
     }
 
     private static void renderSetupMode(MatrixStack matrices, VertexConsumerProvider.Immediate immediate,
@@ -343,7 +379,11 @@ public class OrderedWaypointRenderer {
         }
 
         // Draw lines between consecutive waypoints in setup range
-        Vec3d cameraPos = camera.getPos();
+        //? if is1_21_11 {
+        Vec3d cameraPos = camera.getCameraPos();
+        //?} else {
+        /*Vec3d cameraPos = camera.getPos();
+        *///?}
         for (int i = 0; i < route.size(); i++) {
             OrderedWaypoint current = route.get(i);
             OrderedWaypoint next = route.get((i + 1) % route.size());
@@ -396,9 +436,17 @@ public class OrderedWaypointRenderer {
 
         if (matchingBlocks.isEmpty()) return;
 
-        Vec3d cameraPos = camera.getPos();
+        //? if is1_21_11 {
+        Vec3d cameraPos = camera.getCameraPos();
+        //?} else {
+        /*Vec3d cameraPos = camera.getPos();
+        *///?}
         VertexConsumerProvider.Immediate immediate = client.getBufferBuilders().getEntityVertexConsumers();
-        VertexConsumer buffer = immediate.getBuffer(RenderLayer.getLines());
+        //? if is1_21_11 {
+        VertexConsumer buffer = immediate.getBuffer(RenderLayers.lines());
+        //?} else {
+        /*VertexConsumer buffer = immediate.getBuffer(RenderLayer.getLines());
+        *///?}
         Matrix4f posMatrix = matrices.peek().getPositionMatrix();
 
         float r = color[0];
@@ -508,7 +556,11 @@ public class OrderedWaypointRenderer {
         }
 
         GL11.glDisable(GL11.GL_DEPTH_TEST);
-        immediate.draw(RenderLayer.getLines());
+        //? if is1_21_11 {
+        immediate.draw(RenderLayers.lines());
+        //?} else {
+        /*immediate.draw(RenderLayer.getLines());
+        *///?}
     }
 
     private static void drawEdge(VertexConsumer buffer, Matrix4f posMatrix,

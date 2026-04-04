@@ -3,7 +3,11 @@ package forfun.miningqol.client.utils.waypoint;
 import net.minecraft.client.MinecraftClient;
 import net.minecraft.client.render.Camera;
 import net.minecraft.client.render.VertexConsumerProvider;
-import net.minecraft.client.render.debug.DebugRenderer;
+//? if is1_21_11 {
+import forfun.miningqol.client.utils.RenderHelper;
+//?} else {
+/*import net.minecraft.client.render.debug.DebugRenderer;
+*///?}
 import net.minecraft.client.util.math.MatrixStack;
 import net.minecraft.util.math.BlockPos;
 import net.minecraft.util.math.Vec3d;
@@ -48,7 +52,11 @@ public class Waypoint {
     public void render(MatrixStack matrices, Camera camera) {
         if (!shouldRender()) return;
 
-        Vec3d cameraPos = camera.getPos();
+        //? if is1_21_11 {
+        Vec3d cameraPos = camera.getCameraPos();
+        //?} else {
+        /*Vec3d cameraPos = camera.getPos();
+        *///?}
         MinecraftClient client = MinecraftClient.getInstance();
         VertexConsumerProvider.Immediate immediate = client.getBufferBuilders().getEntityVertexConsumers();
 
@@ -69,10 +77,17 @@ public class Waypoint {
                 GL11.glEnable(GL11.GL_BLEND);
             }
 
-            DebugRenderer.drawBox(matrices, immediate,
+            //? if is1_21_11 {
+            RenderHelper.drawBox(matrices, immediate,
                 minX, minY, minZ,
                 maxX, maxY, maxZ,
                 colorComponents[0], colorComponents[1], colorComponents[2], alpha);
+            //?} else {
+            /*DebugRenderer.drawBox(matrices, immediate,
+                minX, minY, minZ,
+                maxX, maxY, maxZ,
+                colorComponents[0], colorComponents[1], colorComponents[2], alpha);
+            *///?}
 
             immediate.draw();
 
@@ -90,10 +105,17 @@ public class Waypoint {
                 GL11.glEnable(GL11.GL_BLEND);
             }
 
-            DebugRenderer.drawBox(matrices, immediate,
+            //? if is1_21_11 {
+            RenderHelper.drawBox(matrices, immediate,
                 centerX - beaconWidth, minY, centerZ - beaconWidth,
                 centerX + beaconWidth, minY + beaconHeight, centerZ + beaconWidth,
                 colorComponents[0], colorComponents[1], colorComponents[2], alpha * 0.6f);
+            //?} else {
+            /*DebugRenderer.drawBox(matrices, immediate,
+                centerX - beaconWidth, minY, centerZ - beaconWidth,
+                centerX + beaconWidth, minY + beaconHeight, centerZ + beaconWidth,
+                colorComponents[0], colorComponents[1], colorComponents[2], alpha * 0.6f);
+            *///?}
 
             immediate.draw();
 

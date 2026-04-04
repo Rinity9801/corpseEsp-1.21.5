@@ -3,7 +3,11 @@ package forfun.miningqol.client;
 import net.minecraft.block.BlockState;
 import net.minecraft.client.MinecraftClient;
 import net.minecraft.client.render.VertexConsumerProvider;
-import net.minecraft.client.render.debug.DebugRenderer;
+//? if is1_21_11 {
+import forfun.miningqol.client.utils.RenderHelper;
+//?} else {
+/*import net.minecraft.client.render.debug.DebugRenderer;
+*///?}
 import net.minecraft.client.util.math.MatrixStack;
 import net.minecraft.util.math.BlockPos;
 import net.minecraft.world.World;
@@ -89,9 +93,15 @@ public class EfficientMinerOverlay {
 
         VertexConsumerProvider.Immediate immediate = client.getBufferBuilders().getEntityVertexConsumers();
 
-        double cameraX = camera.getPos().x;
+        //? if is1_21_11 {
+        double cameraX = camera.getCameraPos().x;
+        double cameraY = camera.getCameraPos().y;
+        double cameraZ = camera.getCameraPos().z;
+        //?} else {
+        /*double cameraX = camera.getPos().x;
         double cameraY = camera.getPos().y;
         double cameraZ = camera.getPos().z;
+        *///?}
 
         for (BlockData block : blocks) {
             float[] color = getColorForPriority(block.priority);
@@ -104,11 +114,17 @@ public class EfficientMinerOverlay {
             double maxY = block.y + 1.002 - cameraY;
             double maxZ = block.z + 1.001 - cameraZ;
 
-            
-            DebugRenderer.drawBox(matrices, immediate,
+            //? if is1_21_11 {
+            RenderHelper.drawBox(matrices, immediate,
                 minX, minY, minZ,
                 maxX, maxY, maxZ,
                 color[0], color[1], color[2], alpha * 0.5f);
+            //?} else {
+            /*DebugRenderer.drawBox(matrices, immediate,
+                minX, minY, minZ,
+                maxX, maxY, maxZ,
+                color[0], color[1], color[2], alpha * 0.5f);
+            *///?}
             immediate.draw();
         }
     }

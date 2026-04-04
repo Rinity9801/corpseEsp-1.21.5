@@ -12,6 +12,9 @@
     "WorldRendererMixin",
     "GenericContainerScreenMixin",
     "HandledScreenMixin"
+    //? if is1_21_11 {
+    ,"NVGSamplerFixMixin"
+    //?}
   ],
   "injectors": {
     "defaultRequire": 1

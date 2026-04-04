@@ -3,7 +3,11 @@ package forfun.miningqol.client;
 import net.minecraft.block.BlockState;
 import net.minecraft.client.MinecraftClient;
 import net.minecraft.client.render.*;
-import net.minecraft.client.render.debug.DebugRenderer;
+//? if is1_21_11 {
+import forfun.miningqol.client.utils.RenderHelper;
+//?} else {
+/*import net.minecraft.client.render.debug.DebugRenderer;
+*///?}
 import net.minecraft.client.util.math.MatrixStack;
 import net.minecraft.util.hit.BlockHitResult;
 import net.minecraft.util.hit.HitResult;
@@ -90,9 +94,15 @@ public class BlockOutlineRenderer {
 
         VertexConsumerProvider.Immediate immediate = client.getBufferBuilders().getEntityVertexConsumers();
 
-        double cameraX = camera.getPos().x;
+        //? if is1_21_11 {
+        double cameraX = camera.getCameraPos().x;
+        double cameraY = camera.getCameraPos().y;
+        double cameraZ = camera.getCameraPos().z;
+        //?} else {
+        /*double cameraX = camera.getPos().x;
         double cameraY = camera.getPos().y;
         double cameraZ = camera.getPos().z;
+        *///?}
 
         GL11.glDisable(GL11.GL_DEPTH_TEST);
         GL11.glDisable(GL11.GL_CULL_FACE);
@@ -112,10 +122,17 @@ public class BlockOutlineRenderer {
             if (mode == OutlineMode.FILLED || mode == OutlineMode.BOTH) {
                 
                 float adjustedAlpha = effectiveAlpha * 0.5f;
-                DebugRenderer.drawBox(matrices, immediate,
+                //? if is1_21_11 {
+                RenderHelper.drawBox(matrices, immediate,
                     minX, minY, minZ,
                     maxX, maxY, maxZ,
                     red, green, blue, adjustedAlpha);
+                //?} else {
+                /*DebugRenderer.drawBox(matrices, immediate,
+                    minX, minY, minZ,
+                    maxX, maxY, maxZ,
+                    red, green, blue, adjustedAlpha);
+                *///?}
                 immediate.draw();
             }
 
@@ -124,10 +141,17 @@ public class BlockOutlineRenderer {
                 float outlineAlpha = isTransparent ? 0.4f : (alpha * 2.0f);
                 outlineAlpha = Math.max(0.0f, Math.min(1.0f, outlineAlpha)) * 0.5f; 
                 double expand = 0.002;
-                DebugRenderer.drawBox(matrices, immediate,
+                //? if is1_21_11 {
+                RenderHelper.drawBox(matrices, immediate,
                     minX - expand, minY - expand, minZ - expand,
                     maxX + expand, maxY + expand, maxZ + expand,
                     red, green, blue, outlineAlpha);
+                //?} else {
+                /*DebugRenderer.drawBox(matrices, immediate,
+                    minX - expand, minY - expand, minZ - expand,
+                    maxX + expand, maxY + expand, maxZ + expand,
+                    red, green, blue, outlineAlpha);
+                *///?}
                 immediate.draw();
             }
         }

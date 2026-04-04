@@ -226,13 +226,24 @@ class CorpseESPCategoryScreen(private val parentScreen: Screen) : VexelScreen("C
         return super.keyPressed(input)
     }
 
-    override fun onKeyType(typedChar: Char, keyCode: Int, scanCode: Int) {
+    //? if is1_21_11 {
+    override fun onKeyType(typedChar: Char, keyCode: Int, scanCode: Int): Boolean {
+        if (keyCode == KnitKeys.KEY_ESCAPE.code) {
+            closeWithAnimation()
+            return true
+        } else {
+            return super.onKeyType(typedChar, keyCode, scanCode)
+        }
+    }
+    //?} else {
+    /*override fun onKeyType(typedChar: Char, keyCode: Int, scanCode: Int) {
         if (keyCode == KnitKeys.KEY_ESCAPE.code) {
             closeWithAnimation()
         } else {
             super.onKeyType(typedChar, keyCode, scanCode)
         }
     }
+    *///?}
 
     override fun shouldCloseOnEsc(): Boolean = false
 }

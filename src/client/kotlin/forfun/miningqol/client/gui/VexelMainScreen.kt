@@ -386,7 +386,19 @@ class VexelMainScreen : VexelScreen("MiningQOL Settings") {
         return super.keyPressed(input)
     }
 
-    override fun onKeyType(typedChar: Char, keyCode: Int, scanCode: Int) {
+    //? if is1_21_11 {
+    override fun onKeyType(typedChar: Char, keyCode: Int, scanCode: Int): Boolean {
+        // Handle ESC key to trigger close animation
+        if (keyCode == KnitKeys.KEY_ESCAPE.code) {
+            closeWithAnimation()
+            return true
+        } else {
+            // Let parent handle other keys
+            return super.onKeyType(typedChar, keyCode, scanCode)
+        }
+    }
+    //?} else {
+    /*override fun onKeyType(typedChar: Char, keyCode: Int, scanCode: Int) {
         // Handle ESC key to trigger close animation
         if (keyCode == KnitKeys.KEY_ESCAPE.code) {
             closeWithAnimation()
@@ -395,6 +407,7 @@ class VexelMainScreen : VexelScreen("MiningQOL Settings") {
             super.onKeyType(typedChar, keyCode, scanCode)
         }
     }
+    *///?}
 
     override fun shouldCloseOnEsc(): Boolean = false
 }
