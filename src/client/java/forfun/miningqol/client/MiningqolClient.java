@@ -268,6 +268,25 @@ public class MiningqolClient implements ClientModInitializer {
 
                     return 1;
                 }));
+            dispatcher.register(ClientCommandManager.literal("tablist")
+                .executes(context -> {
+                    MinecraftClient client = MinecraftClient.getInstance();
+                    if (client.player == null || client.getNetworkHandler() == null) return 0;
+
+                    java.util.Collection<net.minecraft.client.network.PlayerListEntry> entries = client.getNetworkHandler().getPlayerList();
+                    client.player.sendMessage(Text.literal("§6=== Tab List (" + entries.size() + " entries) ==="), false);
+
+                    int i = 0;
+                    for (net.minecraft.client.network.PlayerListEntry entry : entries) {
+                        String name = entry.getProfile().name();
+                        Text displayName = entry.getDisplayName();
+                        String display = displayName != null ? displayName.getString() : name;
+                        client.player.sendMessage(Text.literal("§7[" + i + "] §f" + display + " §8(" + name + ")"), false);
+                        i++;
+                    }
+
+                    return 1;
+                }));
             dispatcher.register(ClientCommandManager.literal("mqo")
                 .then(ClientCommandManager.literal("add")
                     .executes(context -> {
@@ -401,6 +420,7 @@ public class MiningqolClient implements ClientModInitializer {
                 CommClaimManager.tick();
                 AbilitySwitchManager.tick();
                 ShaftClickerManager.tick();
+                FiletWarning.tick();
                 forfun.miningqol.client.hotm.AutoHotmManager.tick();
 
             }

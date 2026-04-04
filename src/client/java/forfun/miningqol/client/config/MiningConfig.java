@@ -8,6 +8,7 @@ import forfun.miningqol.client.BlockOutlineRenderer;
 import forfun.miningqol.client.CommClaimManager;
 import forfun.miningqol.client.CorpseESP;
 import forfun.miningqol.client.EfficientMinerOverlay;
+import forfun.miningqol.client.FiletWarning;
 import forfun.miningqol.client.GlassSync;
 import forfun.miningqol.client.ShaftClickerManager;
 import forfun.miningqol.client.ShaftESP;
@@ -94,6 +95,8 @@ public class MiningConfig {
     public int shaftClickerMiningSlot = 0;
 
     public boolean autoSkipShoLoad = false;
+
+    public boolean filetWarningEnabled = false;
 
     public boolean glassSyncEnabled = false;
 
@@ -319,6 +322,8 @@ public class MiningConfig {
         ShaftClickerManager.setEnabled(shaftClickerEnabled);
         ShaftClickerManager.setMiningSlot(shaftClickerMiningSlot);
 
+        FiletWarning.setEnabled(filetWarningEnabled);
+
         GlassSync.setEnabled(glassSyncEnabled);
 
         // Ordered Waypoints
@@ -421,6 +426,8 @@ public class MiningConfig {
 
         shaftClickerEnabled = ShaftClickerManager.isEnabled();
         shaftClickerMiningSlot = ShaftClickerManager.getMiningSlot();
+
+        filetWarningEnabled = FiletWarning.isEnabled();
 
         glassSyncEnabled = GlassSync.isEnabled();
 
