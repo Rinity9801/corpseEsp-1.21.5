@@ -8,7 +8,9 @@ import forfun.miningqol.client.profit.ProfitTrackerHUD;
 import forfun.miningqol.client.profit.ProfitDebugger;
 import forfun.miningqol.client.sacks.CoalValueCommand;
 
+//? if isCheat {
 import forfun.miningqol.client.hotm.HotmManager;
+//?}
 import forfun.miningqol.client.waypoints.OrderedWaypointManager;
 import com.mojang.brigadier.arguments.IntegerArgumentType;
 import com.mojang.brigadier.arguments.StringArgumentType;
@@ -43,9 +45,11 @@ public class MiningqolClient implements ClientModInitializer {
     private static final Pattern CORPSE_LOOT_PATTERN = Pattern.compile("\\s(.+) CORPSE LOOT!\\s");
     private static final Pattern PRISTINE_PATTERN = Pattern.compile("PRISTINE! You found . Flawed (.+) Gemstone x(\\d+)!");
     private static MiningConfig config;
+    //? if isCheat {
     private static KeyBinding toggleAutoClickerKey;
     private static KeyBinding toggleShaftClickerKey;
     private static KeyBinding commClaimKey;
+    //?}
     private static KeyBinding abilitySwitchKey;
 
 
@@ -57,11 +61,14 @@ public class MiningqolClient implements ClientModInitializer {
         config.applyToGame();
 
         OrderedWaypointManager.init();
+        //? if isCheat {
         HotmManager.init();
+        //?}
 
         // Create category once and reuse for all keybinds
         KeyBinding.Category miningqolCategory = KeyBinding.Category.create(Identifier.of("miningqol", "category"));
 
+        //? if isCheat {
         toggleAutoClickerKey = KeyBindingHelper.registerKeyBinding(new KeyBinding(
             "key.miningqol.toggle_coalclick",
             InputUtil.Type.KEYSYM,
@@ -82,6 +89,7 @@ public class MiningqolClient implements ClientModInitializer {
             GLFW.GLFW_KEY_G,
             miningqolCategory
         ));
+        //?}
 
         abilitySwitchKey = KeyBindingHelper.registerKeyBinding(new KeyBinding(
             "key.miningqol.ability_switch",
@@ -104,16 +112,21 @@ public class MiningqolClient implements ClientModInitializer {
                     });
                     return 1;
                 })
+                //? if isCheat {
                 .then(ClientCommandManager.literal("hotm")
                     .executes(context -> {
                         forfun.miningqol.client.hotm.HotmChestScreen.open();
                         return 1;
-                    })));
+                    }))
+                //?}
+                );
+            //? if isCheat {
             dispatcher.register(ClientCommandManager.literal("hotmconfig")
                 .executes(context -> {
                     forfun.miningqol.client.hotm.HotmChestScreen.open();
                     return 1;
                 }));
+            //?}
             dispatcher.register(ClientCommandManager.literal("getstand")
                 .executes(context -> {
                     getArmorStandData(context.getSource());
@@ -386,6 +399,7 @@ public class MiningqolClient implements ClientModInitializer {
 
         ClientTickEvents.END_CLIENT_TICK.register(client -> {
 
+            //? if isCheat {
             while (toggleAutoClickerKey.wasPressed()) {
                 AutoClickerManager.toggle();
             }
@@ -401,6 +415,7 @@ public class MiningqolClient implements ClientModInitializer {
                     CommClaimManager.start();
                 }
             }
+            //?}
 
             while (abilitySwitchKey.wasPressed()) {
                 AbilitySwitchManager.toggle();
@@ -413,15 +428,23 @@ public class MiningqolClient implements ClientModInitializer {
                 BlockTracker.tick();
                 EfficientMinerOverlay.tick();
                 PickaxeCooldownHUD.tick();
+                //? if isCheat {
                 AutoClickerManager.tick();
+                //?}
                 CommandKeybindManager.tick(client);
                 LobbyFinder.tick();
                 OrderedWaypointManager.tick();
+                //? if isCheat {
                 CommClaimManager.tick();
+                //?}
                 AbilitySwitchManager.tick();
+                //? if isCheat {
                 ShaftClickerManager.tick();
+                //?}
                 FiletWarning.tick();
+                //? if isCheat {
                 forfun.miningqol.client.hotm.AutoHotmManager.tick();
+                //?}
 
             }
         });
@@ -450,6 +473,7 @@ public class MiningqolClient implements ClientModInitializer {
                 GemstoneTracker.onPristineGem(gemType, amount);
             }
 
+            //? if isCheat {
             // Forward chat to AutoHotm for "already purchased" detection
             forfun.miningqol.client.hotm.AutoHotmManager.onChatMessage(messageText);
 
@@ -460,6 +484,7 @@ public class MiningqolClient implements ClientModInitializer {
                     CommClaimManager.start();
                 }
             }
+            //?}
 
             // Block tracker for sack messages
             BlockTracker.onChatMessage(message);
@@ -490,15 +515,19 @@ public class MiningqolClient implements ClientModInitializer {
             MinecraftClient client = MinecraftClient.getInstance();
             ProfitTrackerHUD.render(context);
             PickaxeCooldownHUD.render(context);
+            //? if isCheat {
             AutoClickerHUD.render(context, client);
+            //?}
             LobbyFinderHUD.render(context);
         });
 
         net.fabricmc.fabric.api.client.event.lifecycle.v1.ClientLifecycleEvents.CLIENT_STOPPING.register(client -> {
             CorpseESP.onWorldUnload();
             ShaftESP.onWorldUnload();
+            //? if isCheat {
             AutoClickerManager.cleanup();
             ShaftClickerManager.cleanup();
+            //?}
 
             config.loadFromGame();
             config.save();

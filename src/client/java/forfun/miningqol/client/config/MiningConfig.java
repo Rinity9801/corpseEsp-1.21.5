@@ -2,15 +2,21 @@ package forfun.miningqol.client.config;
 
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
+//? if isCheat {
 import forfun.miningqol.client.AutoClickerHUD;
 import forfun.miningqol.client.AutoClickerManager;
+//?}
 import forfun.miningqol.client.BlockOutlineRenderer;
+//? if isCheat {
 import forfun.miningqol.client.CommClaimManager;
+//?}
 import forfun.miningqol.client.CorpseESP;
 import forfun.miningqol.client.EfficientMinerOverlay;
 import forfun.miningqol.client.FiletWarning;
 import forfun.miningqol.client.GlassSync;
+//? if isCheat {
 import forfun.miningqol.client.ShaftClickerManager;
+//?}
 import forfun.miningqol.client.ShaftESP;
 import forfun.miningqol.client.NameHider;
 import forfun.miningqol.client.PickaxeCooldownHUD;
@@ -89,6 +95,7 @@ public class MiningConfig {
 
     // Shaft ESP
     public boolean shaftESPEnabled = true;
+    public boolean shaftESPMobsEnabled = false;
 
     // Shaft Clicker
     public boolean shaftClickerEnabled = false;
@@ -287,12 +294,14 @@ public class MiningConfig {
         NameHider.setColor1(nameColorRed1, nameColorGreen1, nameColorBlue1);
         NameHider.setColor2(nameColorRed2, nameColorGreen2, nameColorBlue2);
 
+        //? if isCheat {
         AutoClickerManager.setEnabled(autoClickerEnabled);
         AutoClickerManager.setMiningSlot(autoClickerMiningSlot);
         AutoClickerManager.setEnableRodSwap(autoClickerRodSwap);
         AutoClickerManager.setEnableSecondDrill(autoClickerSecondDrill);
         AutoClickerManager.setSecondDrillSlot(autoClickerSecondDrillSlot);
         AutoClickerHUD.setEnabled(autoClickerHudEnabled);
+        //?}
 
         forfun.miningqol.client.CommandKeybindManager.clearAll();
         for (Map.Entry<String, String> entry : commandKeybinds.entrySet()) {
@@ -317,10 +326,13 @@ public class MiningConfig {
         }
         forfun.miningqol.client.LobbyFinder.setTrackedBlocks(blocks);
 
-        ShaftESP.setEnabled(shaftESPEnabled);
+        ShaftESP.setLittlefootEnabled(shaftESPEnabled);
+        ShaftESP.setMobsEnabled(shaftESPMobsEnabled);
 
+        //? if isCheat {
         ShaftClickerManager.setEnabled(shaftClickerEnabled);
         ShaftClickerManager.setMiningSlot(shaftClickerMiningSlot);
+        //?}
 
         FiletWarning.setEnabled(filetWarningEnabled);
 
@@ -350,6 +362,7 @@ public class MiningConfig {
         OrderedWaypointManager.setBlockOutlineColor(orderedWaypointBlockOutlineColor[0], orderedWaypointBlockOutlineColor[1], orderedWaypointBlockOutlineColor[2]);
         OrderedWaypointManager.setBlockOutlineAlpha(orderedWaypointBlockOutlineAlpha);
 
+        //? if isCheat {
         // Comm Claim
         CommClaimManager.setBatPersonSlot(commClaimBatPersonSlot);
         CommClaimManager.setDivanSlot(commClaimDivanSlot);
@@ -358,6 +371,7 @@ public class MiningConfig {
         CommClaimManager.setGuiWaitDelay(commClaimGuiWaitDelay);
         CommClaimManager.setAutoTrigger(commClaimAutoTrigger);
         CommClaimManager.setWardrobeSwap(commClaimWardrobeSwap);
+        //?}
     }
 
     public void loadFromGame() {
@@ -404,12 +418,14 @@ public class MiningConfig {
         nameColorGreen2 = NameHider.getGreen2();
         nameColorBlue2 = NameHider.getBlue2();
 
+        //? if isCheat {
         autoClickerEnabled = AutoClickerManager.isEnabled();
         autoClickerMiningSlot = AutoClickerManager.getMiningSlot();
         autoClickerRodSwap = AutoClickerManager.isRodSwapEnabled();
         autoClickerSecondDrill = AutoClickerManager.isSecondDrillEnabled();
         autoClickerSecondDrillSlot = AutoClickerManager.getSecondDrillSlot();
         autoClickerHudEnabled = AutoClickerHUD.isEnabled();
+        //?}
 
         commandKeybinds.clear();
         for (Map.Entry<Integer, String> entry : forfun.miningqol.client.CommandKeybindManager.getAllKeybinds().entrySet()) {
@@ -422,10 +438,13 @@ public class MiningConfig {
             lobbyFinderBlocks.add(pos.getX() + "," + pos.getY() + "," + pos.getZ());
         }
 
-        shaftESPEnabled = ShaftESP.isEnabled();
+        shaftESPEnabled = ShaftESP.isLittlefootEnabled();
+        shaftESPMobsEnabled = ShaftESP.isMobsEnabled();
 
+        //? if isCheat {
         shaftClickerEnabled = ShaftClickerManager.isEnabled();
         shaftClickerMiningSlot = ShaftClickerManager.getMiningSlot();
+        //?}
 
         filetWarningEnabled = FiletWarning.isEnabled();
 
@@ -455,6 +474,7 @@ public class MiningConfig {
         orderedWaypointBlockOutlineColor = OrderedWaypointManager.getBlockOutlineColor();
         orderedWaypointBlockOutlineAlpha = OrderedWaypointManager.getBlockOutlineAlpha();
 
+        //? if isCheat {
         // Comm Claim
         commClaimBatPersonSlot = CommClaimManager.getBatPersonSlot();
         commClaimDivanSlot = CommClaimManager.getDivanSlot();
@@ -463,5 +483,6 @@ public class MiningConfig {
         commClaimGuiWaitDelay = CommClaimManager.getGuiWaitDelay();
         commClaimAutoTrigger = CommClaimManager.isAutoTrigger();
         commClaimWardrobeSwap = CommClaimManager.isWardrobeSwap();
+        //?}
     }
 }

@@ -5,7 +5,8 @@ plugins {
     id("dev.kikugie.stonecutter")
 }
 
-val mc = stonecutter.current.version
+val fullVersion = stonecutter.current.version
+val mc = fullVersion.substringBefore("-")
 
 version = property("mod_version").toString()
 group = property("maven_group").toString()
@@ -68,6 +69,7 @@ dependencies {
 // Stonecutter constants for preprocessor
 stonecutter {
     constants["is1_21_11"] = eval(mc, ">=1.21.11")
+    constants["isCheat"] = fullVersion.endsWith("-cheat")
 }
 
 tasks.processResources {

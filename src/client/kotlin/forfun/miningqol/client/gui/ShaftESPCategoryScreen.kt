@@ -2,6 +2,7 @@ package forfun.miningqol.client.gui
 
 import forfun.miningqol.client.CorpseESP
 import forfun.miningqol.client.MiningqolClient
+import forfun.miningqol.client.ShaftESP
 import net.minecraft.client.MinecraftClient
 import net.minecraft.client.gui.screen.Screen
 import net.minecraft.client.input.KeyInput
@@ -14,7 +15,7 @@ import xyz.meowing.vexel.components.base.Pos
 import xyz.meowing.vexel.components.base.Size
 import xyz.meowing.vexel.animations.*
 
-class CorpseESPCategoryScreen(private val parentScreen: Screen) : VexelScreen("Corpse ESP Settings") {
+class ShaftESPCategoryScreen(private val parentScreen: Screen) : VexelScreen("Shaft ESP Settings") {
     private lateinit var overlay: Rectangle
     private lateinit var mainPanel: Rectangle
 
@@ -31,14 +32,14 @@ class CorpseESPCategoryScreen(private val parentScreen: Screen) : VexelScreen("C
             .childOf(window)
             .fadeIn(400, EasingType.EASE_OUT)
 
-        // Main panel - darker and more modern
+        // Main panel - taller to fit more toggles
         mainPanel = Rectangle(
             backgroundColor = 0xF0121212.toInt(),
             borderColor = 0xFF2A2A2A.toInt(),
             borderRadius = 16f,
             borderThickness = 1f
         )
-            .setSizing(550f, Size.Pixels, 490f, Size.Pixels)
+            .setSizing(550f, Size.Pixels, 680f, Size.Pixels)
             .childOf(window)
             .apply {
                 dropShadow = true
@@ -51,7 +52,7 @@ class CorpseESPCategoryScreen(private val parentScreen: Screen) : VexelScreen("C
         mainPanel.xPositionConstraint = Pos.ScreenPixels
         mainPanel.yPositionConstraint = Pos.ScreenPixels
         mainPanel.xConstraint = (mainPanel.screenWidth - 550f) / 2f
-        mainPanel.yConstraint = (mainPanel.screenHeight - 490f) / 2f
+        mainPanel.yConstraint = (mainPanel.screenHeight - 680f) / 2f
         mainPanel.fadeIn(500, EasingType.EASE_OUT)
 
         // Title bar background
@@ -71,13 +72,15 @@ class CorpseESPCategoryScreen(private val parentScreen: Screen) : VexelScreen("C
             .fadeIn(600, EasingType.EASE_OUT)
 
         // Title
-        Text("Corpse ESP Settings", 0xFFFFFFFF.toInt(), 28f, true)
+        Text("Shaft ESP Settings", 0xFFFFFFFF.toInt(), 28f, true)
             .setPositioning(0f, Pos.ParentCenter, 22f, Pos.ParentPixels)
             .childOf(mainPanel)
             .fadeIn(700, EasingType.EASE_OUT)
 
-        // Corpse toggles
+        // All toggles: mob ESP, littlefoot, then corpse types
         val toggles = listOf(
+            Triple("All Mobs", 0xFFFF9933.toInt()) { ShaftESP.isMobsEnabled() },
+            Triple("Littlefoot", 0xFF00FF66.toInt()) { ShaftESP.isLittlefootEnabled() },
             Triple("Lapis Corpses", 0xFF5B7CFF.toInt()) { CorpseESP.isLapisEnabled() },
             Triple("Tungsten Corpses", 0xFF5BFF7C.toInt()) { CorpseESP.isTungstenEnabled() },
             Triple("Umber Corpses", 0xFFFFAA44.toInt()) { CorpseESP.isUmberEnabled() },
@@ -85,19 +88,21 @@ class CorpseESPCategoryScreen(private val parentScreen: Screen) : VexelScreen("C
         )
 
         val toggleActions = listOf<() -> Unit>(
+            { ShaftESP.setMobsEnabled(!ShaftESP.isMobsEnabled()) },
+            { ShaftESP.setLittlefootEnabled(!ShaftESP.isLittlefootEnabled()) },
             { CorpseESP.toggleLapis() },
             { CorpseESP.toggleTungsten() },
             { CorpseESP.toggleUmber() },
             { CorpseESP.toggleVanguard() }
         )
 
-        val startY = 110f
+        val startY = 100f
         val toggleHeight = 65f
-        val toggleSpacing = 15f
+        val toggleSpacing = 12f
         val toggleWidth = 480f
 
         toggles.forEachIndexed { index, (label, accentColor, getEnabled) ->
-            val delay = 200L + (index * 100L)
+            val delay = 200L + (index * 80L)
             createToggleCard(
                 label,
                 accentColor,
@@ -117,7 +122,7 @@ class CorpseESPCategoryScreen(private val parentScreen: Screen) : VexelScreen("C
             .setSizing(140f, Size.Pixels, 42f, Size.Pixels)
             .setPositioning(0f, Pos.ParentCenter, 0f, Pos.ParentPixels)
             .alignBottom()
-            .setOffset(0f, -25f)
+            .setOffset(0f, -20f)
             .backgroundColor(0xFF2A2A2A.toInt())
             .borderColor(0xFF404040.toInt())
             .borderRadius(8f)

@@ -144,10 +144,10 @@ class VexelMainScreen : VexelScreen("MiningQOL Settings") {
                 listOf("efficient", "miner", "overlay", "heatmap", "beacon", "perk", "highlight", "players")
             ),
             CardInfo(
-                "Corpse ESP",
-                "Highlight corpses in Crystal Hollows",
+                "Shaft ESP",
+                "Highlight mobs and corpses in Mineshafts",
                 0xFF5BFF7C.toInt(),
-                listOf("corpse", "esp", "lapis", "tungsten", "umber", "vanguard", "crystal hollows", "highlight", "bodies")
+                listOf("shaft", "esp", "littlefoot", "mobs", "corpse", "lapis", "tungsten", "umber", "vanguard", "mineshaft", "highlight", "bodies", "wolves")
             ),
             CardInfo(
                 "Pickaxe Cooldown",
@@ -163,67 +163,75 @@ class VexelMainScreen : VexelScreen("MiningQOL Settings") {
             )
         )
 
-        val rightCards = listOf(
+        val rightCards = mutableListOf(
             CardInfo(
                 "Name Hider",
                 "Hide or customize your name display",
                 0xFFFF5BFF.toInt(),
                 listOf("name", "hider", "replacement", "gradient", "color", "hide", "username", "disguise", "anonymize")
             ),
-            CardInfo(
-                "Auto Clicker",
-                "Automated clicking for mining",
-                0xFFFFA05B.toInt(),
-                listOf("auto", "clicker", "coalclick", "hud", "tab", "cooldown", "rod", "swap", "drill", "mining slot", "maniac miner", "second drill", "automated")
-            ),
-            CardInfo(
-                "Command Keybinds",
-                "Bind commands to keys",
-                0xFFA05BFF.toInt(),
-                listOf("command", "keybind", "key", "bind", "hotkey", "shortcut", "macro", "keyboard")
-            ),
-            CardInfo(
-                "Misc",
-                "Miscellaneous features and utilities",
-                0xFF888888.toInt(),
-                listOf("misc", "miscellaneous", "auto-skip", "sho", "load", "glass", "pane", "sync", "gemstone", "connection", "utilities")
-            ),
-            CardInfo(
-                "Comm Claim",
-                "Auto-claim commissions with armor swap",
-                0xFFFFD700.toInt(),
-                listOf("comm", "claim", "commission", "wardrobe", "armor", "bat person", "divan", "pigeon", "royal pigeon", "refined")
-            ),
-            CardInfo(
-                "Shaft Clicker",
-                "Auto-click that pauses in Mineshafts",
-                0xFF5BFF7C.toInt(),
-                listOf("shaft", "clicker", "auto", "click", "mineshaft", "pause", "mining")
-            ),
-            CardInfo(
-                "HOTM Presets",
-                "Select and apply HOTM tree presets",
-                0xFF55FFAA.toInt(),
-                listOf("hotm", "heart", "mountain", "perk", "ability", "token", "mining", "tree", "preset", "apply")
-            )
         )
+        //? if isCheat {
+        rightCards.add(CardInfo(
+            "Auto Clicker",
+            "Automated clicking for mining",
+            0xFFFFA05B.toInt(),
+            listOf("auto", "clicker", "coalclick", "hud", "tab", "cooldown", "rod", "swap", "drill", "mining slot", "maniac miner", "second drill", "automated")
+        ))
+        //?}
+        rightCards.add(CardInfo(
+            "Command Keybinds",
+            "Bind commands to keys",
+            0xFFA05BFF.toInt(),
+            listOf("command", "keybind", "key", "bind", "hotkey", "shortcut", "macro", "keyboard")
+        ))
+        rightCards.add(CardInfo(
+            "Misc",
+            "Miscellaneous features and utilities",
+            0xFF888888.toInt(),
+            listOf("misc", "miscellaneous", "auto-skip", "sho", "load", "glass", "pane", "sync", "gemstone", "connection", "utilities")
+        ))
+        //? if isCheat {
+        rightCards.add(CardInfo(
+            "Comm Claim",
+            "Auto-claim commissions with armor swap",
+            0xFFFFD700.toInt(),
+            listOf("comm", "claim", "commission", "wardrobe", "armor", "bat person", "divan", "pigeon", "royal pigeon", "refined")
+        ))
+        rightCards.add(CardInfo(
+            "Shaft Clicker",
+            "Auto-click that pauses in Mineshafts",
+            0xFF5BFF7C.toInt(),
+            listOf("shaft", "clicker", "auto", "click", "mineshaft", "pause", "mining")
+        ))
+        rightCards.add(CardInfo(
+            "HOTM Presets",
+            "Select and apply HOTM tree presets",
+            0xFF55FFAA.toInt(),
+            listOf("hotm", "heart", "mountain", "perk", "ability", "token", "mining", "tree", "preset", "apply")
+        ))
+        //?}
 
         val leftScreens = listOf(
             { MiningProfitCategoryScreen(this) },
             { MinerOverlayCategoryScreen(this) },
-            { CorpseESPCategoryScreen(this) },
+            { ShaftESPCategoryScreen(this) },
             { PickaxeCooldownCategoryScreen(this) },
             { OrderedWaypointsCategoryScreen(this) }
         )
 
-        val rightScreens = listOf(
+        val rightScreens = mutableListOf<() -> net.minecraft.client.gui.screen.Screen>(
             { NameHiderCategoryScreen(this) },
-            { AutoClickerCategoryScreen(this) },
-            { CommandKeybindCategoryScreen(this) },
-            { MiscCategoryScreen(this) },
-            { CommClaimCategoryScreen(this) },
-            { ShaftClickerCategoryScreen(this) }
         )
+        //? if isCheat {
+        rightScreens.add { AutoClickerCategoryScreen(this) }
+        //?}
+        rightScreens.add { CommandKeybindCategoryScreen(this) }
+        rightScreens.add { MiscCategoryScreen(this) }
+        //? if isCheat {
+        rightScreens.add { CommClaimCategoryScreen(this) }
+        rightScreens.add { ShaftClickerCategoryScreen(this) }
+        //?}
 
         // Create left column cards
         leftCards.forEachIndexed { index, cardInfo ->
@@ -252,10 +260,13 @@ class VexelMainScreen : VexelScreen("MiningQOL Settings") {
             ) {
                 if (index < rightScreens.size) {
                     MinecraftClient.getInstance().setScreen(rightScreens[index]())
-                } else {
+                }
+                //? if isCheat {
+                else {
                     // HOTM Presets - opens chest GUI
                     forfun.miningqol.client.hotm.HotmPresetScreen.open()
                 }
+                //?}
             }
             allCards.add(card to cardInfo)
         }

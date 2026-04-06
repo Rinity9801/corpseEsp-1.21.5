@@ -10,29 +10,33 @@ import forfun.miningqol.client.utils.RenderHelper;
 *///?}
 import net.minecraft.client.util.math.MatrixStack;
 import net.minecraft.entity.Entity;
+import net.minecraft.entity.LivingEntity;
 import net.minecraft.entity.decoration.ArmorStandEntity;
+import net.minecraft.entity.player.PlayerEntity;
 import net.minecraft.scoreboard.Scoreboard;
 import net.minecraft.scoreboard.ScoreboardDisplaySlot;
 import net.minecraft.scoreboard.ScoreboardObjective;
 import net.minecraft.scoreboard.Team;
+import net.minecraft.util.math.Box;
 import net.minecraft.util.math.Vec3d;
 import net.minecraft.world.World;
 import org.lwjgl.opengl.GL11;
 
-import java.util.Collection;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 
 public class ShaftESP {
     private static boolean isInMines = false;
     private static int locationCheckCooldown = 0;
-    private static boolean enabled = true;
+    private static boolean littlefootEnabled = true;
+    private static boolean mobsEnabled = false;
 
     private static final float[] LITTLEFOOT_COLOR = {0.0f, 1.0f, 0.4f};
+    private static final float[] MOB_COLOR = {1.0f, 0.6f, 0.2f};
 
-    // Entity ID -> color, tracks live entities
+    // Entity ID -> color for rendering
     private static final Map<Integer, float[]> trackedEntities = new HashMap<>();
+    // IDs of entities identified as littlefoot (the actual mob, not the nametag armor stand)
+    private static final Set<Integer> littlefootEntityIds = new HashSet<>();
 
     private static boolean checkIfInMineshaft() {
         MinecraftClient client = MinecraftClient.getInstance();
@@ -67,6 +71,7 @@ public class ShaftESP {
 
         if (world == null || client.player == null) {
             trackedEntities.clear();
+            littlefootEntityIds.clear();
             return;
         }
 
@@ -77,22 +82,25 @@ public class ShaftESP {
             locationCheckCooldown = 20;
         }
 
-        if (!enabled) {
+        if (!littlefootEnabled && !mobsEnabled) {
             trackedEntities.clear();
+            littlefootEntityIds.clear();
             return;
         }
 
         // Clear targets when leaving mineshaft
         if (wasInMines && !isInMines) {
             trackedEntities.clear();
+            littlefootEntityIds.clear();
         }
 
         if (!isInMines) return;
 
-        // Remove entities no longer in the world
+        // Remove stale entity IDs
         trackedEntities.keySet().removeIf(id -> world.getEntityById(id) == null);
+        littlefootEntityIds.removeIf(id -> world.getEntityById(id) == null);
 
-        // Scan for new matching armor stands
+        // Scan for littlefoot nametag armor stands and find the actual mob below
         List<ArmorStandEntity> stands = world.getEntitiesByClass(
             ArmorStandEntity.class,
             client.player.getBoundingBox().expand(800),
@@ -100,13 +108,59 @@ public class ShaftESP {
         );
 
         for (ArmorStandEntity stand : stands) {
-            if (trackedEntities.containsKey(stand.getId())) continue;
-
             String name = stand.getCustomName().getString()
                 .replaceAll("\u00A7.", "").trim().toLowerCase();
 
             if (name.contains("littlefoot")) {
-                trackedEntities.put(stand.getId(), LITTLEFOOT_COLOR);
+                // Search for the actual mob entity below the nametag armor stand
+                Box searchBox = new Box(
+                    stand.getX() - 1.5, stand.getY() - 4, stand.getZ() - 1.5,
+                    stand.getX() + 1.5, stand.getY() + 0.5, stand.getZ() + 1.5
+                );
+
+                List<LivingEntity> nearbyMobs = world.getEntitiesByClass(
+                    LivingEntity.class, searchBox,
+                    e -> !(e instanceof ArmorStandEntity) && !(e instanceof PlayerEntity)
+                );
+
+                LivingEntity closest = null;
+                double closestDist = Double.MAX_VALUE;
+                for (LivingEntity mob : nearbyMobs) {
+                    double dist = mob.squaredDistanceTo(stand);
+                    if (dist < closestDist) {
+                        closestDist = dist;
+                        closest = mob;
+                    }
+                }
+
+                if (closest != null) {
+                    littlefootEntityIds.add(closest.getId());
+                } else {
+                    // Fallback: track the armor stand itself if no mob found nearby
+                    littlefootEntityIds.add(stand.getId());
+                }
+            }
+        }
+
+        // Build tracked entities map based on toggles
+        trackedEntities.clear();
+
+        if (mobsEnabled) {
+            // Track all living entities that aren't players or armor stands
+            List<LivingEntity> mobs = world.getEntitiesByClass(
+                LivingEntity.class,
+                client.player.getBoundingBox().expand(800),
+                e -> !(e instanceof ArmorStandEntity) && !(e instanceof PlayerEntity)
+            );
+
+            for (LivingEntity mob : mobs) {
+                float[] color = littlefootEntityIds.contains(mob.getId()) ? LITTLEFOOT_COLOR : MOB_COLOR;
+                trackedEntities.put(mob.getId(), color);
+            }
+        } else if (littlefootEnabled) {
+            // Only track littlefoot entities
+            for (int id : littlefootEntityIds) {
+                trackedEntities.put(id, LITTLEFOOT_COLOR);
             }
         }
     }
@@ -127,25 +181,26 @@ public class ShaftESP {
             if (entity == null) continue;
 
             float[] color = entry.getValue();
+            Box box = entity.getBoundingBox();
 
-            double x = entity.getX() - cam.x;
-            double y = entity.getY() - cam.y;
-            double z = entity.getZ() - cam.z;
+            double minX = box.minX - cam.x;
+            double minY = box.minY - cam.y;
+            double minZ = box.minZ - cam.z;
+            double maxX = box.maxX - cam.x;
+            double maxY = box.maxY - cam.y;
+            double maxZ = box.maxZ - cam.z;
 
             GL11.glDisable(GL11.GL_DEPTH_TEST);
             GL11.glDisable(GL11.GL_CULL_FACE);
             GL11.glEnable(GL11.GL_BLEND);
 
-            // Player-sized box: 0.6 wide, 1.8 tall
             //? if is1_21_11 {
             RenderHelper.drawBox(matrices, immediate,
-                x - 0.3, y, z - 0.3,
-                x + 0.3, y + 1.8, z + 0.3,
+                minX, minY, minZ, maxX, maxY, maxZ,
                 color[0], color[1], color[2], 0.4f);
             //?} else {
             /*DebugRenderer.drawBox(matrices, immediate,
-                x - 0.3, y, z - 0.3,
-                x + 0.3, y + 1.8, z + 0.3,
+                minX, minY, minZ, maxX, maxY, maxZ,
                 color[0], color[1], color[2], 0.4f);
             *///?}
 
@@ -158,14 +213,32 @@ public class ShaftESP {
 
     public static void onWorldUnload() {
         trackedEntities.clear();
+        littlefootEntityIds.clear();
         isInMines = false;
     }
 
+    public static void setLittlefootEnabled(boolean value) {
+        littlefootEnabled = value;
+    }
+
+    public static boolean isLittlefootEnabled() {
+        return littlefootEnabled;
+    }
+
+    public static void setMobsEnabled(boolean value) {
+        mobsEnabled = value;
+    }
+
+    public static boolean isMobsEnabled() {
+        return mobsEnabled;
+    }
+
+    // Legacy compat - maps to littlefoot toggle
     public static void setEnabled(boolean value) {
-        enabled = value;
+        littlefootEnabled = value;
     }
 
     public static boolean isEnabled() {
-        return enabled;
+        return littlefootEnabled;
     }
 }
