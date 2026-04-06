@@ -132,6 +132,11 @@ public class MiningqolClient implements ClientModInitializer {
                     getArmorStandData(context.getSource());
                     return 1;
                 }));
+            dispatcher.register(ClientCommandManager.literal("shaftdebug")
+                .executes(context -> {
+                    dumpNearbyEntities();
+                    return 1;
+                }));
             dispatcher.register(ClientCommandManager.literal("profitreset")
                 .executes(context -> {
                     GemstoneTracker.reset();
@@ -594,5 +599,39 @@ public class MiningqolClient implements ClientModInitializer {
         if (!feet.isEmpty()) source.sendFeedback(Text.literal("\u00A77Feet: \u00A7f" + feet.getName().getString()));
         if (!mainHand.isEmpty()) source.sendFeedback(Text.literal("\u00A77Main Hand: \u00A7f" + mainHand.getName().getString()));
         if (!offHand.isEmpty()) source.sendFeedback(Text.literal("\u00A77Off Hand: \u00A7f" + offHand.getName().getString()));
+    }
+
+    private static void dumpNearbyEntities() {
+        MinecraftClient client = MinecraftClient.getInstance();
+        if (client.player == null || client.world == null) return;
+
+        client.player.sendMessage(Text.literal("\u00A7e=== Nearby Entities (20 blocks) ==="), false);
+
+        int count = 0;
+        for (Entity entity : client.world.getEntities()) {
+            if (entity == client.player) continue;
+            if (entity.squaredDistanceTo(client.player) > 400) continue; // 20 blocks
+
+            String type = entity.getClass().getSimpleName();
+            String name = entity.hasCustomName() ? entity.getCustomName().getString() : "-";
+            String cleanName = name.replaceAll("\u00A7.", "").trim();
+
+            StringBuilder info = new StringBuilder();
+            info.append("\u00A76").append(type);
+            info.append(" \u00A77| \u00A7f").append(cleanName);
+
+            if (entity instanceof ArmorStandEntity stand) {
+                info.append(" \u00A77| inv=").append(stand.isInvisible());
+                info.append(" mkr=").append(stand.isMarker());
+            }
+
+            info.append(String.format(" \u00A78[%.0f, %.0f, %.0f]",
+                entity.getX(), entity.getY(), entity.getZ()));
+
+            client.player.sendMessage(Text.literal(info.toString()), false);
+            count++;
+        }
+
+        client.player.sendMessage(Text.literal("\u00A7e=== " + count + " entities found ==="), false);
     }
 }
