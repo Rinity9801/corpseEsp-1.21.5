@@ -2,12 +2,14 @@ package forfun.miningqol.client;
 
 import net.minecraft.client.MinecraftClient;
 import net.minecraft.client.render.Camera;
-import net.minecraft.client.render.RenderLayer;
 import net.minecraft.client.render.VertexConsumer;
 import net.minecraft.client.render.VertexConsumerProvider;
 //? if is1_21_11 {
+import forfun.miningqol.client.utils.RenderHelper;
 import net.minecraft.client.render.RenderLayers;
-//?}
+//?} else {
+/*import net.minecraft.client.render.RenderLayer;
+*///?}
 import net.minecraft.client.util.math.MatrixStack;
 import net.minecraft.entity.Entity;
 import net.minecraft.entity.LivingEntity;
@@ -162,7 +164,7 @@ public class ShaftESP {
 
     public static void render(MatrixStack matrices, Camera camera) {
         MinecraftClient client = MinecraftClient.getInstance();
-        if (client.world == null) return;
+        if (client.world == null || trackedEntities.isEmpty()) return;
 
         //? if is1_21_11 {
         Vec3d cam = camera.getCameraPos();
@@ -176,23 +178,51 @@ public class ShaftESP {
         GL11.glEnable(GL11.GL_BLEND);
 
         //? if is1_21_11 {
-        VertexConsumer lineBuffer = immediate.getBuffer(RenderLayers.lines());
-        //?} else {
-        /*VertexConsumer lineBuffer = immediate.getBuffer(RenderLayer.getLines());
-        *///?}
-        Matrix4f posMatrix = matrices.peek().getPositionMatrix();
-
+        // 1.21.11: RenderLayers.lines() requires LineWidth vertex element,
+        // use filled box with low alpha instead
         for (Map.Entry<Integer, float[]> entry : trackedEntities.entrySet()) {
             Entity entity = client.world.getEntityById(entry.getKey());
             if (entity == null) continue;
 
             float[] color = entry.getValue();
+            double minX, minY, minZ, maxX, maxY, maxZ;
 
+            if (entity instanceof ArmorStandEntity stand && stand.isMarker()) {
+                minX = entity.getX() - cam.x - 0.4;
+                minY = entity.getY() - cam.y - 1.8;
+                minZ = entity.getZ() - cam.z - 0.4;
+                maxX = entity.getX() - cam.x + 0.4;
+                maxY = entity.getY() - cam.y + 0.2;
+                maxZ = entity.getZ() - cam.z + 0.4;
+            } else {
+                Box box = entity.getBoundingBox();
+                minX = box.minX - cam.x;
+                minY = box.minY - cam.y;
+                minZ = box.minZ - cam.z;
+                maxX = box.maxX - cam.x;
+                maxY = box.maxY - cam.y;
+                maxZ = box.maxZ - cam.z;
+            }
+
+            RenderHelper.drawBox(matrices, immediate,
+                minX, minY, minZ, maxX, maxY, maxZ,
+                color[0], color[1], color[2], 0.2f);
+            immediate.draw();
+        }
+        //?} else {
+        /*
+        VertexConsumer lineBuffer = immediate.getBuffer(RenderLayer.getLines());
+        Matrix4f posMatrix = matrices.peek().getPositionMatrix();
+
+        boolean drewAny = false;
+        for (Map.Entry<Integer, float[]> entry : trackedEntities.entrySet()) {
+            Entity entity = client.world.getEntityById(entry.getKey());
+            if (entity == null) continue;
+
+            float[] color = entry.getValue();
             float x1, y1, z1, x2, y2, z2;
 
             if (entity instanceof ArmorStandEntity stand && stand.isMarker()) {
-                // Marker armor stands (mob nametags) have no real bounding box -
-                // render a mob-sized outline offset below the nametag
                 double cx = entity.getX() - cam.x;
                 double cy = entity.getY() - cam.y;
                 double cz = entity.getZ() - cam.z;
@@ -213,37 +243,33 @@ public class ShaftESP {
             }
 
             float r = color[0], g = color[1], b = color[2], a = 1.0f;
+            drewAny = true;
 
-            // Bottom face edges
             drawEdge(lineBuffer, posMatrix, x1, y1, z1, x2, y1, z1, r, g, b, a);
             drawEdge(lineBuffer, posMatrix, x2, y1, z1, x2, y1, z2, r, g, b, a);
             drawEdge(lineBuffer, posMatrix, x2, y1, z2, x1, y1, z2, r, g, b, a);
             drawEdge(lineBuffer, posMatrix, x1, y1, z2, x1, y1, z1, r, g, b, a);
-
-            // Top face edges
             drawEdge(lineBuffer, posMatrix, x1, y2, z1, x2, y2, z1, r, g, b, a);
             drawEdge(lineBuffer, posMatrix, x2, y2, z1, x2, y2, z2, r, g, b, a);
             drawEdge(lineBuffer, posMatrix, x2, y2, z2, x1, y2, z2, r, g, b, a);
             drawEdge(lineBuffer, posMatrix, x1, y2, z2, x1, y2, z1, r, g, b, a);
-
-            // Vertical edges
             drawEdge(lineBuffer, posMatrix, x1, y1, z1, x1, y2, z1, r, g, b, a);
             drawEdge(lineBuffer, posMatrix, x2, y1, z1, x2, y2, z1, r, g, b, a);
             drawEdge(lineBuffer, posMatrix, x2, y1, z2, x2, y2, z2, r, g, b, a);
             drawEdge(lineBuffer, posMatrix, x1, y1, z2, x1, y2, z2, r, g, b, a);
         }
 
-        //? if is1_21_11 {
-        immediate.draw(RenderLayers.lines());
-        //?} else {
-        /*immediate.draw(RenderLayer.getLines());
+        if (drewAny) {
+            immediate.draw(RenderLayer.getLines());
+        }
         *///?}
 
         GL11.glEnable(GL11.GL_DEPTH_TEST);
         GL11.glEnable(GL11.GL_CULL_FACE);
     }
 
-    private static void drawEdge(VertexConsumer buffer, Matrix4f posMatrix,
+    //? if !is1_21_11 {
+    /*private static void drawEdge(VertexConsumer buffer, Matrix4f posMatrix,
                                  float x1, float y1, float z1, float x2, float y2, float z2,
                                  float r, float g, float b, float a) {
         float nx = x2 - x1;
@@ -263,6 +289,7 @@ public class ShaftESP {
         buffer.vertex(posMatrix, x1, y1, z1).color(r, g, b, a).normal(nx, ny, nz);
         buffer.vertex(posMatrix, x2, y2, z2).color(r, g, b, a).normal(nx, ny, nz);
     }
+    *///?}
 
     public static void onWorldUnload() {
         trackedEntities.clear();
