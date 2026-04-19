@@ -130,7 +130,7 @@ class VexelMainScreen : VexelScreen("MiningQOL Settings") {
         val cardWidth = 335f
 
         // Left column cards with searchable keywords
-        val leftCards = listOf(
+        val leftCards = mutableListOf(
             CardInfo(
                 "Mining Profit",
                 "Track earnings and optimize gains",
@@ -162,6 +162,14 @@ class VexelMainScreen : VexelScreen("MiningQOL Settings") {
                 listOf("ordered", "waypoints", "route", "path", "navigation", "mqo", "waypoint", "trace", "line")
             )
         )
+        //? if isCheat {
+        leftCards.add(CardInfo(
+            "In Shaft Click",
+            "Auto-click with cold-aware drill switching",
+            0xFF44AAFF.toInt(),
+            listOf("cold", "clicker", "auto", "click", "drill", "swap", "threshold", "glacite", "mining", "temperature", "shaft")
+        ))
+        //?}
 
         val rightCards = mutableListOf(
             CardInfo(
@@ -212,13 +220,16 @@ class VexelMainScreen : VexelScreen("MiningQOL Settings") {
         ))
         //?}
 
-        val leftScreens = listOf(
+        val leftScreens = mutableListOf<() -> net.minecraft.client.gui.screen.Screen>(
             { MiningProfitCategoryScreen(this) },
             { MinerOverlayCategoryScreen(this) },
             { ShaftESPCategoryScreen(this) },
             { PickaxeCooldownCategoryScreen(this) },
             { OrderedWaypointsCategoryScreen(this) }
         )
+        //? if isCheat {
+        leftScreens.add { InShaftClickCategoryScreen(this) }
+        //?}
 
         val rightScreens = mutableListOf<() -> net.minecraft.client.gui.screen.Screen>(
             { NameHiderCategoryScreen(this) },

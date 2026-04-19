@@ -48,6 +48,7 @@ public class MiningqolClient implements ClientModInitializer {
     //? if isCheat {
     private static KeyBinding toggleAutoClickerKey;
     private static KeyBinding toggleShaftClickerKey;
+    private static KeyBinding toggleInShaftClickKey;
     private static KeyBinding commClaimKey;
     //?}
     private static KeyBinding abilitySwitchKey;
@@ -80,6 +81,13 @@ public class MiningqolClient implements ClientModInitializer {
             "key.miningqol.toggle_shaftclick",
             InputUtil.Type.KEYSYM,
             GLFW.GLFW_KEY_V,
+            miningqolCategory
+        ));
+
+        toggleInShaftClickKey = KeyBindingHelper.registerKeyBinding(new KeyBinding(
+            "key.miningqol.toggle_inshaftclick",
+            InputUtil.Type.KEYSYM,
+            GLFW.GLFW_KEY_B,
             miningqolCategory
         ));
 
@@ -130,6 +138,15 @@ public class MiningqolClient implements ClientModInitializer {
             dispatcher.register(ClientCommandManager.literal("getstand")
                 .executes(context -> {
                     getArmorStandData(context.getSource());
+                    return 1;
+                }));
+            dispatcher.register(ClientCommandManager.literal("getcold")
+                .executes(context -> {
+                    MinecraftClient client = MinecraftClient.getInstance();
+                    if (client.player != null) {
+                        int cold = ColdTracker.getCold();
+                        client.player.sendMessage(Text.literal("§6[MQO] §fCurrent Cold: §b" + cold), false);
+                    }
                     return 1;
                 }));
             dispatcher.register(ClientCommandManager.literal("shaftdebug")
@@ -413,6 +430,10 @@ public class MiningqolClient implements ClientModInitializer {
                 ShaftClickerManager.toggle();
             }
 
+            while (toggleInShaftClickKey.wasPressed()) {
+                InShaftClickManager.toggle();
+            }
+
             while (commClaimKey.wasPressed()) {
                 if (CommClaimManager.isRunning()) {
                     CommClaimManager.stop();
@@ -443,7 +464,9 @@ public class MiningqolClient implements ClientModInitializer {
                 CommClaimManager.tick();
                 //?}
                 AbilitySwitchManager.tick();
+                ColdTracker.tick();
                 //? if isCheat {
+                InShaftClickManager.tick();
                 ShaftClickerManager.tick();
                 //?}
                 FiletWarning.tick();
@@ -531,6 +554,7 @@ public class MiningqolClient implements ClientModInitializer {
             ShaftESP.onWorldUnload();
             //? if isCheat {
             AutoClickerManager.cleanup();
+            InShaftClickManager.cleanup();
             ShaftClickerManager.cleanup();
             //?}
 

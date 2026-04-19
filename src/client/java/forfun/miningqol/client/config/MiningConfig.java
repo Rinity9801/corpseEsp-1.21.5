@@ -5,6 +5,7 @@ import com.google.gson.GsonBuilder;
 //? if isCheat {
 import forfun.miningqol.client.AutoClickerHUD;
 import forfun.miningqol.client.AutoClickerManager;
+import forfun.miningqol.client.InShaftClickManager;
 //?}
 import forfun.miningqol.client.BlockOutlineRenderer;
 //? if isCheat {
@@ -98,6 +99,15 @@ public class MiningConfig {
     // Shaft ESP
     public boolean shaftESPEnabled = true;
     public boolean shaftESPMobsEnabled = false;
+
+    // Cold Clicker
+    public boolean coldClickerEnabled = false;
+    public int coldClickerMiningSlot = 0;
+    public boolean coldClickerRodSwap = true;
+    public int coldClickerSecondDrillSlot = 3;
+    public int coldClickerMainDrillDelay = 3;
+    public int coldClickerSecondDrillDelay = 3;
+    public int coldClickerColdThreshold = 50;
 
     // Shaft Clicker
     public boolean shaftClickerEnabled = false;
@@ -297,7 +307,7 @@ public class MiningConfig {
         NameHider.setColor2(nameColorRed2, nameColorGreen2, nameColorBlue2);
 
         //? if isCheat {
-        AutoClickerManager.setEnabled(autoClickerEnabled);
+        // Never restore enabled state for clickers - always start disabled for safety
         AutoClickerManager.setMiningSlot(autoClickerMiningSlot);
         AutoClickerManager.setEnableRodSwap(autoClickerRodSwap);
         AutoClickerManager.setEnableSecondDrill(autoClickerSecondDrill);
@@ -334,7 +344,13 @@ public class MiningConfig {
         ShaftESP.setMobsEnabled(shaftESPMobsEnabled);
 
         //? if isCheat {
-        ShaftClickerManager.setEnabled(shaftClickerEnabled);
+        InShaftClickManager.setMiningSlot(coldClickerMiningSlot);
+        InShaftClickManager.setEnableRodSwap(coldClickerRodSwap);
+        InShaftClickManager.setSecondDrillSlot(coldClickerSecondDrillSlot);
+        InShaftClickManager.setMainDrillDelay(coldClickerMainDrillDelay);
+        InShaftClickManager.setSecondDrillDelay(coldClickerSecondDrillDelay);
+        InShaftClickManager.setColdThreshold(coldClickerColdThreshold);
+
         ShaftClickerManager.setMiningSlot(shaftClickerMiningSlot);
         //?}
 
@@ -448,6 +464,14 @@ public class MiningConfig {
         shaftESPMobsEnabled = ShaftESP.isMobsEnabled();
 
         //? if isCheat {
+        coldClickerEnabled = InShaftClickManager.isEnabled();
+        coldClickerMiningSlot = InShaftClickManager.getMiningSlot();
+        coldClickerRodSwap = InShaftClickManager.isRodSwapEnabled();
+        coldClickerSecondDrillSlot = InShaftClickManager.getSecondDrillSlot();
+        coldClickerMainDrillDelay = InShaftClickManager.getMainDrillDelay();
+        coldClickerSecondDrillDelay = InShaftClickManager.getSecondDrillDelay();
+        coldClickerColdThreshold = InShaftClickManager.getColdThreshold();
+
         shaftClickerEnabled = ShaftClickerManager.isEnabled();
         shaftClickerMiningSlot = ShaftClickerManager.getMiningSlot();
         //?}
