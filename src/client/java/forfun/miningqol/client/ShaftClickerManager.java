@@ -16,14 +16,18 @@ public class ShaftClickerManager {
     private static int locationCheckCooldown = 0;
     private static boolean inMineshaft = false;
     private static boolean wasInMineshaft = false;
+    private static boolean wasAutoClicking = false; // Track if we were holding attack key
 
     public static void setEnabled(boolean value) {
         enabled = value;
         if (!enabled) {
             paused = false;
-            MinecraftClient client = MinecraftClient.getInstance();
-            if (client != null && client.options != null) {
-                client.options.attackKey.setPressed(false);
+            if (wasAutoClicking) {
+                MinecraftClient client = MinecraftClient.getInstance();
+                if (client != null && client.options != null) {
+                    client.options.attackKey.setPressed(false);
+                }
+                wasAutoClicking = false;
             }
         }
     }
@@ -96,14 +100,20 @@ public class ShaftClickerManager {
             if (inMineshaft && !wasInMineshaft) {
                 // Just entered mineshaft - pause clicking
                 paused = true;
-                client.options.attackKey.setPressed(false);
+                if (wasAutoClicking) {
+                    client.options.attackKey.setPressed(false);
+                    wasAutoClicking = false;
+                }
             }
         }
 
         // Pause when ability is ready
         if (!paused && !abilityPaused && !PickaxeCooldownHUD.isOnCooldown()) {
             abilityPaused = true;
-            client.options.attackKey.setPressed(false);
+            if (wasAutoClicking) {
+                client.options.attackKey.setPressed(false);
+                wasAutoClicking = false;
+            }
         }
 
         int currentSlot = client.player.getInventory().getSelectedSlot();
@@ -115,13 +125,23 @@ public class ShaftClickerManager {
                 paused = false;
                 abilityPaused = false;
             } else {
-                client.options.attackKey.setPressed(false);
+                // Only release the key once to avoid blocking normal clicks
+                if (wasAutoClicking) {
+                    client.options.attackKey.setPressed(false);
+                    wasAutoClicking = false;
+                }
                 return;
             }
         }
 
-        // Auto click when on the mining slot
-        client.options.attackKey.setPressed(currentSlot == miningSlot);
+        // Auto click when on the mining slot, but don't force-release when off it
+        if (currentSlot == miningSlot) {
+            client.options.attackKey.setPressed(true);
+            wasAutoClicking = true;
+        } else if (wasAutoClicking) {
+            client.options.attackKey.setPressed(false);
+            wasAutoClicking = false;
+        }
     }
 
     public static void cleanup() {

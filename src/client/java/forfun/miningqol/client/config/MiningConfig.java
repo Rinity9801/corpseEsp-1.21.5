@@ -90,6 +90,8 @@ public class MiningConfig {
     public boolean autoClickerSecondDrill = false;
     public int autoClickerSecondDrillSlot = 3;
     public boolean autoClickerHudEnabled = true;
+    public int autoClickerMainDrillDelay = 3;
+    public int autoClickerSecondDrillDelay = 3;
 
     public Map<String, String> commandKeybinds = new HashMap<>();
 
@@ -300,6 +302,8 @@ public class MiningConfig {
         AutoClickerManager.setEnableRodSwap(autoClickerRodSwap);
         AutoClickerManager.setEnableSecondDrill(autoClickerSecondDrill);
         AutoClickerManager.setSecondDrillSlot(autoClickerSecondDrillSlot);
+        AutoClickerManager.setMainDrillDelay(autoClickerMainDrillDelay);
+        AutoClickerManager.setSecondDrillDelay(autoClickerSecondDrillDelay);
         AutoClickerHUD.setEnabled(autoClickerHudEnabled);
         //?}
 
@@ -424,6 +428,8 @@ public class MiningConfig {
         autoClickerRodSwap = AutoClickerManager.isRodSwapEnabled();
         autoClickerSecondDrill = AutoClickerManager.isSecondDrillEnabled();
         autoClickerSecondDrillSlot = AutoClickerManager.getSecondDrillSlot();
+        autoClickerMainDrillDelay = AutoClickerManager.getMainDrillDelay();
+        autoClickerSecondDrillDelay = AutoClickerManager.getSecondDrillDelay();
         autoClickerHudEnabled = AutoClickerHUD.isEnabled();
         //?}
 

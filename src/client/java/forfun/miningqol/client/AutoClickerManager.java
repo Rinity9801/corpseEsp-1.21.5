@@ -14,6 +14,8 @@ public class AutoClickerManager {
     private static boolean enableRodSwap = true;
     private static boolean enableSecondDrill = false;
     private static int secondDrillSlot = 3;
+    private static int mainDrillDelay = 3;
+    private static int secondDrillDelay = 3;
     private static boolean wasOnCooldown = true;
 
     // Internal timer for more responsive triggering
@@ -119,6 +121,22 @@ public class AutoClickerManager {
         return secondDrillSlot;
     }
 
+    public static void setMainDrillDelay(int ticks) {
+        mainDrillDelay = ticks;
+    }
+
+    public static int getMainDrillDelay() {
+        return mainDrillDelay;
+    }
+
+    public static void setSecondDrillDelay(int ticks) {
+        secondDrillDelay = ticks;
+    }
+
+    public static int getSecondDrillDelay() {
+        return secondDrillDelay;
+    }
+
     private static int findFishingRodSlot(MinecraftClient client) {
         if (client.player == null) return -1;
 
@@ -216,20 +234,16 @@ public class AutoClickerManager {
         sequenceTickCounter++;
 
         // Sequence:
-        // 0: Switch to rod (or skip to 5 if no rod swap)
-        // 1: Wait 2 ticks
-        // 2: Right click rod (3 ticks)
-        // 3: Wait 3 ticks
-        // 4: Switch to second drill (or skip to 10 if no second drill)
-        // 5: Wait 2 ticks
-        // 6: Left click second drill (2 ticks) - mine first
-        // 7: Right click second drill (3 ticks)
-        // 8: Wait 3 ticks
-        // 9: Switch to main drill
-        // 10: Wait 3 ticks
-        // 11: Left click main drill (2 ticks) - mine first
-        // 12: Right click main drill (3 ticks)
-        // 13: End
+        // 0: Switch to rod (or skip if no rod swap)
+        // 1: Wait 2 ticks for rod switch
+        // 2: Right click rod (2 ticks)
+        // 3: Switch to main drill
+        // 4: Wait mainDrillDelay ticks
+        // 5: If second drill: switch to second drill; else: right click main drill
+        // 6: Wait secondDrillDelay ticks (second drill only)
+        // 7: Right click second drill (second drill only)
+        // 8: Switch back to main drill (second drill only)
+        // 9: End
 
         switch (sequenceStep) {
             case 0:
@@ -240,10 +254,10 @@ public class AutoClickerManager {
                         setSelectedSlot(client, rodSlot);
                         sequenceStep = 1;
                     } else {
-                        sequenceStep = 4;
+                        sequenceStep = 3; // No rod found, skip to main drill
                     }
                 } else {
-                    sequenceStep = 4;
+                    sequenceStep = 3; // Rod swap disabled, skip to main drill
                 }
                 sequenceTickCounter = 0;
                 break;
@@ -264,75 +278,61 @@ public class AutoClickerManager {
                 }
                 break;
 
-            case 3: // Wait after rod
-                if (sequenceTickCounter >= 2) {
-                    sequenceStep = 4;
-                    sequenceTickCounter = 0;
-                }
-                break;
-
-            case 4: // Switch to second drill or skip
-                if (enableSecondDrill) {
-                    setSelectedSlot(client, secondDrillSlot);
-                    sequenceStep = 5;
-                } else {
-                    sequenceStep = 8;
-                }
+            case 3: // Switch to main drill
+                setSelectedSlot(client, expectedSlot);
+                sequenceStep = 4;
                 sequenceTickCounter = 0;
                 break;
 
-            case 5: // Wait before second drill actions
-                if (sequenceTickCounter >= 3) {
-                    sequenceStep = 6;
+            case 4: // Wait mainDrillDelay ticks
+                if (sequenceTickCounter >= mainDrillDelay) {
+                    if (enableSecondDrill) {
+                        sequenceStep = 5; // Go to second drill
+                    } else {
+                        sequenceStep = 50; // Right click main drill ability
+                    }
                     sequenceTickCounter = 0;
                 }
                 break;
 
-            case 6: // Right click second drill
+            case 50: // Right click main drill ability (no second drill)
                 client.options.useKey.setPressed(true);
                 if (sequenceTickCounter >= 2) {
                     client.options.useKey.setPressed(false);
+                    sequenceStep = 9; // End
+                    sequenceTickCounter = 0;
+                }
+                break;
+
+            case 5: // Switch to second drill
+                setSelectedSlot(client, secondDrillSlot);
+                sequenceStep = 6;
+                sequenceTickCounter = 0;
+                break;
+
+            case 6: // Wait secondDrillDelay ticks
+                if (sequenceTickCounter >= secondDrillDelay) {
                     sequenceStep = 7;
                     sequenceTickCounter = 0;
                 }
                 break;
 
-            case 7: // Wait after second drill
+            case 7: // Right click second drill
+                client.options.useKey.setPressed(true);
                 if (sequenceTickCounter >= 2) {
+                    client.options.useKey.setPressed(false);
                     sequenceStep = 8;
                     sequenceTickCounter = 0;
                 }
                 break;
 
-            case 8: // Switch to main drill
+            case 8: // Switch back to main drill
                 setSelectedSlot(client, expectedSlot);
-                if (enableSecondDrill) {
-                    // Second drill mode: just switch back to main, no right click needed
-                    sequenceStep = 11;
-                } else {
-                    // Normal mode: need to right click main drill
-                    sequenceStep = 9;
-                }
+                sequenceStep = 9;
                 sequenceTickCounter = 0;
                 break;
 
-            case 9: // Wait before main drill actions (only when second drill OFF)
-                if (sequenceTickCounter >= 3) {
-                    sequenceStep = 10;
-                    sequenceTickCounter = 0;
-                }
-                break;
-
-            case 10: // Right click main drill (only when second drill OFF)
-                client.options.useKey.setPressed(true);
-                if (sequenceTickCounter >= 2) {
-                    client.options.useKey.setPressed(false);
-                    sequenceStep = 11;
-                    sequenceTickCounter = 0;
-                }
-                break;
-
-            case 11: // End sequence
+            case 9: // End sequence
                 inSequence = false;
                 sequenceStep = 0;
                 sequenceTickCounter = 0;
