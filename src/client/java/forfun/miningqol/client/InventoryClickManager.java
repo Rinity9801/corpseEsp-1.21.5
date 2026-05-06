@@ -2,16 +2,19 @@ package forfun.miningqol.client;
 
 import net.minecraft.client.MinecraftClient;
 import net.minecraft.client.gui.screen.ingame.HandledScreen;
+import net.minecraft.entity.player.PlayerInventory;
+import net.minecraft.inventory.Inventory;
 import net.minecraft.screen.ScreenHandler;
+import net.minecraft.screen.slot.Slot;
 import net.minecraft.screen.slot.SlotActionType;
 
 /**
- * Clicks the top-left 4 slots of the player's main inventory (slots 9-12 in
- * PlayerScreenHandler) with a fixed delay between clicks. Requires a
- * HandledScreen to already be open.
+ * Clicks the top-left 4 slots of the player's main inventory (PlayerInventory
+ * indices 9-12) with a configurable delay. Resolves the screen-handler slot
+ * at click time so it works in any GUI, not just the plain player inventory.
  */
 public class InventoryClickManager {
-    private static final int[] TARGET_SLOTS = {9, 10, 11, 12};
+    private static final int[] TARGET_INVENTORY_INDICES = {9, 10, 11, 12};
 
     private static final int STATE_IDLE = 0;
     private static final int STATE_CLICK = 1;
@@ -56,7 +59,7 @@ public class InventoryClickManager {
         if (tickCounter < clickDelayTicks) return;
         tickCounter = 0;
 
-        if (clickIndex >= TARGET_SLOTS.length) {
+        if (clickIndex >= TARGET_INVENTORY_INDICES.length) {
             state = STATE_IDLE;
             return;
         }
@@ -67,10 +70,20 @@ public class InventoryClickManager {
         }
 
         ScreenHandler handler = screen.getScreenHandler();
-        int slot = TARGET_SLOTS[clickIndex];
-        if (slot < handler.slots.size()) {
-            client.interactionManager.clickSlot(handler.syncId, slot, 0, SlotActionType.PICKUP, client.player);
+        PlayerInventory playerInv = client.player.getInventory();
+        int handlerSlot = findHandlerSlot(handler, playerInv, TARGET_INVENTORY_INDICES[clickIndex]);
+        if (handlerSlot >= 0) {
+            client.interactionManager.clickSlot(handler.syncId, handlerSlot, 0, SlotActionType.PICKUP, client.player);
         }
         clickIndex++;
+    }
+
+    private static int findHandlerSlot(ScreenHandler handler, Inventory playerInv, int inventoryIndex) {
+        for (Slot slot : handler.slots) {
+            if (slot.inventory == playerInv && slot.getIndex() == inventoryIndex) {
+                return slot.id;
+            }
+        }
+        return -1;
     }
 }
