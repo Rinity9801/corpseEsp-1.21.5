@@ -3,6 +3,7 @@
   "key.miningqol.toggle_shaftclick": "Toggle Shaft Clicker",
   "key.miningqol.toggle_inshaftclick": "Toggle In Shaft Click",
   "key.miningqol.comm_claim": "Commission Claim",
+  "key.miningqol.inv_click": "Inventory Click (first 4 slots)",
   "key.miningqol.ability_switch": "Switch Mining Ability",
   "category.miningqol": "Mining QOL"
 }

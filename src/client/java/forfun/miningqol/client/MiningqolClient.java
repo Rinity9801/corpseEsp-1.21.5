@@ -50,6 +50,7 @@ public class MiningqolClient implements ClientModInitializer {
     private static KeyBinding toggleShaftClickerKey;
     private static KeyBinding toggleInShaftClickKey;
     private static KeyBinding commClaimKey;
+    private static KeyBinding invClickKey;
     //?}
     private static KeyBinding abilitySwitchKey;
 
@@ -95,6 +96,13 @@ public class MiningqolClient implements ClientModInitializer {
             "key.miningqol.comm_claim",
             InputUtil.Type.KEYSYM,
             GLFW.GLFW_KEY_G,
+            miningqolCategory
+        ));
+
+        invClickKey = KeyBindingHelper.registerKeyBinding(new KeyBinding(
+            "key.miningqol.inv_click",
+            InputUtil.Type.KEYSYM,
+            GLFW.GLFW_KEY_X,
             miningqolCategory
         ));
         //?}
@@ -181,6 +189,30 @@ public class MiningqolClient implements ClientModInitializer {
                     CoalValueCommand.execute();
                     return 1;
                 }));
+            //? if isCheat {
+            dispatcher.register(ClientCommandManager.literal("invclickdelay")
+                .executes(context -> {
+                    MinecraftClient client = MinecraftClient.getInstance();
+                    if (client.player != null) {
+                        client.player.sendMessage(Text.literal("§6[MQO] §7Inventory click delay: §f"
+                            + InventoryClickManager.getClickDelay() + "§7 ticks"), false);
+                    }
+                    return 1;
+                })
+                .then(ClientCommandManager.argument("ticks", IntegerArgumentType.integer(1, 40))
+                    .executes(context -> {
+                        int ticks = IntegerArgumentType.getInteger(context, "ticks");
+                        InventoryClickManager.setClickDelay(ticks);
+                        config.loadFromGame();
+                        config.save();
+                        MinecraftClient client = MinecraftClient.getInstance();
+                        if (client.player != null) {
+                            client.player.sendMessage(Text.literal("§6[MQO] §aInventory click delay set to §f"
+                                + InventoryClickManager.getClickDelay() + "§a ticks"), false);
+                        }
+                        return 1;
+                    })));
+            //?}
             dispatcher.register(ClientCommandManager.literal("getplayerhead")
                 .executes(context -> {
                     MinecraftClient client = MinecraftClient.getInstance();
@@ -468,6 +500,7 @@ public class MiningqolClient implements ClientModInitializer {
                 //? if isCheat {
                 InShaftClickManager.tick();
                 ShaftClickerManager.tick();
+                InventoryClickManager.tick();
                 //?}
                 FiletWarning.tick();
                 //? if isCheat {
@@ -568,6 +601,16 @@ public class MiningqolClient implements ClientModInitializer {
     public static MiningConfig getConfig() {
         return config;
     }
+
+    //? if isCheat {
+    public static boolean tryHandleInvClickKey(net.minecraft.client.input.KeyInput input) {
+        if (invClickKey != null && invClickKey.matchesKey(input)) {
+            InventoryClickManager.start();
+            return true;
+        }
+        return false;
+    }
+    //?}
 
     private static void getArmorStandData(FabricClientCommandSource source) {
         MinecraftClient client = MinecraftClient.getInstance();

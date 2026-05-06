@@ -94,6 +94,8 @@ public class MiningConfig {
     public int autoClickerMainDrillDelay = 3;
     public int autoClickerSecondDrillDelay = 3;
 
+    public int invClickDelay = 3;
+
     public Map<String, String> commandKeybinds = new HashMap<>();
 
     // Shaft ESP
@@ -315,6 +317,8 @@ public class MiningConfig {
         AutoClickerManager.setMainDrillDelay(autoClickerMainDrillDelay);
         AutoClickerManager.setSecondDrillDelay(autoClickerSecondDrillDelay);
         AutoClickerHUD.setEnabled(autoClickerHudEnabled);
+
+        forfun.miningqol.client.InventoryClickManager.setClickDelay(invClickDelay);
         //?}
 
         forfun.miningqol.client.CommandKeybindManager.clearAll();
@@ -447,6 +451,8 @@ public class MiningConfig {
         autoClickerMainDrillDelay = AutoClickerManager.getMainDrillDelay();
         autoClickerSecondDrillDelay = AutoClickerManager.getSecondDrillDelay();
         autoClickerHudEnabled = AutoClickerHUD.isEnabled();
+
+        invClickDelay = forfun.miningqol.client.InventoryClickManager.getClickDelay();
         //?}
 
         commandKeybinds.clear();

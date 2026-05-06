@@ -18,10 +18,8 @@ public class AutoClickerManager {
     private static int secondDrillDelay = 3;
     private static boolean wasOnCooldown = true;
 
-    // Internal timer for more responsive triggering
-    private static int internalTickCounter = 0;
-    private static int targetCooldownTicks = 0;
-    private static boolean timerActive = false;
+    // Fire the sequence when the pickaxe cooldown hits 0. Armed while a cooldown is active.
+    private static boolean armed = false;
     private static boolean waitingForCooldownStart = false; // Wait for next cooldown cycle
 
     // Prevent double triggering
@@ -34,7 +32,7 @@ public class AutoClickerManager {
             inSequence = false;
             sequenceStep = 0;
             sequenceTickCounter = 0;
-            timerActive = false;
+            armed = false;
             waitingForCooldownStart = false;
 
             MinecraftClient client = MinecraftClient.getInstance();
@@ -45,7 +43,6 @@ public class AutoClickerManager {
         } else {
             // Check if ability is currently ready
             boolean abilityIsReady = !PickaxeCooldownHUD.isOnCooldown();
-            double currentCooldown = PickaxeCooldownHUD.getCurrentCooldown();
 
             if (firstEnable || abilityIsReady) {
                 // If first enable OR ability is ready, trigger immediately
@@ -54,12 +51,10 @@ public class AutoClickerManager {
                 sequenceTickCounter = 0;
                 firstEnable = false;
                 waitingForCooldownStart = false;
-                timerActive = false;
-            } else if (currentCooldown > 0) {
-                // Ability is on cooldown, start tracking it
-                targetCooldownTicks = (int) (currentCooldown * 20) + 20; // Add 1 second buffer
-                internalTickCounter = 0;
-                timerActive = true;
+                armed = false;
+            } else {
+                // Ability is on cooldown — arm so we fire when the HUD's interpolated cooldown hits 0
+                armed = true;
                 waitingForCooldownStart = false;
             }
             wasOnCooldown = PickaxeCooldownHUD.isOnCooldown();
@@ -80,12 +75,6 @@ public class AutoClickerManager {
         if (firstEnable) {
             return 0;
         }
-        // Use internal timer when active
-        if (timerActive && targetCooldownTicks > 0) {
-            int remainingTicks = targetCooldownTicks - internalTickCounter;
-            return Math.max(0, remainingTicks / 20.0);
-        }
-        // Fall back to scoreboard when timer not active
         return PickaxeCooldownHUD.getInterpolatedCooldown();
     }
 
@@ -165,22 +154,17 @@ public class AutoClickerManager {
             return;
         }
 
-        // Get scoreboard cooldown info
         boolean currentlyOnCooldown = PickaxeCooldownHUD.isOnCooldown();
-        double scoreboardCooldown = PickaxeCooldownHUD.getCurrentCooldown();
+        double interpolatedCooldown = PickaxeCooldownHUD.getInterpolatedCooldown();
 
-        // Check if enough time has passed since last sequence
         long currentTime = System.currentTimeMillis();
         boolean canStartNewSequence = (currentTime - lastSequenceEndTime) >= MIN_SEQUENCE_INTERVAL_MS;
 
-        // After sequence ends, we wait for a NEW cooldown to start before tracking again
+        // After a sequence, wait for the NEXT cooldown to begin before re-arming
         if (waitingForCooldownStart) {
-            if (currentlyOnCooldown && scoreboardCooldown > 10.0) {
-                // New cooldown started, begin tracking
+            if (currentlyOnCooldown && !wasOnCooldown) {
                 waitingForCooldownStart = false;
-                targetCooldownTicks = (int) (scoreboardCooldown * 20) + 20; // Add 1 second buffer
-                internalTickCounter = 0;
-                timerActive = true;
+                armed = true;
             }
             wasOnCooldown = currentlyOnCooldown;
 
@@ -192,26 +176,17 @@ public class AutoClickerManager {
             return;
         }
 
-        // When cooldown starts, capture the duration and start our internal timer
-        if (currentlyOnCooldown && !wasOnCooldown && !timerActive && canStartNewSequence) {
-            targetCooldownTicks = (int) (scoreboardCooldown * 20) + 20; // Add 1 second buffer
-            internalTickCounter = 0;
-            timerActive = true;
+        // Arm on the rising edge of a new cooldown (e.g. enabled while ready, then mined manually)
+        if (currentlyOnCooldown && !wasOnCooldown && !armed && canStartNewSequence) {
+            armed = true;
         }
 
-        // Update internal timer
-        if (timerActive && !inSequence) {
-            internalTickCounter++;
-        }
-
-        // Trigger based on our internal timer (more responsive)
-        if (!inSequence && enabled && timerActive && canStartNewSequence) {
-            if (internalTickCounter >= targetCooldownTicks) {
-                inSequence = true;
-                sequenceStep = 0;
-                sequenceTickCounter = 0;
-                timerActive = false;
-            }
+        // Fire when the HUD's interpolated cooldown reaches 0
+        if (!inSequence && enabled && armed && canStartNewSequence && interpolatedCooldown <= 0) {
+            inSequence = true;
+            sequenceStep = 0;
+            sequenceTickCounter = 0;
+            armed = false;
         }
 
         wasOnCooldown = currentlyOnCooldown;
@@ -337,7 +312,7 @@ public class AutoClickerManager {
                 sequenceStep = 0;
                 sequenceTickCounter = 0;
                 lastSequenceEndTime = System.currentTimeMillis();
-                timerActive = false;
+                armed = false;
                 waitingForCooldownStart = true; // Wait for next cooldown cycle
                 break;
         }
