@@ -160,11 +160,20 @@ public class AutoClickerManager {
         long currentTime = System.currentTimeMillis();
         boolean canStartNewSequence = (currentTime - lastSequenceEndTime) >= MIN_SEQUENCE_INTERVAL_MS;
 
-        // After a sequence, wait for the NEXT cooldown to begin before re-arming
+        // After a sequence, wait for the cooldown to refresh before re-arming.
+        // The cooldown starts mid-sequence (when the drill right-click goes through),
+        // so wasOnCooldown is already true at sequence end — there's no rising edge
+        // to wait for. Detect the refresh by waiting for the HUD to report a high
+        // cooldown (>5s, well below Maniac Miner's ~16-30s but above any residual
+        // from the previous cycle).
         if (waitingForCooldownStart) {
-            if (currentlyOnCooldown && !wasOnCooldown) {
+            if (currentlyOnCooldown && interpolatedCooldown > 5.0) {
                 waitingForCooldownStart = false;
                 armed = true;
+            } else if (!currentlyOnCooldown && wasOnCooldown) {
+                // Ability became ready without a refresh (sequence failed to trigger).
+                // Exit the waiting state so the rising-edge branch below can re-arm.
+                waitingForCooldownStart = false;
             }
             wasOnCooldown = currentlyOnCooldown;
 
