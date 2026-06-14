@@ -37,7 +37,7 @@ class ShaftClickerCategoryScreen(private val parentScreen: Screen) : VexelScreen
             borderRadius = 16f,
             borderThickness = 1f
         )
-            .setSizing(550f, Size.Pixels, 350f, Size.Pixels)
+            .setSizing(550f, Size.Pixels, 425f, Size.Pixels)
             .childOf(window)
             .apply {
                 dropShadow = true
@@ -49,7 +49,7 @@ class ShaftClickerCategoryScreen(private val parentScreen: Screen) : VexelScreen
         mainPanel.xPositionConstraint = Pos.ScreenPixels
         mainPanel.yPositionConstraint = Pos.ScreenPixels
         mainPanel.xConstraint = (mainPanel.screenWidth - 550f) / 2f
-        mainPanel.yConstraint = (mainPanel.screenHeight - 350f) / 2f
+        mainPanel.yConstraint = (mainPanel.screenHeight - 425f) / 2f
         mainPanel.fadeIn(500, EasingType.EASE_OUT)
 
         // Title bar background
@@ -111,6 +111,20 @@ class ShaftClickerCategoryScreen(private val parentScreen: Screen) : VexelScreen
             75f,
             mainPanel,
             300L
+        )
+
+        // Toggle message notification
+        createToggleCard(
+            "Toggle Message",
+            0xFF5BFF7C.toInt(),
+            { ShaftClickerManager.isShowToggleMessage() },
+            { ShaftClickerManager.setShowToggleMessage(!ShaftClickerManager.isShowToggleMessage()) },
+            (mainPanel.width - toggleWidth) / 2f,
+            startY + 170f,
+            toggleWidth,
+            65f,
+            mainPanel,
+            400L
         )
 
         // Back button

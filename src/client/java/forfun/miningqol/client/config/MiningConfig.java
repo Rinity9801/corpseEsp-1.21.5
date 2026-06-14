@@ -114,6 +114,7 @@ public class MiningConfig {
     // Shaft Clicker
     public boolean shaftClickerEnabled = false;
     public int shaftClickerMiningSlot = 0;
+    public boolean shaftClickerShowToggleMessage = true;
 
     public boolean autoSkipShoLoad = false;
 
@@ -356,6 +357,7 @@ public class MiningConfig {
         InShaftClickManager.setColdThreshold(coldClickerColdThreshold);
 
         ShaftClickerManager.setMiningSlot(shaftClickerMiningSlot);
+        ShaftClickerManager.setShowToggleMessage(shaftClickerShowToggleMessage);
         //?}
 
         FiletWarning.setEnabled(filetWarningEnabled);
@@ -480,6 +482,7 @@ public class MiningConfig {
 
         shaftClickerEnabled = ShaftClickerManager.isEnabled();
         shaftClickerMiningSlot = ShaftClickerManager.getMiningSlot();
+        shaftClickerShowToggleMessage = ShaftClickerManager.isShowToggleMessage();
         //?}
 
         filetWarningEnabled = FiletWarning.isEnabled();

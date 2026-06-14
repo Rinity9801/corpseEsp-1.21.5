@@ -10,6 +10,7 @@ import java.util.Collection;
 
 public class ShaftClickerManager {
     private static boolean enabled = false;
+    private static boolean showToggleMessage = true;
     private static int miningSlot = 0;
     private static boolean paused = false;
     private static boolean abilityPaused = false; // Paused because ability is ready
@@ -38,11 +39,20 @@ public class ShaftClickerManager {
 
     public static void toggle() {
         setEnabled(!enabled);
+        if (!showToggleMessage) return;
         MinecraftClient client = MinecraftClient.getInstance();
         if (client != null && client.player != null) {
             client.player.sendMessage(net.minecraft.text.Text.literal(
                 enabled ? "\u00A76[MQO] \u00A7aShaft Clicker enabled" : "\u00A76[MQO] \u00A7cShaft Clicker disabled"), false);
         }
+    }
+
+    public static void setShowToggleMessage(boolean value) {
+        showToggleMessage = value;
+    }
+
+    public static boolean isShowToggleMessage() {
+        return showToggleMessage;
     }
 
     public static void setMiningSlot(int slot) {
