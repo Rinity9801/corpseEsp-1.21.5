@@ -6,6 +6,7 @@ import net.minecraft.item.ItemStack;
 
 public class InShaftClickManager {
     private static boolean enabled = false;
+    private static boolean showToggleMessage = true;
     private static boolean inSequence = false;
     private static int sequenceStep = 0;
     private static int sequenceTickCounter = 0;
@@ -31,10 +32,12 @@ public class InShaftClickManager {
 
     public static void toggle() {
         enabled = !enabled;
-        MinecraftClient mc = MinecraftClient.getInstance();
-        if (mc != null && mc.player != null) {
-            mc.player.sendMessage(net.minecraft.text.Text.literal(
-                enabled ? "\u00A76[MQO] \u00A7aIn Shaft Click enabled" : "\u00A76[MQO] \u00A7cIn Shaft Click disabled"), false);
+        if (showToggleMessage) {
+            MinecraftClient mc = MinecraftClient.getInstance();
+            if (mc != null && mc.player != null) {
+                mc.player.sendMessage(net.minecraft.text.Text.literal(
+                    enabled ? "\u00A76[MQO] \u00A7aIn Shaft Click enabled" : "\u00A76[MQO] \u00A7cIn Shaft Click disabled"), false);
+            }
         }
         if (!enabled) {
             inSequence = false;
@@ -87,6 +90,9 @@ public class InShaftClickManager {
         }
         return PickaxeCooldownHUD.getInterpolatedCooldown();
     }
+
+    public static void setShowToggleMessage(boolean value) { showToggleMessage = value; }
+    public static boolean isShowToggleMessage() { return showToggleMessage; }
 
     public static void setMiningSlot(int slot) { miningSlot = slot; }
     public static int getMiningSlot() { return miningSlot; }

@@ -110,6 +110,7 @@ public class MiningConfig {
     public int coldClickerMainDrillDelay = 3;
     public int coldClickerSecondDrillDelay = 3;
     public int coldClickerColdThreshold = 50;
+    public boolean coldClickerShowToggleMessage = true;
 
     // Shaft Clicker
     public boolean shaftClickerEnabled = false;
@@ -355,6 +356,7 @@ public class MiningConfig {
         InShaftClickManager.setMainDrillDelay(coldClickerMainDrillDelay);
         InShaftClickManager.setSecondDrillDelay(coldClickerSecondDrillDelay);
         InShaftClickManager.setColdThreshold(coldClickerColdThreshold);
+        InShaftClickManager.setShowToggleMessage(coldClickerShowToggleMessage);
 
         ShaftClickerManager.setMiningSlot(shaftClickerMiningSlot);
         ShaftClickerManager.setShowToggleMessage(shaftClickerShowToggleMessage);
@@ -479,6 +481,7 @@ public class MiningConfig {
         coldClickerMainDrillDelay = InShaftClickManager.getMainDrillDelay();
         coldClickerSecondDrillDelay = InShaftClickManager.getSecondDrillDelay();
         coldClickerColdThreshold = InShaftClickManager.getColdThreshold();
+        coldClickerShowToggleMessage = InShaftClickManager.isShowToggleMessage();
 
         shaftClickerEnabled = ShaftClickerManager.isEnabled();
         shaftClickerMiningSlot = ShaftClickerManager.getMiningSlot();

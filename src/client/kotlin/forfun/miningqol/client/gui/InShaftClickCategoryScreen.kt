@@ -37,7 +37,7 @@ class InShaftClickCategoryScreen(private val parentScreen: Screen) : VexelScreen
             borderRadius = 16f,
             borderThickness = 1f
         )
-            .setSizing(550f, Size.Pixels, 750f, Size.Pixels)
+            .setSizing(550f, Size.Pixels, 825f, Size.Pixels)
             .childOf(window)
             .apply {
                 dropShadow = true
@@ -49,7 +49,7 @@ class InShaftClickCategoryScreen(private val parentScreen: Screen) : VexelScreen
         mainPanel.xPositionConstraint = Pos.ScreenPixels
         mainPanel.yPositionConstraint = Pos.ScreenPixels
         mainPanel.xConstraint = (mainPanel.screenWidth - 550f) / 2f
-        mainPanel.yConstraint = (mainPanel.screenHeight - 750f) / 2f
+        mainPanel.yConstraint = (mainPanel.screenHeight - 825f) / 2f
         mainPanel.fadeIn(500, EasingType.EASE_OUT)
 
         // Title bar
@@ -80,11 +80,13 @@ class InShaftClickCategoryScreen(private val parentScreen: Screen) : VexelScreen
 
         // Toggle
         val toggles = listOf(
-            Triple("Enable Rod Swap", 0xFF44AAFF.toInt()) { InShaftClickManager.isRodSwapEnabled() }
+            Triple("Enable Rod Swap", 0xFF44AAFF.toInt()) { InShaftClickManager.isRodSwapEnabled() },
+            Triple("Toggle Message", 0xFF44AAFF.toInt()) { InShaftClickManager.isShowToggleMessage() }
         )
 
         val toggleActions = listOf<() -> Unit>(
-            { InShaftClickManager.setEnableRodSwap(!InShaftClickManager.isRodSwapEnabled()) }
+            { InShaftClickManager.setEnableRodSwap(!InShaftClickManager.isRodSwapEnabled()) },
+            { InShaftClickManager.setShowToggleMessage(!InShaftClickManager.isShowToggleMessage()) }
         )
 
         val startY = 100f
