@@ -1,0 +1,24 @@
+name = "pet-flip-tracker"
+main = "worker.js"
+compatibility_date = "2024-11-01"
+
+account_id = "b24b4165f348e8297cc5ad11001651f4"
+
+# Provisions pets.adong.dev (and its DNS) automatically on `wrangler deploy`.
+routes = [
+  { pattern = "pets.adong.dev", custom_domain = true }
+]
+
+# Data is scanned by a GitHub Action (../scanner) and written to KV; this Worker
+# serves it, and its cron below force-triggers that Action on a dependable clock.
+
+# Pre-computed payload lives here (written by the scanner).
+[[kv_namespaces]]
+binding = "PETFLIPS"
+id = "aa51de975fa6417fa48459bdea853a35"
+
+# Punctual trigger for the GitHub scan workflow (GitHub's own cron delays/drops runs).
+# The scheduled handler no-ops until the GH_PAT secret is set:
+#   npx wrangler secret put GH_PAT   (fine-grained PAT: pet-flip-tracker only, Actions RW)
+[triggers]
+crons = ["*/15 * * * *"]

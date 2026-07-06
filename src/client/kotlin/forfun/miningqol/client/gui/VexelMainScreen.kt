@@ -45,7 +45,7 @@ class VexelMainScreen : VexelScreen("MiningQOL Settings") {
             borderRadius = 16f,
             borderThickness = 1f
         )
-            .setSizing(750f, Size.Pixels, 740f, Size.Pixels)
+            .setSizing(750f, Size.Pixels, 840f, Size.Pixels)
             .childOf(window)
             .apply {
                 dropShadow = true
@@ -60,7 +60,7 @@ class VexelMainScreen : VexelScreen("MiningQOL Settings") {
 
         // Calculate center position (must be done after setting size)
         mainPanel.xConstraint = (mainPanel.screenWidth - 750f) / 2f
-        mainPanel.yConstraint = (mainPanel.screenHeight - 740f) / 2f
+        mainPanel.yConstraint = (mainPanel.screenHeight - 840f) / 2f
 
         // Fade in animation
         mainPanel.fadeIn(500, EasingType.EASE_OUT)
@@ -199,6 +199,12 @@ class VexelMainScreen : VexelScreen("MiningQOL Settings") {
             0xFF888888.toInt(),
             listOf("misc", "miscellaneous", "auto-skip", "sho", "load", "glass", "pane", "sync", "gemstone", "connection", "utilities")
         ))
+        rightCards.add(CardInfo(
+            "Commission HUD",
+            "Customize overlay layout, scale and styling",
+            0xFF60A5FA.toInt(),
+            listOf("commission", "hud", "overlay", "background", "scale", "layout", "position", "2x2", "1x4")
+        ))
         //? if isCheat {
         rightCards.add(CardInfo(
             "Comm Claim",
@@ -239,6 +245,7 @@ class VexelMainScreen : VexelScreen("MiningQOL Settings") {
         //?}
         rightScreens.add { CommandKeybindCategoryScreen(this) }
         rightScreens.add { MiscCategoryScreen(this) }
+        rightScreens.add { CommissionHudCategoryScreen(this) }
         //? if isCheat {
         rightScreens.add { CommClaimCategoryScreen(this) }
         rightScreens.add { ShaftClickerCategoryScreen(this) }

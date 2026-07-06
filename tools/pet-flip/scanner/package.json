@@ -1,0 +1,13 @@
+{
+  "name": "pet-flip-scanner",
+  "version": "1.0.0",
+  "type": "module",
+  "private": true,
+  "description": "Scans Hypixel AH for pet-leveling flips and writes results to Cloudflare KV.",
+  "scripts": {
+    "scan": "node scan.mjs"
+  },
+  "dependencies": {
+    "prismarine-nbt": "^2.5.0"
+  }
+}

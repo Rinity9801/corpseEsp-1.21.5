@@ -9,6 +9,7 @@ import forfun.miningqol.client.InShaftClickManager;
 //?}
 import forfun.miningqol.client.BlockOutlineRenderer;
 //? if isCheat {
+import forfun.miningqol.client.CommissionHUD;
 import forfun.miningqol.client.CommClaimManager;
 //?}
 import forfun.miningqol.client.CorpseESP;
@@ -20,11 +21,13 @@ import forfun.miningqol.client.ShaftClickerManager;
 //?}
 import forfun.miningqol.client.ShaftESP;
 import forfun.miningqol.client.NameHider;
+import forfun.miningqol.client.PetFlipTooltip;
 import forfun.miningqol.client.PickaxeCooldownHUD;
 import forfun.miningqol.client.profit.BazaarPriceManager;
 import forfun.miningqol.client.profit.BlockTracker;
 import forfun.miningqol.client.profit.GemstoneTracker;
 import forfun.miningqol.client.profit.ProfitTrackerHUD;
+import forfun.miningqol.client.collection.CollectionTracker;
 import forfun.miningqol.client.waypoints.OrderedWaypointManager;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -49,6 +52,9 @@ public class MiningConfig {
     public int profitTrackerX = 10;
     public int profitTrackerY = 10;
     public float profitTrackerScale = 1.0f;
+    public int collectionHudX = 10;
+    public int collectionHudY = 120;
+    public float collectionHudScale = 1.0f;
     public int pristineChance = 20;
     public boolean includeRough = false;
     public boolean useNPCPrices = false;
@@ -121,9 +127,18 @@ public class MiningConfig {
 
     public boolean filetWarningEnabled = false;
 
+    public boolean petFlipTooltipEnabled = true;
+
     public boolean glassSyncEnabled = false;
 
     public java.util.List<String> lobbyFinderBlocks = new java.util.ArrayList<>();
+
+    // Radial menu: fixed 8 slots, each runs a command
+    public static class RadialEntry {
+        public String label = "";
+        public String command = "";
+    }
+    public java.util.List<RadialEntry> radialEntries = new java.util.ArrayList<>();
 
     // Ordered Waypoints
     public boolean orderedWaypointsEnabled = true;
@@ -165,6 +180,12 @@ public class MiningConfig {
     public int commClaimGuiWaitDelay = 3; // 1-10 ticks
     public boolean commClaimAutoTrigger = false; // Auto-trigger on commission complete message
     public boolean commClaimWardrobeSwap = true; // Enable wardrobe armor swapping
+    public boolean commissionHudEnabled = true;
+    public int commissionHudX = 10;
+    public int commissionHudY = 90;
+    public float commissionHudScale = 1.0f;
+    public boolean commissionHudBackground = true;
+    public String commissionHudLayout = "GRID";
 
     public static MiningConfig load() {
         if (!CONFIG_FILE.exists()) {
@@ -202,6 +223,12 @@ public class MiningConfig {
     private void ensureDefaults() {
         if (commandKeybinds == null) commandKeybinds = new HashMap<>();
         if (lobbyFinderBlocks == null) lobbyFinderBlocks = new java.util.ArrayList<>();
+        if (radialEntries == null) radialEntries = new java.util.ArrayList<>();
+        while (radialEntries.size() < 8) radialEntries.add(new RadialEntry());
+        for (RadialEntry e : radialEntries) {
+            if (e.label == null) e.label = "";
+            if (e.command == null) e.command = "";
+        }
         if (orderedWaypointCurrentColor == null) orderedWaypointCurrentColor = new float[]{85f/255f, 1f, 85f/255f};
         if (orderedWaypointNextColor == null) orderedWaypointNextColor = new float[]{1f, 1f, 85f/255f};
         if (orderedWaypointPreviousColor == null) orderedWaypointPreviousColor = new float[]{85f/255f, 85f/255f, 1f};
@@ -216,6 +243,7 @@ public class MiningConfig {
         if (coalValueCrudeBuy == null) coalValueCrudeBuy = "BUY_ORDER";
         if (coalValueFuelBuy == null) coalValueFuelBuy = "BUY_ORDER";
         if (coalValueHeavyBuy == null) coalValueHeavyBuy = "BUY_ORDER";
+        if (commissionHudLayout == null) commissionHudLayout = "GRID";
     }
 
     /**
@@ -277,6 +305,8 @@ public class MiningConfig {
         ProfitTrackerHUD.setPosition(profitTrackerX, profitTrackerY);
         ProfitTrackerHUD.setScale(profitTrackerScale);
         ProfitTrackerHUD.setMode(profitTrackerMode);
+        CollectionTracker.setPosition(collectionHudX, collectionHudY);
+        CollectionTracker.setScale(collectionHudScale);
         GemstoneTracker.setPristineChance(pristineChance);
         GemstoneTracker.setIncludeRough(includeRough);
         GemstoneTracker.setGemTier(gemTier);
@@ -364,6 +394,8 @@ public class MiningConfig {
 
         FiletWarning.setEnabled(filetWarningEnabled);
 
+        PetFlipTooltip.setEnabled(petFlipTooltipEnabled);
+
         GlassSync.setEnabled(glassSyncEnabled);
 
         // Ordered Waypoints
@@ -399,6 +431,15 @@ public class MiningConfig {
         CommClaimManager.setGuiWaitDelay(commClaimGuiWaitDelay);
         CommClaimManager.setAutoTrigger(commClaimAutoTrigger);
         CommClaimManager.setWardrobeSwap(commClaimWardrobeSwap);
+        CommissionHUD.setEnabled(commissionHudEnabled);
+        CommissionHUD.setPosition(commissionHudX, commissionHudY);
+        CommissionHUD.setScale(commissionHudScale);
+        CommissionHUD.setBackgroundEnabled(commissionHudBackground);
+        try {
+            CommissionHUD.setLayoutMode(CommissionHUD.LayoutMode.valueOf(commissionHudLayout));
+        } catch (Exception e) {
+            CommissionHUD.setLayoutMode(CommissionHUD.LayoutMode.GRID);
+        }
         //?}
     }
 
@@ -413,6 +454,9 @@ public class MiningConfig {
         profitTrackerY = ProfitTrackerHUD.getY();
         profitTrackerScale = ProfitTrackerHUD.getScale();
         profitTrackerMode = ProfitTrackerHUD.getMode();
+        collectionHudX = CollectionTracker.getX();
+        collectionHudY = CollectionTracker.getY();
+        collectionHudScale = CollectionTracker.getScale();
         pristineChance = GemstoneTracker.getPristineChance();
         includeRough = GemstoneTracker.isIncludingRough();
         gemTier = GemstoneTracker.getGemTier();
@@ -490,6 +534,8 @@ public class MiningConfig {
 
         filetWarningEnabled = FiletWarning.isEnabled();
 
+        petFlipTooltipEnabled = PetFlipTooltip.isEnabled();
+
         glassSyncEnabled = GlassSync.isEnabled();
 
         // Ordered Waypoints
@@ -525,6 +571,12 @@ public class MiningConfig {
         commClaimGuiWaitDelay = CommClaimManager.getGuiWaitDelay();
         commClaimAutoTrigger = CommClaimManager.isAutoTrigger();
         commClaimWardrobeSwap = CommClaimManager.isWardrobeSwap();
+        commissionHudEnabled = CommissionHUD.isEnabled();
+        commissionHudX = CommissionHUD.getX();
+        commissionHudY = CommissionHUD.getY();
+        commissionHudScale = CommissionHUD.getScale();
+        commissionHudBackground = CommissionHUD.isBackgroundEnabled();
+        commissionHudLayout = CommissionHUD.getLayoutMode().name();
         //?}
     }
 }

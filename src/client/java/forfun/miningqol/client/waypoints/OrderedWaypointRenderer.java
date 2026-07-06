@@ -50,8 +50,8 @@ public class OrderedWaypointRenderer {
             renderWaypointBox(matrices, immediate, camera, current.getPosition(), currColor, currAlpha);
         }
 
-        // Show all waypoints mode
-        if (OrderedWaypointManager.isShowAll()) {
+        // Show all waypoints mode (edit mode also shows every box)
+        if (OrderedWaypointManager.isShowAll() || OrderedWaypointManager.isEditMode()) {
             float[] allColor = OrderedWaypointManager.getShowAllWaypointColor();
             float allAlpha = OrderedWaypointManager.getShowAllWaypointAlpha();
             for (OrderedWaypoint wp : route) {
@@ -96,16 +96,23 @@ public class OrderedWaypointRenderer {
 
         // ===== PHASE 2: Render ALL labels (after all boxes are drawn) =====
 
-        // Render current waypoint label
-        if (current != null) {
-            renderWaypointLabel(matrices, camera, current);
-        }
+        if (OrderedWaypointManager.isEditMode()) {
+            // Edit mode labels every waypoint (renderEditMode below draws the route lines)
+            for (OrderedWaypoint wp : route) {
+                renderWaypointLabel(matrices, camera, wp);
+            }
+        } else {
+            // Render current waypoint label
+            if (current != null) {
+                renderWaypointLabel(matrices, camera, current);
+            }
 
-        // Render next waypoints labels
-        for (int i = 0; i < nextWaypoints.size(); i++) {
-            OrderedWaypoint next = nextWaypoints.get(i);
-            if (next != current) {
-                renderWaypointLabel(matrices, camera, next);
+            // Render next waypoints labels
+            for (int i = 0; i < nextWaypoints.size(); i++) {
+                OrderedWaypoint next = nextWaypoints.get(i);
+                if (next != current) {
+                    renderWaypointLabel(matrices, camera, next);
+                }
             }
         }
 
@@ -125,6 +132,11 @@ public class OrderedWaypointRenderer {
         // Setup mode rendering
         if (OrderedWaypointManager.isSetupMode()) {
             renderSetupMode(matrices, immediate, camera, route);
+        }
+
+        // Edit mode: connect the entire route so its order is visible
+        if (OrderedWaypointManager.isEditMode()) {
+            renderEditModeLines(matrices, camera, route);
         }
 
         GL11.glEnable(GL11.GL_DEPTH_TEST);
@@ -305,13 +317,19 @@ public class OrderedWaypointRenderer {
         Matrix4f posMatrix = matrices.peek().getPositionMatrix();
 
         // Draw line from cursor point to target
-        buffer.vertex(posMatrix, startX, startY, startZ)
+        VertexConsumer v1 = buffer.vertex(posMatrix, startX, startY, startZ)
               .color(color[0], color[1], color[2], alpha)
               .normal(normal.x(), normal.y(), normal.z());
+        //? if is1_21_11 {
+        v1.lineWidth(2.0f);
+        //?}
 
-        buffer.vertex(posMatrix, endX, endY, endZ)
+        VertexConsumer v2 = buffer.vertex(posMatrix, endX, endY, endZ)
               .color(color[0], color[1], color[2], alpha)
               .normal(normal.x(), normal.y(), normal.z());
+        //? if is1_21_11 {
+        v2.lineWidth(2.0f);
+        //?}
 
         //? if is1_21_11 {
         immediate.draw(RenderLayers.lines());
@@ -343,13 +361,19 @@ public class OrderedWaypointRenderer {
         // Use the matrices from the render context (same as waypoint boxes)
         Matrix4f posMatrix = matrices.peek().getPositionMatrix();
 
-        buffer.vertex(posMatrix, startX, startY, startZ)
+        VertexConsumer v1 = buffer.vertex(posMatrix, startX, startY, startZ)
               .color(color[0], color[1], color[2], alpha)
               .normal(normal.x(), normal.y(), normal.z());
+        //? if is1_21_11 {
+        v1.lineWidth(2.0f);
+        //?}
 
-        buffer.vertex(posMatrix, endX, endY, endZ)
+        VertexConsumer v2 = buffer.vertex(posMatrix, endX, endY, endZ)
               .color(color[0], color[1], color[2], alpha)
               .normal(normal.x(), normal.y(), normal.z());
+        //? if is1_21_11 {
+        v2.lineWidth(2.0f);
+        //?}
 
         //? if is1_21_11 {
         immediate.draw(RenderLayers.lines());
@@ -405,6 +429,29 @@ public class OrderedWaypointRenderer {
 
                 drawLine(matrices, cameraPos, fromPos, toPos, setupLineColor, setupLineAlpha);
             }
+        }
+    }
+
+    // Draws the full route as lines between consecutive waypoints (including the
+    // wrap-around back to #1, since routes loop). Reuses the setup-mode line style.
+    private static void renderEditModeLines(MatrixStack matrices, Camera camera, List<OrderedWaypoint> route) {
+        if (route.size() < 2) return;
+
+        //? if is1_21_11 {
+        Vec3d cameraPos = camera.getCameraPos();
+        //?} else {
+        /*Vec3d cameraPos = camera.getPos();
+        *///?}
+        float[] lineColor = OrderedWaypointManager.getSetupModeLineColor();
+        float lineAlpha = OrderedWaypointManager.getSetupModeLineAlpha();
+
+        for (int i = 0; i < route.size(); i++) {
+            BlockPos from = route.get(i).getPosition();
+            BlockPos to = route.get((i + 1) % route.size()).getPosition();
+            drawLine(matrices, cameraPos,
+                new Vec3d(from.getX() + 0.5, from.getY() + 0.5, from.getZ() + 0.5),
+                new Vec3d(to.getX() + 0.5, to.getY() + 0.5, to.getZ() + 0.5),
+                lineColor, lineAlpha);
         }
     }
 
@@ -580,7 +627,13 @@ public class OrderedWaypointRenderer {
             nz = 0;
         }
 
-        buffer.vertex(posMatrix, x1, y1, z1).color(r, g, b, alpha).normal(nx, ny, nz);
-        buffer.vertex(posMatrix, x2, y2, z2).color(r, g, b, alpha).normal(nx, ny, nz);
+        VertexConsumer v1 = buffer.vertex(posMatrix, x1, y1, z1).color(r, g, b, alpha).normal(nx, ny, nz);
+        //? if is1_21_11 {
+        v1.lineWidth(2.0f);
+        //?}
+        VertexConsumer v2 = buffer.vertex(posMatrix, x2, y2, z2).color(r, g, b, alpha).normal(nx, ny, nz);
+        //? if is1_21_11 {
+        v2.lineWidth(2.0f);
+        //?}
     }
 }

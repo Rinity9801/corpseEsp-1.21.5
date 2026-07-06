@@ -7,11 +7,114 @@ import net.minecraft.item.ItemStack;
 import net.minecraft.item.Items;
 import net.minecraft.screen.slot.Slot;
 import net.minecraft.screen.slot.SlotActionType;
+import net.minecraft.client.network.PlayerListEntry;
+import net.minecraft.text.Text;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.util.ArrayList;
+import java.util.List;
+
 public class CommClaimManager {
     private static final Logger LOGGER = LoggerFactory.getLogger("CommClaimManager");
+
+    // Auto-trigger only fires once EVERY active mining commission is done.
+    // A mining commission is a sidebar line containing one of these keywords
+    // and NOT containing "Slayer" (so "Glacite Walker Slayer" is excluded).
+    private static final String[] MINING_COMMISSION_KEYWORDS = {
+        "aquamarine", "citrine", "glacite", "onyx", "peridot", "tungsten", "umber"
+    };
+    private static final int CHECK_INTERVAL_TICKS = 5; // ~0.25s between tab-list checks (fallback)
+    private static boolean autoTriggerLatch = false; // true once we've fired for the current batch
+    private static int autoCheckCounter = 0;
+    private static int debugPrintCounter = 0;
+    private static int fastPollTicks = 0; // >0: check every tick (after a completion message)
+    private static boolean debug = false; // when on, prints commission classification ~once/sec
+
+    /**
+     * Called from the chat listener the instant a "Commission Complete" message
+     * arrives. The message names the commission (e.g. "UMBER COLLECTOR Commission
+     * Complete! ..."), so we can claim immediately without waiting for the tab list
+     * to catch up:
+     *   - non-mining commission  -> claim now
+     *   - mining commission, and all other mining commissions already done -> claim now
+     *   - otherwise              -> open a fast-poll fallback window
+     */
+    public static void onCommissionComplete(String message) {
+        // Fallback: per-tick tab checks for ~3s in case the instant path below bails.
+        fastPollTicks = 60;
+        autoCheckCounter = CHECK_INTERVAL_TICKS;
+
+        if (!autoTrigger || running) return;
+        MinecraftClient client = MinecraftClient.getInstance();
+        if (client.world == null || client.player == null) return;
+
+        // The commission name is the text before "Commission Complete".
+        String clean = message.replaceAll("§.", "");
+        int idx = clean.toLowerCase().indexOf("commission complete");
+        if (idx <= 0) return; // no name in this message: leave it to the fast-poll
+        String name = clean.substring(0, idx).toLowerCase();
+
+        boolean slayer = name.contains("slayer");
+        boolean isMining = false;
+        if (!slayer) {
+            for (String kw : MINING_COMMISSION_KEYWORDS) {
+                if (name.contains(kw)) {
+                    isMining = true;
+                    break;
+                }
+            }
+        }
+
+        if (!isMining) {
+            // Non-mining (or slayer) commission: claim instantly.
+            fireAutoClaim("commission ready");
+            return;
+        }
+
+        // Mining commission completed. Claim now only if every OTHER mining
+        // commission is already done in the tab — i.e. at most one mining line
+        // still reads not-done (this just-completed one, whose tab lags).
+        int miningTotal = 0;
+        int miningDone = 0;
+        for (String line : getTabListLines(client)) {
+            String l = line.replaceAll("§.", "").trim().toLowerCase();
+            if (!(l.contains("%") || l.contains("done"))) continue;
+            if (l.contains("slayer")) continue;
+            boolean m = false;
+            for (String kw : MINING_COMMISSION_KEYWORDS) {
+                if (l.contains(kw)) {
+                    m = true;
+                    break;
+                }
+            }
+            if (!m) continue;
+            miningTotal++;
+            if (l.contains("done") || l.contains("100%")) miningDone++;
+        }
+        if (miningTotal - miningDone <= 1) {
+            fireAutoClaim("all mining commissions done");
+        }
+        // else: other mining commissions still in progress — fast-poll handles it.
+    }
+
+    private static void fireAutoClaim(String reason) {
+        if (running || autoTriggerLatch) return;
+        autoTriggerLatch = true;
+        MinecraftClient client = MinecraftClient.getInstance();
+        if (client.player != null) {
+            client.player.sendMessage(Text.literal("§6[CommClaim] §a" + reason + " — auto-claiming..."), false);
+        }
+        start();
+    }
+
+    public static void setDebug(boolean enabled) {
+        debug = enabled;
+    }
+
+    public static boolean isDebug() {
+        return debug;
+    }
 
     private static boolean running = false;
     private static int state = 0;
@@ -62,6 +165,11 @@ public class CommClaimManager {
     private static int completedClickAttempts = 0;
     private static final int MAX_COMPLETED_CLICKS = 10;
 
+    // Wardrobe phase timings (kept separate from the configurable pigeon/claim delays).
+    private static final int WARDROBE_READY_TIMEOUT = 40; // max ticks to wait for the armor slot to load
+    private static final int WARDROBE_EQUIP_TICKS = 2;    // wait after clicking armor before closing
+    private static final int WARDROBE_POST_CLOSE_TICKS = 1; // wait after closing the wardrobe
+
     public static void start() {
         if (running) {
             LOGGER.info("[CommClaim] Already running, ignoring start");
@@ -100,6 +208,109 @@ public class CommClaimManager {
         return running;
     }
 
+    /**
+     * Called each client tick. When auto-trigger is enabled, starts the claim
+     * sequence only once ALL active mining commissions (per
+     * {@link #MINING_COMMISSION_KEYWORDS}) read as done on the sidebar. Fires
+     * once per batch; re-arms when an unfinished mining commission reappears.
+     */
+    public static void checkAutoTrigger(MinecraftClient client) {
+        if (running) return;
+        if (!autoTrigger && !debug) return; // still scan when debugging so we can inspect
+        if (client.world == null || client.player == null) return;
+
+        // After a completion message, check every tick for ~3s; otherwise ~4x/second.
+        int interval = fastPollTicks > 0 ? 1 : CHECK_INTERVAL_TICKS;
+        if (fastPollTicks > 0) fastPollTicks--;
+        if (++autoCheckCounter < interval) return;
+        autoCheckCounter = 0;
+
+        // Print debug at most ~once per second to avoid chat spam.
+        boolean printDebug = debug && (++debugPrintCounter >= 4);
+        if (printDebug) debugPrintCounter = 0;
+
+        int miningTotal = 0;
+        int miningDone = 0;
+        int nonMiningDone = 0;
+        int commissionLines = 0;
+        List<String> tab = getTabListLines(client);
+        List<String> dbg = printDebug ? new ArrayList<>() : null;
+        for (String line : tab) {
+            String clean = line.replaceAll("§.", "").trim();
+            if (clean.isEmpty()) continue;
+            String lower = clean.toLowerCase();
+
+            // A commission line is one showing progress (a percentage) or "DONE".
+            // This excludes location/HUD text like "Glacite Tunnels".
+            boolean commissionLine = lower.contains("%") || lower.contains("done");
+            if (!commissionLine) continue;
+            commissionLines++;
+
+            boolean slayer = lower.contains("slayer");
+            boolean isMining = false;
+            if (!slayer) {
+                for (String kw : MINING_COMMISSION_KEYWORDS) {
+                    if (lower.contains(kw)) {
+                        isMining = true;
+                        break;
+                    }
+                }
+            }
+            boolean isDone = lower.contains("done") || lower.contains("100%");
+
+            if (isMining) {
+                miningTotal++;
+                if (isDone) miningDone++;
+            } else if (isDone) {
+                nonMiningDone++;
+            }
+            if (dbg != null) {
+                String tag = isMining ? (isDone ? "§a[MINE done] " : "§e[MINE  ..] ")
+                                      : (isDone ? "§b[OTHER done]" : "§7[other  ..]");
+                dbg.add(tag + " §f" + clean);
+            }
+        }
+
+        if (dbg != null) {
+            client.player.sendMessage(Text.literal(
+                "§6[CommClaim debug] §ftab=" + tab.size() + " comm=" + commissionLines
+                    + " mining=" + miningDone + "/" + miningTotal + " otherDone=" + nonMiningDone
+                    + " latch=" + autoTriggerLatch), false);
+            for (String d : dbg) {
+                client.player.sendMessage(Text.literal(d), false);
+            }
+        }
+
+        if (!autoTrigger) return;
+
+        // Claim when any non-mining commission is done (instant), or when every
+        // mining commission is done (batched, so mining isn't interrupted partway).
+        boolean allMiningDone = miningTotal > 0 && miningDone == miningTotal;
+        if (nonMiningDone == 0 && !allMiningDone) {
+            autoTriggerLatch = false; // nothing claimable yet: re-arm
+            return;
+        }
+
+        String reason = nonMiningDone > 0
+            ? (nonMiningDone + " commission(s) ready")
+            : ("all " + miningTotal + " mining commissions done");
+        fireAutoClaim(reason);
+    }
+
+    private static List<String> getTabListLines(MinecraftClient client) {
+        List<String> result = new ArrayList<>();
+        if (client.getNetworkHandler() == null) return result;
+
+        for (PlayerListEntry entry : client.getNetworkHandler().getPlayerList()) {
+            Text displayName = entry.getDisplayName();
+            String s = displayName != null ? displayName.getString() : entry.getProfile().name();
+            if (s != null && !s.trim().isEmpty()) {
+                result.add(s);
+            }
+        }
+        return result;
+    }
+
     public static void tick() {
         if (!running) return;
 
@@ -130,7 +341,8 @@ public class CommClaimManager {
                 break;
 
             case STATE_DELAY_BEFORE_CLICK_BAT:
-                if (tickCounter >= tickDelay) {
+                // Click as soon as the armor slot has loaded, rather than a fixed wait.
+                if (isWardrobeSlotReady(client, batPersonSlot) || tickCounter >= WARDROBE_READY_TIMEOUT) {
                     state = STATE_CLICK_BAT_ARMOR;
                     tickCounter = 0;
                 }
@@ -146,7 +358,7 @@ public class CommClaimManager {
                 break;
 
             case STATE_DELAY_AFTER_CLICK_BAT:
-                if (tickCounter >= guiWaitDelay) {
+                if (tickCounter >= WARDROBE_EQUIP_TICKS) {
                     state = STATE_CLOSE_WARDROBE_1;
                     tickCounter = 0;
                 }
@@ -161,7 +373,7 @@ public class CommClaimManager {
                 break;
 
             case STATE_DELAY_AFTER_CLOSE_1:
-                if (tickCounter >= tickDelay) {
+                if (tickCounter >= WARDROBE_POST_CLOSE_TICKS) {
                     state = STATE_FIND_PIGEON;
                     tickCounter = 0;
                 }
@@ -293,7 +505,7 @@ public class CommClaimManager {
                 break;
 
             case STATE_DELAY_BEFORE_CLICK_DIVAN:
-                if (tickCounter >= tickDelay) {
+                if (isWardrobeSlotReady(client, divanSlot) || tickCounter >= WARDROBE_READY_TIMEOUT) {
                     state = STATE_CLICK_DIVAN_ARMOR;
                     tickCounter = 0;
                 }
@@ -309,7 +521,7 @@ public class CommClaimManager {
                 break;
 
             case STATE_DELAY_AFTER_CLICK_DIVAN:
-                if (tickCounter >= guiWaitDelay) {
+                if (tickCounter >= WARDROBE_EQUIP_TICKS) {
                     state = STATE_CLOSE_WARDROBE_2;
                     tickCounter = 0;
                 }
@@ -343,6 +555,14 @@ public class CommClaimManager {
         String title = screen.getTitle().getString();
         // Royal Pigeon opens a commission-related GUI
         return title.contains("Commissions") || title.contains("Pigeon") || title.contains("Commission");
+    }
+
+    private static boolean isWardrobeSlotReady(MinecraftClient client, int column) {
+        if (!(client.currentScreen instanceof GenericContainerScreen screen)) return false;
+        int slotIndex = 36 + (column - 1);
+        var handler = screen.getScreenHandler();
+        if (slotIndex >= handler.slots.size()) return false;
+        return !handler.slots.get(slotIndex).getStack().isEmpty();
     }
 
     private static boolean clickWardrobeSlot(MinecraftClient client, int column) {

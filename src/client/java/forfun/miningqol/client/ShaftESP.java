@@ -210,8 +210,8 @@ public class ShaftESP {
             immediate.draw();
         }
         //?} else {
-        /*
-        VertexConsumer lineBuffer = immediate.getBuffer(RenderLayer.getLines());
+        
+        /*VertexConsumer lineBuffer = immediate.getBuffer(RenderLayer.getLines());
         Matrix4f posMatrix = matrices.peek().getPositionMatrix();
 
         boolean drewAny = false;

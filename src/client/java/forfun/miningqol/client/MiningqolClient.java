@@ -6,6 +6,7 @@ import forfun.miningqol.client.profit.BlockTracker;
 import forfun.miningqol.client.profit.GemstoneTracker;
 import forfun.miningqol.client.profit.ProfitTrackerHUD;
 import forfun.miningqol.client.profit.ProfitDebugger;
+import forfun.miningqol.client.collection.CollectionTracker;
 import forfun.miningqol.client.sacks.CoalValueCommand;
 
 //? if isCheat {
@@ -53,6 +54,7 @@ public class MiningqolClient implements ClientModInitializer {
     private static KeyBinding invClickKey;
     //?}
     private static KeyBinding abilitySwitchKey;
+    private static KeyBinding radialKey;
 
 
     @Override
@@ -111,6 +113,13 @@ public class MiningqolClient implements ClientModInitializer {
             "key.miningqol.ability_switch",
             InputUtil.Type.KEYSYM,
             GLFW.GLFW_KEY_H,
+            miningqolCategory
+        ));
+
+        radialKey = KeyBindingHelper.registerKeyBinding(new KeyBinding(
+            "key.miningqol.radial",
+            InputUtil.Type.KEYSYM,
+            GLFW.GLFW_KEY_LEFT_CONTROL,
             miningqolCategory
         ));
 
@@ -189,6 +198,95 @@ public class MiningqolClient implements ClientModInitializer {
                     CoalValueCommand.execute();
                     return 1;
                 }));
+            //? if isCheat {
+            dispatcher.register(ClientCommandManager.literal("claimcomms")
+                .executes(context -> {
+                    if (CommClaimManager.isRunning()) {
+                        CommClaimManager.stop();
+                    } else {
+                        CommClaimManager.start();
+                    }
+                    return 1;
+                }));
+            //?}
+            dispatcher.register(ClientCommandManager.literal("radial")
+                .executes(context -> {
+                    RadialMenuManager.open();
+                    return 1;
+                })
+                .then(ClientCommandManager.literal("set")
+                    .then(ClientCommandManager.argument("slot", IntegerArgumentType.integer(1, 8))
+                        .then(ClientCommandManager.argument("command", StringArgumentType.greedyString())
+                            .executes(context -> {
+                                RadialMenuManager.setCommand(
+                                    IntegerArgumentType.getInteger(context, "slot"),
+                                    StringArgumentType.getString(context, "command"));
+                                return 1;
+                            }))))
+                .then(ClientCommandManager.literal("label")
+                    .then(ClientCommandManager.argument("slot", IntegerArgumentType.integer(1, 8))
+                        .then(ClientCommandManager.argument("text", StringArgumentType.greedyString())
+                            .executes(context -> {
+                                RadialMenuManager.setLabel(
+                                    IntegerArgumentType.getInteger(context, "slot"),
+                                    StringArgumentType.getString(context, "text"));
+                                return 1;
+                            }))))
+                .then(ClientCommandManager.literal("clear")
+                    .then(ClientCommandManager.argument("slot", IntegerArgumentType.integer(1, 8))
+                        .executes(context -> {
+                            RadialMenuManager.clear(IntegerArgumentType.getInteger(context, "slot"));
+                            return 1;
+                        })))
+                .then(ClientCommandManager.literal("list")
+                    .executes(context -> {
+                        RadialMenuManager.list();
+                        return 1;
+                    })));
+            dispatcher.register(ClientCommandManager.literal("commclaimdebug")
+                .executes(context -> {
+                    boolean newState = !CommClaimManager.isDebug();
+                    CommClaimManager.setDebug(newState);
+                    MinecraftClient client = MinecraftClient.getInstance();
+                    if (client.player != null) {
+                        client.player.sendMessage(Text.literal(
+                            newState ? "§6[CommClaim] §aSidebar debug enabled (prints each second)"
+                                     : "§6[CommClaim] §cSidebar debug disabled"), false);
+                    }
+                    return 1;
+                }));
+            dispatcher.register(ClientCommandManager.literal("colltrack")
+                .executes(context -> {
+                    MinecraftClient client = MinecraftClient.getInstance();
+                    if (client.player != null) {
+                        client.player.sendMessage(Text.literal(
+                            "§6[MQO] §7Usage: /colltrack <material> | stop | list | move\n§7Materials: §f"
+                                + CollectionTracker.materialsList()), false);
+                    }
+                    return 1;
+                })
+                .then(ClientCommandManager.literal("stop")
+                    .executes(context -> {
+                        CollectionTracker.stop(true);
+                        return 1;
+                    }))
+                .then(ClientCommandManager.literal("list")
+                    .executes(context -> {
+                        CollectionTracker.dumpCollections();
+                        return 1;
+                    }))
+                .then(ClientCommandManager.literal("move")
+                    .executes(context -> {
+                        MinecraftClient.getInstance().send(() ->
+                            MinecraftClient.getInstance().setScreen(
+                                new forfun.miningqol.client.gui.CollectionHudPositionScreen(null)));
+                        return 1;
+                    }))
+                .then(ClientCommandManager.argument("material", StringArgumentType.word())
+                    .executes(context -> {
+                        CollectionTracker.start(StringArgumentType.getString(context, "material"));
+                        return 1;
+                    })));
             //? if isCheat {
             dispatcher.register(ClientCommandManager.literal("invclickdelay")
                 .executes(context -> {
@@ -381,6 +479,20 @@ public class MiningqolClient implements ClientModInitializer {
                             OrderedWaypointManager.move(num);
                             return 1;
                         })))
+                .then(ClientCommandManager.literal("change")
+                    .then(ClientCommandManager.argument("first", IntegerArgumentType.integer(1))
+                        .then(ClientCommandManager.argument("second", IntegerArgumentType.integer(1))
+                            .executes(context -> {
+                                int first = IntegerArgumentType.getInteger(context, "first");
+                                int second = IntegerArgumentType.getInteger(context, "second");
+                                OrderedWaypointManager.swap(first, second);
+                                return 1;
+                            }))))
+                .then(ClientCommandManager.literal("edit")
+                    .executes(context -> {
+                        OrderedWaypointManager.toggleEditMode();
+                        return 1;
+                    }))
                 .then(ClientCommandManager.literal("skip")
                     .executes(context -> {
                         OrderedWaypointManager.skip(1);
@@ -479,6 +591,18 @@ public class MiningqolClient implements ClientModInitializer {
                 AbilitySwitchManager.toggle();
             }
 
+            // Radial menu: hold the key to open, release to run the highlighted option.
+            if (client.player != null) {
+                InputUtil.Key bound = KeyBindingHelper.getBoundKeyOf(radialKey);
+                boolean held = bound.getCategory() == InputUtil.Type.KEYSYM
+                    && InputUtil.isKeyPressed(client.getWindow(), bound.getCode());
+                if (held && client.currentScreen == null) {
+                    RadialMenuManager.open();
+                } else if (!held && client.currentScreen instanceof forfun.miningqol.client.gui.RadialMenuScreen rms) {
+                    rms.selectAndClose();
+                }
+            }
+
             if (client.world != null && client.player != null) {
                 CorpseESP.tick();
                 ShaftESP.tick();
@@ -493,6 +617,7 @@ public class MiningqolClient implements ClientModInitializer {
                 LobbyFinder.tick();
                 OrderedWaypointManager.tick();
                 //? if isCheat {
+                CommClaimManager.checkAutoTrigger(client);
                 CommClaimManager.tick();
                 //?}
                 AbilitySwitchManager.tick();
@@ -538,17 +663,18 @@ public class MiningqolClient implements ClientModInitializer {
             // Forward chat to AutoHotm for "already purchased" detection
             forfun.miningqol.client.hotm.AutoHotmManager.onChatMessage(messageText);
 
-            // Auto-trigger commission claim on completion message
-            if (CommClaimManager.isAutoTrigger() && !CommClaimManager.isRunning()) {
-                if (messageText.contains("Commission Complete! Visit the King to claim your rewards!")) {
-                    LOGGER.info("[MiningqolClient] Commission complete message detected, auto-starting CommClaim");
-                    CommClaimManager.start();
-                }
+            // A commission just completed — fast-poll the tab list so the auto-claim
+            // (gated on ALL mining commissions being done) fires as soon as possible.
+            if (messageText.toLowerCase().contains("commission complete")) {
+                CommClaimManager.onCommissionComplete(messageText);
             }
             //?}
 
-            // Block tracker for sack messages
-            BlockTracker.onChatMessage(message);
+            // Block profit tracking is expensive on large sack messages because it
+            // walks hover text and may refresh pricing, so only do it when enabled.
+            if (BlockTracker.shouldProcessSackMessages()) {
+                BlockTracker.onChatMessage(message);
+            }
         });
 
         ClientSendMessageEvents.COMMAND.register((command) -> {
@@ -575,7 +701,9 @@ public class MiningqolClient implements ClientModInitializer {
         HudRenderCallback.EVENT.register((context, tickDelta) -> {
             MinecraftClient client = MinecraftClient.getInstance();
             ProfitTrackerHUD.render(context);
+            CollectionTracker.render(context);
             PickaxeCooldownHUD.render(context);
+            CommissionHUD.render(context);
             //? if isCheat {
             AutoClickerHUD.render(context, client);
             //?}

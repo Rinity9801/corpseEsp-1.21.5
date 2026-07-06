@@ -1,6 +1,7 @@
 package forfun.miningqol.mixin.client;
 
 import forfun.miningqol.client.NameHider;
+import forfun.miningqol.client.PetFlipTooltip;
 import net.minecraft.item.Item;
 import net.minecraft.item.ItemStack;
 import net.minecraft.item.tooltip.TooltipType;
@@ -22,12 +23,14 @@ public abstract class ItemStackMixin {
         cancellable = true
     )
     private void modifyTooltip(Item.TooltipContext context, net.minecraft.entity.player.PlayerEntity player, TooltipType type, CallbackInfoReturnable<List<Text>> cir) {
-        if (!NameHider.isEnabled()) {
+        List<Text> tooltip = cir.getReturnValue();
+        if (tooltip == null || tooltip.isEmpty()) {
             return;
         }
 
-        List<Text> tooltip = cir.getReturnValue();
-        if (tooltip == null || tooltip.isEmpty()) {
+        PetFlipTooltip.appendTooltip((ItemStack) (Object) this, tooltip);
+
+        if (!NameHider.isEnabled()) {
             return;
         }
 

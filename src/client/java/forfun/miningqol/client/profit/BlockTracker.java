@@ -166,6 +166,10 @@ public class BlockTracker {
         return materialDataMap.computeIfAbsent(material, k -> new MaterialData());
     }
 
+    public static boolean shouldProcessSackMessages() {
+        return debugEnabled || (ProfitTrackerHUD.isEnabled() && ProfitTrackerHUD.isBlockMode());
+    }
+
     /**
      * Called when items are added to inventory (from mixin)
      * Disabled - only tracking via sacks now
@@ -178,6 +182,8 @@ public class BlockTracker {
      * Called when sack chat messages are received
      */
     public static void onChatMessage(Text message) {
+        if (!shouldProcessSackMessages()) return;
+
         String messageText = message.getString();
 
         // Check if this is a sack message
@@ -313,14 +319,13 @@ public class BlockTracker {
         double enchantedThisEvent = rawEquivalentThisEvent / (double) ratio;
         double coinsThisEvent = enchantedThisEvent * enchantedPrice;
 
-        LOGGER.info("[Sacks] {} raw equiv {} -> {} coins (total: {}, {}/hr, price={})",
-            rawEquivalentThisEvent, material,
-            String.format("%.0f", coinsThisEvent),
-            String.format("%.0f", data.totalCoins),
-            String.format("%.0f", currentCoinsPerHour),
-            String.format("%.1f", enchantedPrice));
-
         if (debugEnabled) {
+            LOGGER.info("[Sacks] {} raw equiv {} -> {} coins (total: {}, {}/hr, price={})",
+                rawEquivalentThisEvent, material,
+                String.format("%.0f", coinsThisEvent),
+                String.format("%.0f", data.totalCoins),
+                String.format("%.0f", currentCoinsPerHour),
+                String.format("%.1f", enchantedPrice));
             net.minecraft.client.MinecraftClient client = net.minecraft.client.MinecraftClient.getInstance();
             if (client.player != null) {
                 client.player.sendMessage(net.minecraft.text.Text.literal(
@@ -410,6 +415,7 @@ public class BlockTracker {
 
     // Pre-fetch prices on world join so they're ready before first sack message
     public static void onWorldChange() {
+        if (!shouldProcessSackMessages()) return;
         BazaarPriceManager.updateBlockPrices();
     }
 

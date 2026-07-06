@@ -55,6 +55,7 @@ public class OrderedWaypointManager {
     private static boolean sneakingDuringRoute = true;
 
     private static boolean showAll = false;
+    private static boolean editMode = false;
     private static float[] showAllWaypointColor = {0f, 1f, 0f}; // Green
     private static float showAllWaypointAlpha = 0.4f;
 
@@ -181,6 +182,20 @@ public class OrderedWaypointManager {
     }
     public static float getShowAllWaypointAlpha() { return showAllWaypointAlpha; }
     public static void setShowAllWaypointAlpha(float alpha) { showAllWaypointAlpha = alpha; }
+
+    // Edit mode (session-only, like setup mode): renders the entire route
+    public static boolean isEditMode() { return editMode; }
+    public static void setEditMode(boolean mode) { editMode = mode; }
+    public static void toggleEditMode() {
+        if (currentRoute.isEmpty()) {
+            sendMessage("\u00A7cNo route loaded.");
+            return;
+        }
+        editMode = !editMode;
+        sendMessage(editMode
+            ? "\u00A7aEdit mode \u00A72enabled\u00A7a — showing the entire route (" + currentRoute.size() + " waypoints)."
+            : "\u00A7aEdit mode \u00A7cdisabled\u00A7a.");
+    }
 
     // Lobby check
     public static boolean isLobbyCheckEnabled() { return lobbyCheckEnabled; }
@@ -471,6 +486,35 @@ public class OrderedWaypointManager {
         sendMessage("\u00A7aMoved waypoint \u00A7e#" + number + " \u00A7ato \u00A7f" + pos.getX() + ", " + pos.getY() + ", " + pos.getZ());
     }
 
+    public static void swap(int first, int second) {
+        if (currentRoute.isEmpty()) {
+            sendMessage("\u00A7cNo route loaded.");
+            return;
+        }
+
+        if (first < 1 || first > currentRoute.size() || second < 1 || second > currentRoute.size()) {
+            sendMessage("\u00A7cInvalid waypoint number. Must be between 1 and " + currentRoute.size());
+            return;
+        }
+
+        if (first == second) {
+            sendMessage("\u00A7cThose are the same waypoint.");
+            return;
+        }
+
+        OrderedWaypoint a = currentRoute.get(first - 1);
+        OrderedWaypoint b = currentRoute.get(second - 1);
+        currentRoute.set(first - 1, b);
+        currentRoute.set(second - 1, a);
+        a.setIndex(second);
+        b.setIndex(first);
+
+        // Positions behind the indices changed; let the next lobby check re-flag.
+        wrongWaypoints.clear();
+
+        sendMessage("\u00A7aSwapped waypoints \u00A7e#" + first + " \u00A7aand \u00A7e#" + second);
+    }
+
     public static void skip(int amount) {
         if (currentRoute.isEmpty()) {
             sendMessage("\u00A7cNo route loaded.");
@@ -704,6 +748,7 @@ public class OrderedWaypointManager {
     public static void unload() {
         currentRoute.clear();
         currentIndex = 0;
+        editMode = false;
         sendMessage("\u00A7aRoute unloaded.");
     }
 

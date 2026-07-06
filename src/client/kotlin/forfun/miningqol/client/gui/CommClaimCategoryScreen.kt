@@ -262,6 +262,8 @@ class CommClaimCategoryScreen(private val parentScreen: Screen) : VexelScreen("C
         )
         yOffset += sliderHeight + 20f
 
+        yOffset += 20f
+
         // Test button
         Button("Test Commission Claim", 0xFFFFFFFF.toInt(), fontSize = 14f)
             .setSizing(200f, Size.Pixels, 40f, Size.Pixels)
@@ -374,6 +376,90 @@ class CommClaimCategoryScreen(private val parentScreen: Screen) : VexelScreen("C
                 val floatValue = (newValue as? Float) ?: initialValue
                 onValueChange(floatValue)
                 valueText.text = "${floatValue.toInt()}"
+            }
+            .childOf(card)
+
+        card.visible = false
+        Thread {
+            Thread.sleep(animDelay)
+            MinecraftClient.getInstance().execute {
+                card.fadeIn(400, EasingType.EASE_OUT)
+            }
+        }.start()
+    }
+
+    private fun createFloatSliderCard(
+        label: String,
+        min: Float,
+        max: Float,
+        initialValue: Float,
+        onValueChange: (Float) -> Unit,
+        accentColor: Int,
+        x: Float,
+        y: Float,
+        width: Float,
+        height: Float,
+        parent: Rectangle,
+        animDelay: Long
+    ) {
+        val card = Rectangle(
+            backgroundColor = 0xF01E1E1E.toInt(),
+            borderColor = 0xFF2A2A2A.toInt(),
+            borderRadius = 12f,
+            borderThickness = 1f
+        )
+            .setSizing(width, Size.Pixels, height, Size.Pixels)
+            .setPositioning(x, Pos.ParentPixels, y, Pos.ParentPixels)
+            .childOf(parent)
+            .apply {
+                dropShadow = true
+                shadowBlur = 15f
+                shadowSpread = 1f
+                shadowColor = 0x40000000.toInt()
+            }
+
+        Rectangle(
+            backgroundColor = accentColor,
+            borderRadius = 12f
+        )
+            .setSizing(5f, Size.Pixels, 100f, Size.ParentPerc)
+            .setPositioning(0f, Pos.ParentPixels, 0f, Pos.ParentPixels)
+            .ignoreMouseEvents()
+            .childOf(card)
+            .apply {
+                borderRadiusTopRight = 0f
+                borderRadiusBottomRight = 0f
+            }
+
+        Text(label, 0xFFFFFFFF.toInt(), 16f, true)
+            .setPositioning(20f, Pos.ParentPixels, 12f, Pos.ParentPixels)
+            .childOf(card)
+
+        val valueText = Text(String.format("%.1fx", initialValue), accentColor, 14f, true)
+            .setPositioning(0f, Pos.ParentPixels, 12f, Pos.ParentPixels)
+            .alignRight()
+            .setOffset(-20f, 0f)
+            .childOf(card)
+
+        Slider(
+            value = initialValue,
+            minValue = min,
+            maxValue = max,
+            trackColor = 0xFF1A1A1A.toInt(),
+            trackFillColor = accentColor,
+            thumbColor = accentColor,
+            trackHeight = 4f,
+            thumbWidth = 16f,
+            thumbHeight = 16f,
+            thumbRadius = 8f,
+            trackRadius = 2f
+        )
+            .setSizing(width - 40f, Size.Pixels, 25f, Size.Pixels)
+            .setPositioning(20f, Pos.ParentPixels, 40f, Pos.ParentPixels)
+            .onValueChange { newValue ->
+                val floatValue = ((newValue as? Float) ?: initialValue)
+                onValueChange(floatValue)
+                valueText.text = String.format("%.1fx", floatValue)
             }
             .childOf(card)
 

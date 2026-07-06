@@ -3,6 +3,7 @@ package forfun.miningqol.client.gui
 import forfun.miningqol.client.FiletWarning
 import forfun.miningqol.client.GlassSync
 import forfun.miningqol.client.MiningqolClient
+import forfun.miningqol.client.PetFlipTooltip
 import net.minecraft.client.MinecraftClient
 import net.minecraft.client.gui.screen.Screen
 import net.minecraft.client.input.KeyInput
@@ -39,7 +40,7 @@ class MiscCategoryScreen(private val parentScreen: Screen) : VexelScreen("Misc S
             borderRadius = 16f,
             borderThickness = 1f
         )
-            .setSizing(600f, Size.Pixels, 465f, Size.Pixels)
+            .setSizing(600f, Size.Pixels, 550f, Size.Pixels)
             .childOf(window)
             .apply {
                 dropShadow = true
@@ -52,7 +53,7 @@ class MiscCategoryScreen(private val parentScreen: Screen) : VexelScreen("Misc S
         mainPanel.xPositionConstraint = Pos.ScreenPixels
         mainPanel.yPositionConstraint = Pos.ScreenPixels
         mainPanel.xConstraint = (mainPanel.screenWidth - 600f) / 2f
-        mainPanel.yConstraint = (mainPanel.screenHeight - 465f) / 2f
+        mainPanel.yConstraint = (mainPanel.screenHeight - 550f) / 2f
         mainPanel.fadeIn(500, EasingType.EASE_OUT)
 
         // Title bar background
@@ -102,7 +103,14 @@ class MiscCategoryScreen(private val parentScreen: Screen) : VexelScreen("Misc S
                            MiningqolClient.getConfig().filetWarningEnabled = !MiningqolClient.getConfig().filetWarningEnabled
                            FiletWarning.setEnabled(MiningqolClient.getConfig().filetWarningEnabled)
                        },
-                       0xFFFFAA55.toInt())
+                       0xFFFFAA55.toInt()),
+            Triple("Pet Flip Tooltips", "Shows coins/XP flip data on pet tooltips (pets.adong.dev)", 0xFFFF88DD.toInt()) to
+                Triple({ MiningqolClient.getConfig().petFlipTooltipEnabled },
+                       {
+                           MiningqolClient.getConfig().petFlipTooltipEnabled = !MiningqolClient.getConfig().petFlipTooltipEnabled
+                           PetFlipTooltip.setEnabled(MiningqolClient.getConfig().petFlipTooltipEnabled)
+                       },
+                       0xFFFF88DD.toInt())
         )
 
         val startY = 120f
