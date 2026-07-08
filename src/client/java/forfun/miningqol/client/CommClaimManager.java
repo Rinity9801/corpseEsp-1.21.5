@@ -49,7 +49,13 @@ public class CommClaimManager {
         MinecraftClient client = MinecraftClient.getInstance();
         if (client.world == null || client.player == null) return;
 
-        // The commission name is the text before "Commission Complete".
+        // "Claim after each" mode: any completion fires immediately.
+        if (!batchMining) {
+            fireAutoClaim("commission ready");
+            return;
+        }
+
+        // Batch mode: classify by the commission name (text before "Commission Complete").
         String clean = message.replaceAll("§.", "");
         int idx = clean.toLowerCase().indexOf("commission complete");
         if (idx <= 0) return; // no name in this message: leave it to the fast-poll
@@ -67,35 +73,13 @@ public class CommClaimManager {
         }
 
         if (!isMining) {
-            // Non-mining (or slayer) commission: claim instantly.
+            // Non-mining (or slayer) commission: claim instantly even in batch mode.
             fireAutoClaim("commission ready");
             return;
         }
-
-        // Mining commission completed. Claim now only if every OTHER mining
-        // commission is already done in the tab — i.e. at most one mining line
-        // still reads not-done (this just-completed one, whose tab lags).
-        int miningTotal = 0;
-        int miningDone = 0;
-        for (String line : getTabListLines(client)) {
-            String l = line.replaceAll("§.", "").trim().toLowerCase();
-            if (!(l.contains("%") || l.contains("done"))) continue;
-            if (l.contains("slayer")) continue;
-            boolean m = false;
-            for (String kw : MINING_COMMISSION_KEYWORDS) {
-                if (l.contains(kw)) {
-                    m = true;
-                    break;
-                }
-            }
-            if (!m) continue;
-            miningTotal++;
-            if (l.contains("done") || l.contains("100%")) miningDone++;
-        }
-        if (miningTotal - miningDone <= 1) {
-            fireAutoClaim("all mining commissions done");
-        }
-        // else: other mining commissions still in progress — fast-poll handles it.
+        // Mining commission in batch mode: defer to checkAutoTrigger's strict "all mining
+        // done" rule (via the fast-poll window opened above), so we never claim while another
+        // mining commission is still unfinished.
     }
 
     private static void fireAutoClaim(String reason) {
@@ -123,10 +107,12 @@ public class CommClaimManager {
     private static int guiWaitDelay = 3; // Ticks to wait after GUI actions
     private static boolean autoTrigger = false; // Auto-trigger on commission complete message
     private static boolean wardrobeSwap = true; // Enable wardrobe armor swapping
+    private static boolean batchMining = true;  // true: wait until ALL mining commissions are done;
+                                                // false: claim as soon as ANY commission is done
 
     // Config values
-    private static int batPersonSlot = 1; // 1-9, column in wardrobe row 5
-    private static int divanSlot = 2; // 1-9, column in wardrobe row 5
+    private static int batPersonSlot = 1; // 1-12, loadout index in the /loadout grid (equip before claim)
+    private static int divanSlot = 2; // 1-12, loadout index in the /loadout grid (equip after claim)
     private static int refinedToolSlot = 0; // Hotbar slot 0-8
 
     // State machine states
@@ -283,17 +269,27 @@ public class CommClaimManager {
 
         if (!autoTrigger) return;
 
-        // Claim when any non-mining commission is done (instant), or when every
-        // mining commission is done (batched, so mining isn't interrupted partway).
-        boolean allMiningDone = miningTotal > 0 && miningDone == miningTotal;
-        if (nonMiningDone == 0 && !allMiningDone) {
+        boolean claimable;
+        String reason;
+        if (batchMining) {
+            // Non-mining claimed instantly; mining held until EVERY mining commission is done,
+            // so a grind isn't interrupted partway.
+            boolean allMiningDone = miningTotal > 0 && miningDone == miningTotal;
+            claimable = nonMiningDone > 0 || allMiningDone;
+            reason = nonMiningDone > 0
+                ? (nonMiningDone + " commission(s) ready")
+                : ("all " + miningTotal + " mining commissions done");
+        } else {
+            // "Claim after each": claim as soon as ANY commission is done.
+            int done = nonMiningDone + miningDone;
+            claimable = done > 0;
+            reason = done + " commission(s) ready";
+        }
+
+        if (!claimable) {
             autoTriggerLatch = false; // nothing claimable yet: re-arm
             return;
         }
-
-        String reason = nonMiningDone > 0
-            ? (nonMiningDone + " commission(s) ready")
-            : ("all " + miningTotal + " mining commissions done");
         fireAutoClaim(reason);
     }
 
@@ -325,13 +321,13 @@ public class CommClaimManager {
         switch (state) {
             // ===== PHASE 1: EQUIP BAT PERSON ARMOR =====
             case STATE_OPEN_WARDROBE_1:
-                client.player.networkHandler.sendChatCommand("wardrobe");
+                client.player.networkHandler.sendChatCommand("loadout");
                 state = STATE_WAIT_WARDROBE_1;
                 tickCounter = 0;
                 break;
 
             case STATE_WAIT_WARDROBE_1:
-                if (isWardrobeOpen(client)) {
+                if (isLoadoutOpen(client)) {
                     state = STATE_DELAY_BEFORE_CLICK_BAT;
                     tickCounter = 0;
                 } else if (tickCounter >= 60) {
@@ -342,14 +338,14 @@ public class CommClaimManager {
 
             case STATE_DELAY_BEFORE_CLICK_BAT:
                 // Click as soon as the armor slot has loaded, rather than a fixed wait.
-                if (isWardrobeSlotReady(client, batPersonSlot) || tickCounter >= WARDROBE_READY_TIMEOUT) {
+                if (isLoadoutSlotReady(client, batPersonSlot) || tickCounter >= WARDROBE_READY_TIMEOUT) {
                     state = STATE_CLICK_BAT_ARMOR;
                     tickCounter = 0;
                 }
                 break;
 
             case STATE_CLICK_BAT_ARMOR:
-                if (clickWardrobeSlot(client, batPersonSlot)) {
+                if (clickLoadoutSlot(client, batPersonSlot)) {
                     state = STATE_DELAY_AFTER_CLICK_BAT;
                     tickCounter = 0;
                 } else {
@@ -489,13 +485,13 @@ public class CommClaimManager {
 
             // ===== PHASE 4: EQUIP DIVAN ARMOR =====
             case STATE_OPEN_WARDROBE_2:
-                client.player.networkHandler.sendChatCommand("wardrobe");
+                client.player.networkHandler.sendChatCommand("loadout");
                 state = STATE_WAIT_WARDROBE_2;
                 tickCounter = 0;
                 break;
 
             case STATE_WAIT_WARDROBE_2:
-                if (isWardrobeOpen(client)) {
+                if (isLoadoutOpen(client)) {
                     state = STATE_DELAY_BEFORE_CLICK_DIVAN;
                     tickCounter = 0;
                 } else if (tickCounter >= 60) {
@@ -505,14 +501,14 @@ public class CommClaimManager {
                 break;
 
             case STATE_DELAY_BEFORE_CLICK_DIVAN:
-                if (isWardrobeSlotReady(client, divanSlot) || tickCounter >= WARDROBE_READY_TIMEOUT) {
+                if (isLoadoutSlotReady(client, divanSlot) || tickCounter >= WARDROBE_READY_TIMEOUT) {
                     state = STATE_CLICK_DIVAN_ARMOR;
                     tickCounter = 0;
                 }
                 break;
 
             case STATE_CLICK_DIVAN_ARMOR:
-                if (clickWardrobeSlot(client, divanSlot)) {
+                if (clickLoadoutSlot(client, divanSlot)) {
                     state = STATE_DELAY_AFTER_CLICK_DIVAN;
                     tickCounter = 0;
                 } else {
@@ -544,10 +540,23 @@ public class CommClaimManager {
         }
     }
 
-    private static boolean isWardrobeOpen(MinecraftClient client) {
+    private static boolean isLoadoutOpen(MinecraftClient client) {
         if (!(client.currentScreen instanceof GenericContainerScreen screen)) return false;
         String title = screen.getTitle().getString();
-        return title.contains("Wardrobe");
+        return title.toLowerCase().contains("loadout");
+    }
+
+    /**
+     * Hypixel now equips armor sets via /loadout, not /wardrobe. The loadout GUI shows the
+     * 12 loadouts as a 3x4 grid: columns 6-8, rows 2-5 (1-indexed). Loadout 1-12 reads
+     * left-to-right, top-to-bottom; this converts that index to a 0-indexed chest slot
+     * (yields 14,15,16, 23,24,25, 32,33,34, 41,42,43).
+     */
+    private static int loadoutSlotIndex(int loadout) {
+        int n = Math.max(1, Math.min(12, loadout)) - 1;
+        int row = 1 + n / 3; // rows 2-5 -> 0-indexed 1-4
+        int col = 5 + n % 3; // columns 6-8 -> 0-indexed 5-7
+        return row * 9 + col;
     }
 
     private static boolean isPigeonGuiOpen(MinecraftClient client) {
@@ -557,21 +566,18 @@ public class CommClaimManager {
         return title.contains("Commissions") || title.contains("Pigeon") || title.contains("Commission");
     }
 
-    private static boolean isWardrobeSlotReady(MinecraftClient client, int column) {
+    private static boolean isLoadoutSlotReady(MinecraftClient client, int loadout) {
         if (!(client.currentScreen instanceof GenericContainerScreen screen)) return false;
-        int slotIndex = 36 + (column - 1);
+        int slotIndex = loadoutSlotIndex(loadout);
         var handler = screen.getScreenHandler();
         if (slotIndex >= handler.slots.size()) return false;
         return !handler.slots.get(slotIndex).getStack().isEmpty();
     }
 
-    private static boolean clickWardrobeSlot(MinecraftClient client, int column) {
+    private static boolean clickLoadoutSlot(MinecraftClient client, int loadout) {
         if (!(client.currentScreen instanceof GenericContainerScreen screen)) return false;
 
-        // Wardrobe row 5 is the equip row
-        // Row 5 in a 6-row chest = slots 36-44 (index 4 * 9 = 36)
-        // Column 1-9 maps to slots 36-44
-        int slotIndex = 36 + (column - 1);
+        int slotIndex = loadoutSlotIndex(loadout);
 
         try {
             var handler = screen.getScreenHandler();
@@ -583,11 +589,11 @@ public class CommClaimManager {
                     SlotActionType.PICKUP,
                     client.player
                 );
-                LOGGER.info("[CommClaim] Clicked wardrobe slot {} (index {})", column, slotIndex);
+                LOGGER.info("[CommClaim] Clicked loadout {} (slot index {})", loadout, slotIndex);
                 return true;
             }
         } catch (Exception e) {
-            LOGGER.error("[CommClaim] Error clicking wardrobe slot", e);
+            LOGGER.error("[CommClaim] Error clicking loadout slot", e);
         }
         return false;
     }
@@ -689,7 +695,7 @@ public class CommClaimManager {
     }
 
     public static void setBatPersonSlot(int slot) {
-        batPersonSlot = Math.max(1, Math.min(9, slot));
+        batPersonSlot = Math.max(1, Math.min(12, slot));
     }
 
     public static int getDivanSlot() {
@@ -697,7 +703,7 @@ public class CommClaimManager {
     }
 
     public static void setDivanSlot(int slot) {
-        divanSlot = Math.max(1, Math.min(9, slot));
+        divanSlot = Math.max(1, Math.min(12, slot));
     }
 
     public static int getRefinedToolSlot() {
@@ -738,5 +744,13 @@ public class CommClaimManager {
 
     public static void setWardrobeSwap(boolean enabled) {
         wardrobeSwap = enabled;
+    }
+
+    public static boolean isBatchMining() {
+        return batchMining;
+    }
+
+    public static void setBatchMining(boolean enabled) {
+        batchMining = enabled;
     }
 }

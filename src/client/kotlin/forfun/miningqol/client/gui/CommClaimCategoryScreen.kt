@@ -39,7 +39,7 @@ class CommClaimCategoryScreen(private val parentScreen: Screen) : VexelScreen("C
             borderRadius = 16f,
             borderThickness = 1f
         )
-            .setSizing(550f, Size.Pixels, 750f, Size.Pixels)
+            .setSizing(550f, Size.Pixels, 820f, Size.Pixels)
             .childOf(window)
             .apply {
                 dropShadow = true
@@ -52,7 +52,7 @@ class CommClaimCategoryScreen(private val parentScreen: Screen) : VexelScreen("C
         mainPanel.xPositionConstraint = Pos.ScreenPixels
         mainPanel.yPositionConstraint = Pos.ScreenPixels
         mainPanel.xConstraint = (mainPanel.screenWidth - 550f) / 2f
-        mainPanel.yConstraint = (mainPanel.screenHeight - 750f) / 2f
+        mainPanel.yConstraint = (mainPanel.screenHeight - 820f) / 2f
         mainPanel.fadeIn(500, EasingType.EASE_OUT)
 
         // Title bar background
@@ -92,7 +92,7 @@ class CommClaimCategoryScreen(private val parentScreen: Screen) : VexelScreen("C
             .fadeIn(700, EasingType.EASE_OUT)
 
         // Subtitle
-        Text("Auto-claim commissions with wardrobe swap", 0xFF888888.toInt(), 13f, false)
+        Text("Auto-claim commissions with loadout swap", 0xFF888888.toInt(), 13f, false)
             .setPositioning(0f, Pos.ParentCenter, 50f, Pos.ParentPixels)
             .childOf(mainPanel)
             .fadeIn(800, EasingType.EASE_OUT)
@@ -181,7 +181,7 @@ class CommClaimCategoryScreen(private val parentScreen: Screen) : VexelScreen("C
                 borderRadiusBottomRight = 0f
             }
 
-        Text("Wardrobe Swap:", 0xFFFFFFFF.toInt(), 13f, false)
+        Text("Loadout Swap:", 0xFFFFFFFF.toInt(), 13f, false)
             .setPositioning(14f, Pos.ParentPixels, 0f, Pos.ParentCenter)
             .childOf(wardrobeSwapCard)
 
@@ -202,10 +202,57 @@ class CommClaimCategoryScreen(private val parentScreen: Screen) : VexelScreen("C
         }
         yOffset += 40f
 
-        // Bat Person Armor Slot slider card
+        // Batch Mining toggle card (ALL = wait for every mining commission; EACH = claim any done)
+        val batchMiningCard = Rectangle(
+            backgroundColor = 0xF01E1E1E.toInt(),
+            borderColor = 0xFF2A2A2A.toInt(),
+            borderRadius = 8f,
+            borderThickness = 1f,
+            hoverColor = 0xF0252525.toInt()
+        )
+            .setSizing(220f, Size.Pixels, 36f, Size.Pixels)
+            .setPositioning(0f, Pos.ParentCenter, yOffset, Pos.ParentPixels)
+            .childOf(mainPanel)
+
+        var batchMiningEnabled = CommClaimManager.isBatchMining()
+        val batchMiningAccent = Rectangle(
+            backgroundColor = if (batchMiningEnabled) 0xFFFFD700.toInt() else 0xFF424242.toInt(),
+            borderRadius = 8f
+        )
+            .setSizing(4f, Size.Pixels, 100f, Size.ParentPerc)
+            .setPositioning(0f, Pos.ParentPixels, 0f, Pos.ParentPixels)
+            .ignoreMouseEvents()
+            .childOf(batchMiningCard)
+            .apply {
+                borderRadiusTopRight = 0f
+                borderRadiusBottomRight = 0f
+            }
+
+        Text("Batch Mining:", 0xFFFFFFFF.toInt(), 13f, false)
+            .setPositioning(14f, Pos.ParentPixels, 0f, Pos.ParentCenter)
+            .childOf(batchMiningCard)
+
+        val batchMiningStatus = Text(if (batchMiningEnabled) "ALL" else "EACH",
+            if (batchMiningEnabled) 0xFFFFD700.toInt() else 0xFF888888.toInt(), 13f, true)
+            .setPositioning(0f, Pos.ParentPixels, 0f, Pos.ParentCenter)
+            .alignRight()
+            .setOffset(-14f, 0f)
+            .childOf(batchMiningCard)
+
+        batchMiningCard.onClick { _, _, _ ->
+            batchMiningEnabled = !batchMiningEnabled
+            CommClaimManager.setBatchMining(batchMiningEnabled)
+            batchMiningStatus.text = if (batchMiningEnabled) "ALL" else "EACH"
+            batchMiningStatus.textColor = if (batchMiningEnabled) 0xFFFFD700.toInt() else 0xFF888888.toInt()
+            batchMiningAccent.backgroundColor = if (batchMiningEnabled) 0xFFFFD700.toInt() else 0xFF424242.toInt()
+            true
+        }
+        yOffset += 40f
+
+        // Bat Person Loadout slider card (equip before claim)
         createSliderCard(
-            "Bat Person Armor Slot (Wardrobe)",
-            1f, 9f,
+            "Bat Person Loadout (1-12)",
+            1f, 12f,
             CommClaimManager.getBatPersonSlot().toFloat(),
             { value -> CommClaimManager.setBatPersonSlot(value.toInt()) },
             0xFFFFD700.toInt(),
@@ -214,10 +261,10 @@ class CommClaimCategoryScreen(private val parentScreen: Screen) : VexelScreen("C
         )
         yOffset += sliderHeight + 10f
 
-        // Divan Armor Slot slider card
+        // Divan Loadout slider card (equip after claim)
         createSliderCard(
-            "Divan Armor Slot (Wardrobe)",
-            1f, 9f,
+            "Divan Loadout (1-12)",
+            1f, 12f,
             CommClaimManager.getDivanSlot().toFloat(),
             { value -> CommClaimManager.setDivanSlot(value.toInt()) },
             0xFF4CAF50.toInt(),
