@@ -1,6 +1,7 @@
 package forfun.miningqol.client.gui
 
 import forfun.miningqol.client.PickaxeCooldownHUD
+import net.minecraft.client.Minecraft
 import net.minecraft.client.gui.screens.Screen
 
 class PickaxeCooldownCategoryScreen(parentScreen: Screen) : BaseCategoryScreen(parentScreen, "Pickaxe Cooldown Settings") {
@@ -9,7 +10,7 @@ class PickaxeCooldownCategoryScreen(parentScreen: Screen) : BaseCategoryScreen(p
     override fun afterInitialization() {
         SettingsUi.overlay(window)
         val panelWidth = 600f
-        val panel = SettingsUi.panel(window, panelWidth, 480f, "Pickaxe Cooldown", "Ability cooldown HUD and ready alert")
+        val panel = SettingsUi.panel(window, panelWidth, 540f, "Pickaxe Cooldown", "Ability cooldown HUD and ready alert")
 
         var y = 110f
         y = SettingsUi.toggleRow(panel, panelWidth, y, "Enabled", "Show the cooldown HUD", accent,
@@ -24,9 +25,12 @@ class PickaxeCooldownCategoryScreen(parentScreen: Screen) : BaseCategoryScreen(p
             PickaxeCooldownHUD.isTitleEnabled()) {
             PickaxeCooldownHUD.setTitleEnabled(it)
         }
-        SettingsUi.sliderRow(panel, panelWidth, y, "Title Threshold", 0f, 30f, 1f,
+        y = SettingsUi.sliderRow(panel, panelWidth, y, "Title Threshold", 0f, 30f, 1f,
             PickaxeCooldownHUD.getTitleThreshold().toFloat(), accent, { "${it.toInt()}s left" }) {
             PickaxeCooldownHUD.setTitleThreshold(it.toInt())
+        }
+        SettingsUi.linkRow(panel, panelWidth, y, "Move HUD", "Drag the cooldown HUD wherever you want it") {
+            Minecraft.getInstance().setScreen(PickaxeCooldownPositionScreen(this))
         }
 
         SettingsUi.backButton(panel) { saveAndClose() }
