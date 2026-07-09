@@ -137,6 +137,7 @@ public final class CheatBootstrap {
             CommClaimManager.setGuiWaitDelay(config.commClaimGuiWaitDelay);
             CommClaimManager.setAutoTrigger(config.commClaimAutoTrigger);
             CommClaimManager.setWardrobeSwap(config.commClaimWardrobeSwap);
+            CommClaimManager.setBatchMining(config.commClaimBatchMining);
 
             EmptyStashManager.setMaterialByName(config.emptyStashMaterial);
             EmptyStashManager.setActionDelay(config.emptyStashDelay);
@@ -171,6 +172,7 @@ public final class CheatBootstrap {
             config.commClaimGuiWaitDelay = CommClaimManager.getGuiWaitDelay();
             config.commClaimAutoTrigger = CommClaimManager.isAutoTrigger();
             config.commClaimWardrobeSwap = CommClaimManager.isWardrobeSwap();
+            config.commClaimBatchMining = CommClaimManager.isBatchMining();
 
             config.emptyStashMaterial = EmptyStashManager.getMaterial().name();
             config.emptyStashDelay = EmptyStashManager.getActionDelay();

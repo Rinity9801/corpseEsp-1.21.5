@@ -77,6 +77,7 @@ public class MiningConfig {
     public int commClaimGuiWaitDelay = 3;
     public boolean commClaimAutoTrigger = false;
     public boolean commClaimWardrobeSwap = true;
+    public boolean commClaimBatchMining = true;
     public String emptyStashMaterial = "COAL";
     public int emptyStashDelay = 4;
 

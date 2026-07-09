@@ -149,23 +149,27 @@ class CommClaimCategoryScreen(parentScreen: Screen) : BaseCategoryScreen(parentS
     override fun afterInitialization() {
         SettingsUi.overlay(window)
         val panelWidth = 600f
-        val panel = SettingsUi.panel(window, panelWidth, 660f, "Comm Claim", "/claimcomms — automated commission claiming")
+        val panel = SettingsUi.panel(window, panelWidth, 730f, "Comm Claim", "/claimcomms — automated commission claiming")
 
         var y = 110f
         y = SettingsUi.toggleRow(panel, panelWidth, y, "Auto Trigger", "Run automatically when all mining commissions complete", accent,
             CommClaimManager.isAutoTrigger()) {
             CommClaimManager.setAutoTrigger(it)
         }
-        y = SettingsUi.toggleRow(panel, panelWidth, y, "Wardrobe Swap", "Swap armor via wardrobe during the claim", accent,
+        y = SettingsUi.toggleRow(panel, panelWidth, y, "Loadout Swap", "Swap armor via /loadout during the claim", accent,
             CommClaimManager.isWardrobeSwap()) {
             CommClaimManager.setWardrobeSwap(it)
         }
-        y = SettingsUi.sliderRow(panel, panelWidth, y, "Bat Person Slot", 1f, 9f, 1f,
-            CommClaimManager.getBatPersonSlot().toFloat(), accent, { "wardrobe ${it.toInt()}" }) {
+        y = SettingsUi.toggleRow(panel, panelWidth, y, "Batch Mining", "On: wait for ALL mining commissions. Off: claim each as it completes", accent,
+            CommClaimManager.isBatchMining()) {
+            CommClaimManager.setBatchMining(it)
+        }
+        y = SettingsUi.sliderRow(panel, panelWidth, y, "Bat Person Loadout", 1f, 12f, 1f,
+            CommClaimManager.getBatPersonSlot().toFloat(), accent, { "loadout ${it.toInt()}" }) {
             CommClaimManager.setBatPersonSlot(it.toInt())
         }
-        y = SettingsUi.sliderRow(panel, panelWidth, y, "Divan Slot", 1f, 9f, 1f,
-            CommClaimManager.getDivanSlot().toFloat(), accent, { "wardrobe ${it.toInt()}" }) {
+        y = SettingsUi.sliderRow(panel, panelWidth, y, "Divan Loadout", 1f, 12f, 1f,
+            CommClaimManager.getDivanSlot().toFloat(), accent, { "loadout ${it.toInt()}" }) {
             CommClaimManager.setDivanSlot(it.toInt())
         }
         y = SettingsUi.sliderRow(panel, panelWidth, y, "Refined Tool Slot", 0f, 8f, 1f,
