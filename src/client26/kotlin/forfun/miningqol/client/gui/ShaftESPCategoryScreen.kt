@@ -9,7 +9,7 @@ class ShaftESPCategoryScreen(parentScreen: Screen) : BaseCategoryScreen(parentSc
     override fun afterInitialization() {
         SettingsUi.overlay(window)
         val panelWidth = 600f
-        val panelHeight = 110f + 2 * (SettingsUi.ROW_HEIGHT + SettingsUi.ROW_SPACING) +
+        val panelHeight = 110f + 3 * (SettingsUi.ROW_HEIGHT + SettingsUi.ROW_SPACING) +
             (SettingsUi.COLOR_ROW_HEIGHT + SettingsUi.ROW_SPACING) + 76f
         val panel = SettingsUi.panel(window, panelWidth, panelHeight, "Shaft ESP", "Highlights inside mineshafts")
 
@@ -17,6 +17,10 @@ class ShaftESPCategoryScreen(parentScreen: Screen) : BaseCategoryScreen(parentSc
         y = SettingsUi.toggleRow(panel, panelWidth, y, "Littlefoot ESP", "Highlight the Littlefoot in mineshafts", accent,
             ShaftESP.isLittlefootEnabled()) {
             ShaftESP.setLittlefootEnabled(it)
+        }
+        y = SettingsUi.toggleRow(panel, panelWidth, y, "Littlefoot Tracer", "Draw a line from your crosshair to the Littlefoot", accent,
+            ShaftESP.isLittlefootTracer()) {
+            ShaftESP.setLittlefootTracer(it)
         }
         y = SettingsUi.toggleRow(panel, panelWidth, y, "Mob ESP", "Highlight mineshaft mobs", accent,
             ShaftESP.isMobsEnabled()) {

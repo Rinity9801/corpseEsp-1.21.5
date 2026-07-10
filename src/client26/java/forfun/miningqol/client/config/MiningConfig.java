@@ -37,6 +37,7 @@ public class MiningConfig {
     public boolean vanguardEnabled = true;
 
     public boolean shaftESPEnabled = true;
+    public boolean shaftESPLittlefootTracer = true;
     public boolean shaftESPMobsEnabled = false;
     public float[] shaftESPMobColor = {1.0f, 0.2f, 0.2f};
     public float shaftESPMobAlpha = 0.2f;
@@ -176,6 +177,7 @@ public class MiningConfig {
         if (CorpseESP.isVanguardEnabled() != vanguardEnabled) CorpseESP.toggleVanguard();
 
         ShaftESP.setLittlefootEnabled(shaftESPEnabled);
+        ShaftESP.setLittlefootTracer(shaftESPLittlefootTracer);
         ShaftESP.setMobsEnabled(shaftESPMobsEnabled);
         ShaftESP.setMobColor(shaftESPMobColor[0], shaftESPMobColor[1], shaftESPMobColor[2]);
         ShaftESP.setMobAlpha(shaftESPMobAlpha);
@@ -252,6 +254,7 @@ public class MiningConfig {
         vanguardEnabled = CorpseESP.isVanguardEnabled();
 
         shaftESPEnabled = ShaftESP.isLittlefootEnabled();
+        shaftESPLittlefootTracer = ShaftESP.isLittlefootTracer();
         shaftESPMobsEnabled = ShaftESP.isMobsEnabled();
         shaftESPMobColor = ShaftESP.getMobColor();
         shaftESPMobAlpha = ShaftESP.getMobAlpha();

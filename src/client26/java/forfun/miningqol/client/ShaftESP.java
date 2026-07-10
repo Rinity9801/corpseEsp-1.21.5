@@ -18,6 +18,7 @@ import net.minecraft.world.scores.PlayerTeam;
 import net.minecraft.world.scores.Scoreboard;
 import org.joml.Matrix4f;
 import org.joml.Matrix4fc;
+import org.joml.Vector3f;
 
 import java.util.Collection;
 import java.util.HashMap;
@@ -39,6 +40,7 @@ public class ShaftESP {
     private static boolean isInMines = false;
     private static int locationCheckCooldown = 0;
     private static boolean littlefootEnabled = true;
+    private static boolean littlefootTracer = true; // draw a line from the crosshair to each littlefoot
     private static boolean mobsEnabled = false;
 
     private static final float[] LITTLEFOOT_COLOR = {0.0f, 1.0f, 0.4f};
@@ -182,6 +184,11 @@ public class ShaftESP {
         // Filled see-through boxes with low alpha (same as the 1.21.11 branch).
         VertexConsumer quads = buffers.getBuffer(RenderTypes.textBackgroundSeeThrough());
 
+        // A point just in front of the camera — the start of the littlefoot tracer line.
+        Vector3f forward = new Vector3f(0, 0, -1);
+        cameraState.orientation.transform(forward);
+        Vec3 lineStart = cam.add(forward.x, forward.y, forward.z);
+
         for (Map.Entry<Integer, Boolean> entry : trackedEntities.entrySet()) {
             Entity entity = client.level.getEntity(entry.getKey());
             if (entity == null) continue;
@@ -212,6 +219,15 @@ public class ShaftESP {
                 (float) minX, (float) minY, (float) minZ,
                 (float) maxX, (float) maxY, (float) maxZ,
                 color[0], color[1], color[2], alpha);
+
+            // Tracer line from the crosshair to the littlefoot box centre (like ordered waypoints).
+            if (littlefoot && littlefootTracer) {
+                Vec3 target = new Vec3(
+                    (minX + maxX) / 2 + cam.x,
+                    (minY + maxY) / 2 + cam.y,
+                    (minZ + maxZ) / 2 + cam.z);
+                line(buffers, pose, cam, lineStart, target, color, 1.0f);
+            }
         }
 
         buffers.endBatch();
@@ -255,10 +271,46 @@ public class ShaftESP {
         buffer.addVertex(pose, x4, y4, z4).setColor(r, g, b, a).setLight(FULL_BRIGHT);
     }
 
+    private static void line(MultiBufferSource.BufferSource buffers, Matrix4f pose, Vec3 camPos,
+                             Vec3 from, Vec3 to, float[] color, float alpha) {
+        VertexConsumer buffer = buffers.getBuffer(RenderTypes.lines());
+
+        float startX = (float) (from.x - camPos.x);
+        float startY = (float) (from.y - camPos.y);
+        float startZ = (float) (from.z - camPos.z);
+        float endX = (float) (to.x - camPos.x);
+        float endY = (float) (to.y - camPos.y);
+        float endZ = (float) (to.z - camPos.z);
+
+        Vector3f normal = new Vector3f(endX - startX, endY - startY, endZ - startZ);
+        if (normal.lengthSquared() < 1.0e-6f) {
+            normal.set(0, 1, 0);
+        } else {
+            normal.normalize();
+        }
+
+        buffer.addVertex(pose, startX, startY, startZ)
+            .setColor(color[0], color[1], color[2], alpha)
+            .setNormal(normal.x, normal.y, normal.z)
+            .setLineWidth(2.0f);
+        buffer.addVertex(pose, endX, endY, endZ)
+            .setColor(color[0], color[1], color[2], alpha)
+            .setNormal(normal.x, normal.y, normal.z)
+            .setLineWidth(2.0f);
+    }
+
     public static void onWorldUnload() {
         trackedEntities.clear();
         littlefootEntityIds.clear();
         isInMines = false;
+    }
+
+    public static boolean isLittlefootTracer() {
+        return littlefootTracer;
+    }
+
+    public static void setLittlefootTracer(boolean value) {
+        littlefootTracer = value;
     }
 
     public static void setLittlefootEnabled(boolean value) {
