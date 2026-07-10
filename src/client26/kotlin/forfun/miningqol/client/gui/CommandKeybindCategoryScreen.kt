@@ -4,6 +4,7 @@ import com.mojang.blaze3d.platform.InputConstants
 import forfun.miningqol.client.CommandKeybindManager
 import net.minecraft.client.Minecraft
 import net.minecraft.client.gui.screens.Screen
+import net.minecraft.client.input.KeyEvent
 import org.lwjgl.glfw.GLFW
 import xyz.meowing.vexel.components.base.enums.Pos
 import xyz.meowing.vexel.components.base.enums.Size
@@ -202,27 +203,30 @@ class CommandKeybindCategoryScreen(private val parent: Screen) : BaseCategoryScr
         }
     }
 
-    override fun onKeyType(typedChar: Char, keyCode: Int, scanCode: Int): Boolean {
+    // Capture through the vanilla key hook so we get the real GLFW key code that
+    // CommandKeybindManager matches against (Vexel's onKeyType reports a scancode).
+    override fun keyPressed(input: KeyEvent): Boolean {
+        val code = input.key()
         val entry = capturingEntry
         if (entry != null) {
-            if (keyCode == GLFW.GLFW_KEY_ESCAPE) {
-                entry.keyText?.text = getKeyDisplayName(entry.keyCode)
-            } else {
-                entry.keyCode = keyCode
-                entry.keyText?.text = getKeyDisplayName(keyCode)
+            if (code != GLFW.GLFW_KEY_ESCAPE) {
+                entry.keyCode = code
+                entry.keyText?.text = getKeyDisplayName(code)
                 saveKeybinds()
+            } else {
+                entry.keyText?.text = getKeyDisplayName(entry.keyCode)
             }
             entry.keyBox?.backgroundColor = 0xFF252525.toInt()
             entry.keyBox?.borderColor = 0xFF404040.toInt()
             capturingEntry = null
             return true
         }
-        if (keyCode == GLFW.GLFW_KEY_ESCAPE) {
+        if (code == GLFW.GLFW_KEY_ESCAPE) {
             saveKeybinds()
             saveAndClose()
             return true
         }
-        return super.onKeyType(typedChar, keyCode, scanCode)
+        return super.keyPressed(input)
     }
 
     override fun shouldCloseOnEsc(): Boolean = false
