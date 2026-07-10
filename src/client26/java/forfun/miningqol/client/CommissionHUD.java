@@ -188,6 +188,12 @@ public class CommissionHUD {
         if (!enabled) {
             return;
         }
+        // Vexel's NanoVG pass draws on top of open screens, so hide the HUD when a GUI is
+        // open (config menu, inventory, Hypixel menus…). Chat is allowed — HUDs conventionally
+        // stay visible while chatting.
+        if (mc.screen != null && !(mc.screen instanceof net.minecraft.client.gui.screens.ChatScreen)) {
+            return;
+        }
         refreshCachedState(mc);
         if (!cachedAllowedLocation || cachedEntries.isEmpty()) {
             return;
