@@ -325,35 +325,16 @@ public class CommClaimManager {
 
             case STATE_WAIT_WARDROBE_1:
                 if (isLoadoutOpen(client)) {
-                    state = STATE_DELAY_BEFORE_CLICK_BAT;
-                    tickCounter = 0;
+                    // Athen-style: click the instant the slot is populated (short fallback), then
+                    // close on the next tick — no fixed equip/close waits.
+                    if (isLoadoutSlotReady(client, batPersonSlot) || tickCounter >= WARDROBE_READY_TIMEOUT) {
+                        clickLoadoutSlot(client, batPersonSlot);
+                        state = STATE_CLOSE_WARDROBE_1;
+                        tickCounter = 0;
+                    }
                 } else if (tickCounter >= 60) {
-                    LOGGER.warn("[CommClaim] Wardrobe didn't open in time");
+                    LOGGER.warn("[CommClaim] Loadout menu didn't open in time");
                     stop();
-                }
-                break;
-
-            case STATE_DELAY_BEFORE_CLICK_BAT:
-                // Click as soon as the armor slot has loaded, rather than a fixed wait.
-                if (isLoadoutSlotReady(client, batPersonSlot) || tickCounter >= WARDROBE_READY_TIMEOUT) {
-                    state = STATE_CLICK_BAT_ARMOR;
-                    tickCounter = 0;
-                }
-                break;
-
-            case STATE_CLICK_BAT_ARMOR:
-                if (clickLoadoutSlot(client, batPersonSlot)) {
-                    state = STATE_DELAY_AFTER_CLICK_BAT;
-                    tickCounter = 0;
-                } else {
-                    stop();
-                }
-                break;
-
-            case STATE_DELAY_AFTER_CLICK_BAT:
-                if (tickCounter >= WARDROBE_EQUIP_TICKS) {
-                    state = STATE_CLOSE_WARDROBE_1;
-                    tickCounter = 0;
                 }
                 break;
 
@@ -361,15 +342,8 @@ public class CommClaimManager {
                 if (client.screen != null) {
                     client.screen.onClose();
                 }
-                state = STATE_DELAY_AFTER_CLOSE_1;
+                state = STATE_FIND_PIGEON;
                 tickCounter = 0;
-                break;
-
-            case STATE_DELAY_AFTER_CLOSE_1:
-                if (tickCounter >= WARDROBE_POST_CLOSE_TICKS) {
-                    state = STATE_FIND_PIGEON;
-                    tickCounter = 0;
-                }
                 break;
 
             // ===== PHASE 2: USE PIGEON & SWITCH TO REFINED TOOL =====
@@ -489,34 +463,14 @@ public class CommClaimManager {
 
             case STATE_WAIT_WARDROBE_2:
                 if (isLoadoutOpen(client)) {
-                    state = STATE_DELAY_BEFORE_CLICK_DIVAN;
-                    tickCounter = 0;
+                    if (isLoadoutSlotReady(client, divanSlot) || tickCounter >= WARDROBE_READY_TIMEOUT) {
+                        clickLoadoutSlot(client, divanSlot);
+                        state = STATE_CLOSE_WARDROBE_2;
+                        tickCounter = 0;
+                    }
                 } else if (tickCounter >= 60) {
-                    LOGGER.warn("[CommClaim] Second wardrobe didn't open");
+                    LOGGER.warn("[CommClaim] Second loadout menu didn't open");
                     stop();
-                }
-                break;
-
-            case STATE_DELAY_BEFORE_CLICK_DIVAN:
-                if (isLoadoutSlotReady(client, divanSlot) || tickCounter >= WARDROBE_READY_TIMEOUT) {
-                    state = STATE_CLICK_DIVAN_ARMOR;
-                    tickCounter = 0;
-                }
-                break;
-
-            case STATE_CLICK_DIVAN_ARMOR:
-                if (clickLoadoutSlot(client, divanSlot)) {
-                    state = STATE_DELAY_AFTER_CLICK_DIVAN;
-                    tickCounter = 0;
-                } else {
-                    stop();
-                }
-                break;
-
-            case STATE_DELAY_AFTER_CLICK_DIVAN:
-                if (tickCounter >= WARDROBE_EQUIP_TICKS) {
-                    state = STATE_CLOSE_WARDROBE_2;
-                    tickCounter = 0;
                 }
                 break;
 
