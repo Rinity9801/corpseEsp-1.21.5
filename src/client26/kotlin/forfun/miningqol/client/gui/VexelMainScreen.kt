@@ -43,6 +43,9 @@ class VexelMainScreen : VexelScreen("MiningQOL Settings") {
             },
             Category("Misc", "Filet warning and other extras", 0xFFFFAA55.toInt()) {
                 Minecraft.getInstance().setScreen(MiscCategoryScreen(it))
+            },
+            Category("Command Keybinds", "Bind commands to keys", 0xFFA05BFF.toInt()) {
+                Minecraft.getInstance().setScreen(CommandKeybindCategoryScreen(it))
             }
         )
         return builtIn + ExtraCategories.entries.map { e ->
