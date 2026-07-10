@@ -1,5 +1,6 @@
 package forfun.miningqol.client;
 
+import java.util.function.BooleanSupplier;
 import java.util.function.Consumer;
 
 /**
@@ -17,6 +18,8 @@ public final class CheatHooks {
     public static Consumer<String> onGameMessage = null;
     /** Client shutting down — release held keys etc. */
     public static Runnable onStopping = null;
+    /** True while an open container GUI should be hidden (e.g. mid comm-claim with Hide GUI on). */
+    public static BooleanSupplier hideContainerGui = null;
 
     private CheatHooks() {}
 }

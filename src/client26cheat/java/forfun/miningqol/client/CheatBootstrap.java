@@ -127,6 +127,9 @@ public final class CheatBootstrap {
             ShaftClickerManager.cleanup();
         };
 
+        // Hide the container GUI visuals while a claim is running (if the toggle is on).
+        CheatHooks.hideContainerGui = () -> CommClaimManager.isRunning() && CommClaimManager.isHideGui();
+
         CheatHooks.applyConfig = () -> {
             MiningConfig config = MiningqolClient.getConfig();
             if (config == null) return;
@@ -159,6 +162,7 @@ public final class CheatBootstrap {
             CommClaimManager.setWardrobeSwap(config.commClaimWardrobeSwap);
             CommClaimManager.setBatchMining(config.commClaimBatchMining);
             CommClaimManager.setBlockInput(config.commClaimBlockInput);
+            CommClaimManager.setHideGui(config.commClaimHideGui);
 
             EmptyStashManager.setMaterialByName(config.emptyStashMaterial);
             EmptyStashManager.setActionDelay(config.emptyStashDelay);
@@ -195,6 +199,7 @@ public final class CheatBootstrap {
             config.commClaimWardrobeSwap = CommClaimManager.isWardrobeSwap();
             config.commClaimBatchMining = CommClaimManager.isBatchMining();
             config.commClaimBlockInput = CommClaimManager.isBlockInput();
+            config.commClaimHideGui = CommClaimManager.isHideGui();
 
             config.emptyStashMaterial = EmptyStashManager.getMaterial().name();
             config.emptyStashDelay = EmptyStashManager.getActionDelay();

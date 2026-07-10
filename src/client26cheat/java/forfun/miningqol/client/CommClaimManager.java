@@ -130,6 +130,7 @@ public class CommClaimManager {
                                                 // false: claim as soon as ANY commission is done
     private static boolean blockInput = true;   // while running, swallow the player's clicks/keys
                                                 // so they can't interfere with the automated claim
+    private static boolean hideGui = false;     // while running, hide the container GUI visuals
 
     // Config values
     private static int batPersonSlot = 1; // 1-12, loadout index (equip before claim)
@@ -731,5 +732,13 @@ public class CommClaimManager {
 
     public static void setBlockInput(boolean enabled) {
         blockInput = enabled;
+    }
+
+    public static boolean isHideGui() {
+        return hideGui;
+    }
+
+    public static void setHideGui(boolean enabled) {
+        hideGui = enabled;
     }
 }

@@ -4,7 +4,8 @@
   "package": "forfun.miningqol.mixin.client",
   "compatibilityLevel": "JAVA_25",
   "client": [
-    "LevelRendererMixin"
+    "LevelRendererMixin",
+    "ContainerScreenHideMixin"
   ],
   "injectors": {
     "defaultRequire": 1
