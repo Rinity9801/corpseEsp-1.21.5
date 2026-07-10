@@ -13,7 +13,7 @@ plugins {
 
 stonecutter {
     create(rootProject) {
-        versions("1.21.10-legit", "1.21.10-cheat", "1.21.11-legit", "1.21.11-cheat", "26.1.2-legit", "26.1.2-cheat")
+        versions("1.21.11-legit", "1.21.11-cheat", "26.1.2-legit", "26.1.2-cheat")
         vcsVersion = "1.21.11-cheat"
     }
 }

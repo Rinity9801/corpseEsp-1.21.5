@@ -39,7 +39,7 @@ class CommClaimCategoryScreen(private val parentScreen: Screen) : VexelScreen("C
             borderRadius = 16f,
             borderThickness = 1f
         )
-            .setSizing(550f, Size.Pixels, 820f, Size.Pixels)
+            .setSizing(550f, Size.Pixels, 900f, Size.Pixels)
             .childOf(window)
             .apply {
                 dropShadow = true
@@ -52,7 +52,7 @@ class CommClaimCategoryScreen(private val parentScreen: Screen) : VexelScreen("C
         mainPanel.xPositionConstraint = Pos.ScreenPixels
         mainPanel.yPositionConstraint = Pos.ScreenPixels
         mainPanel.xConstraint = (mainPanel.screenWidth - 550f) / 2f
-        mainPanel.yConstraint = (mainPanel.screenHeight - 820f) / 2f
+        mainPanel.yConstraint = (mainPanel.screenHeight - 900f) / 2f
         mainPanel.fadeIn(500, EasingType.EASE_OUT)
 
         // Title bar background
@@ -245,6 +245,100 @@ class CommClaimCategoryScreen(private val parentScreen: Screen) : VexelScreen("C
             batchMiningStatus.text = if (batchMiningEnabled) "ALL" else "EACH"
             batchMiningStatus.textColor = if (batchMiningEnabled) 0xFFFFD700.toInt() else 0xFF888888.toInt()
             batchMiningAccent.backgroundColor = if (batchMiningEnabled) 0xFFFFD700.toInt() else 0xFF424242.toInt()
+            true
+        }
+        yOffset += 40f
+
+        // Block Input toggle card (swallow player clicks/keys while claiming; Esc aborts)
+        val blockInputCard = Rectangle(
+            backgroundColor = 0xF01E1E1E.toInt(),
+            borderColor = 0xFF2A2A2A.toInt(),
+            borderRadius = 8f,
+            borderThickness = 1f,
+            hoverColor = 0xF0252525.toInt()
+        )
+            .setSizing(220f, Size.Pixels, 36f, Size.Pixels)
+            .setPositioning(0f, Pos.ParentCenter, yOffset, Pos.ParentPixels)
+            .childOf(mainPanel)
+
+        var blockInputEnabled = CommClaimManager.isBlockInput()
+        val blockInputAccent = Rectangle(
+            backgroundColor = if (blockInputEnabled) 0xFFFFD700.toInt() else 0xFF424242.toInt(),
+            borderRadius = 8f
+        )
+            .setSizing(4f, Size.Pixels, 100f, Size.ParentPerc)
+            .setPositioning(0f, Pos.ParentPixels, 0f, Pos.ParentPixels)
+            .ignoreMouseEvents()
+            .childOf(blockInputCard)
+            .apply {
+                borderRadiusTopRight = 0f
+                borderRadiusBottomRight = 0f
+            }
+
+        Text("Block Input:", 0xFFFFFFFF.toInt(), 13f, false)
+            .setPositioning(14f, Pos.ParentPixels, 0f, Pos.ParentCenter)
+            .childOf(blockInputCard)
+
+        val blockInputStatus = Text(if (blockInputEnabled) "ON" else "OFF",
+            if (blockInputEnabled) 0xFFFFD700.toInt() else 0xFF888888.toInt(), 13f, true)
+            .setPositioning(0f, Pos.ParentPixels, 0f, Pos.ParentCenter)
+            .alignRight()
+            .setOffset(-14f, 0f)
+            .childOf(blockInputCard)
+
+        blockInputCard.onClick { _, _, _ ->
+            blockInputEnabled = !blockInputEnabled
+            CommClaimManager.setBlockInput(blockInputEnabled)
+            blockInputStatus.text = if (blockInputEnabled) "ON" else "OFF"
+            blockInputStatus.textColor = if (blockInputEnabled) 0xFFFFD700.toInt() else 0xFF888888.toInt()
+            blockInputAccent.backgroundColor = if (blockInputEnabled) 0xFFFFD700.toInt() else 0xFF424242.toInt()
+            true
+        }
+        yOffset += 40f
+
+        // Hide GUI toggle card (don't render the loadout/pigeon menus while claiming)
+        val hideGuiCard = Rectangle(
+            backgroundColor = 0xF01E1E1E.toInt(),
+            borderColor = 0xFF2A2A2A.toInt(),
+            borderRadius = 8f,
+            borderThickness = 1f,
+            hoverColor = 0xF0252525.toInt()
+        )
+            .setSizing(220f, Size.Pixels, 36f, Size.Pixels)
+            .setPositioning(0f, Pos.ParentCenter, yOffset, Pos.ParentPixels)
+            .childOf(mainPanel)
+
+        var hideGuiEnabled = CommClaimManager.isHideGui()
+        val hideGuiAccent = Rectangle(
+            backgroundColor = if (hideGuiEnabled) 0xFFFFD700.toInt() else 0xFF424242.toInt(),
+            borderRadius = 8f
+        )
+            .setSizing(4f, Size.Pixels, 100f, Size.ParentPerc)
+            .setPositioning(0f, Pos.ParentPixels, 0f, Pos.ParentPixels)
+            .ignoreMouseEvents()
+            .childOf(hideGuiCard)
+            .apply {
+                borderRadiusTopRight = 0f
+                borderRadiusBottomRight = 0f
+            }
+
+        Text("Hide GUI:", 0xFFFFFFFF.toInt(), 13f, false)
+            .setPositioning(14f, Pos.ParentPixels, 0f, Pos.ParentCenter)
+            .childOf(hideGuiCard)
+
+        val hideGuiStatus = Text(if (hideGuiEnabled) "ON" else "OFF",
+            if (hideGuiEnabled) 0xFFFFD700.toInt() else 0xFF888888.toInt(), 13f, true)
+            .setPositioning(0f, Pos.ParentPixels, 0f, Pos.ParentCenter)
+            .alignRight()
+            .setOffset(-14f, 0f)
+            .childOf(hideGuiCard)
+
+        hideGuiCard.onClick { _, _, _ ->
+            hideGuiEnabled = !hideGuiEnabled
+            CommClaimManager.setHideGui(hideGuiEnabled)
+            hideGuiStatus.text = if (hideGuiEnabled) "ON" else "OFF"
+            hideGuiStatus.textColor = if (hideGuiEnabled) 0xFFFFD700.toInt() else 0xFF888888.toInt()
+            hideGuiAccent.backgroundColor = if (hideGuiEnabled) 0xFFFFD700.toInt() else 0xFF424242.toInt()
             true
         }
         yOffset += 40f

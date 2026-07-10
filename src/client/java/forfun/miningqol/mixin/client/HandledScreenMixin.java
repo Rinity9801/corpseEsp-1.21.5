@@ -1,7 +1,10 @@
 package forfun.miningqol.mixin.client;
 
+import forfun.miningqol.client.CommClaimManager;
 import forfun.miningqol.client.hotm.HotmChestScreen;
 import forfun.miningqol.client.hotm.HotmPresetScreen;
+import net.minecraft.client.gui.Click;
+import net.minecraft.client.gui.DrawContext;
 import net.minecraft.client.gui.screen.ingame.HandledScreen;
 import net.minecraft.client.input.KeyInput;
 import net.minecraft.screen.slot.Slot;
@@ -33,10 +36,32 @@ public abstract class HandledScreenMixin {
         }
     }
 
-    @Inject(method = "keyPressed(Lnet/minecraft/client/input/KeyInput;)Z", at = @At("HEAD"))
+    @Inject(method = "keyPressed(Lnet/minecraft/client/input/KeyInput;)Z", at = @At("HEAD"), cancellable = true)
     private void miningqol$onKeyPressed(KeyInput input, CallbackInfoReturnable<Boolean> cir) {
         //? if isCheat {
         forfun.miningqol.client.MiningqolClient.tryHandleInvClickKey(input);
         //?}
+        // While a comm-claim runs, swallow the player's keys so they can't derail it (Esc aborts).
+        if (CommClaimManager.isRunning() && CommClaimManager.isBlockInput()) {
+            if (input.key() == org.lwjgl.glfw.GLFW.GLFW_KEY_ESCAPE) {
+                CommClaimManager.stop();
+            } else {
+                cir.setReturnValue(true);
+            }
+        }
+    }
+
+    @Inject(method = "mouseClicked(Lnet/minecraft/client/gui/Click;Z)Z", at = @At("HEAD"), cancellable = true)
+    private void miningqol$blockMouse(Click click, boolean doubled, CallbackInfoReturnable<Boolean> cir) {
+        if (CommClaimManager.isRunning() && CommClaimManager.isBlockInput()) {
+            cir.setReturnValue(true);
+        }
+    }
+
+    @Inject(method = "render(Lnet/minecraft/client/gui/DrawContext;IIF)V", at = @At("HEAD"), cancellable = true)
+    private void miningqol$hideGui(DrawContext context, int mouseX, int mouseY, float delta, CallbackInfo ci) {
+        if (CommClaimManager.isRunning() && CommClaimManager.isHideGui()) {
+            ci.cancel();
+        }
     }
 }

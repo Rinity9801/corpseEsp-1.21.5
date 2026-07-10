@@ -181,6 +181,8 @@ public class MiningConfig {
     public boolean commClaimAutoTrigger = false; // Auto-trigger on commission complete message
     public boolean commClaimWardrobeSwap = true; // Enable wardrobe armor swapping
     public boolean commClaimBatchMining = true; // true: wait for all mining done; false: claim each
+    public boolean commClaimBlockInput = true;  // swallow player clicks/keys while claiming
+    public boolean commClaimHideGui = false;    // hide the container GUI while claiming
     public boolean commissionHudEnabled = true;
     public int commissionHudX = 10;
     public int commissionHudY = 90;
@@ -433,6 +435,8 @@ public class MiningConfig {
         CommClaimManager.setAutoTrigger(commClaimAutoTrigger);
         CommClaimManager.setWardrobeSwap(commClaimWardrobeSwap);
         CommClaimManager.setBatchMining(commClaimBatchMining);
+        CommClaimManager.setBlockInput(commClaimBlockInput);
+        CommClaimManager.setHideGui(commClaimHideGui);
         CommissionHUD.setEnabled(commissionHudEnabled);
         CommissionHUD.setPosition(commissionHudX, commissionHudY);
         CommissionHUD.setScale(commissionHudScale);
@@ -574,6 +578,8 @@ public class MiningConfig {
         commClaimAutoTrigger = CommClaimManager.isAutoTrigger();
         commClaimWardrobeSwap = CommClaimManager.isWardrobeSwap();
         commClaimBatchMining = CommClaimManager.isBatchMining();
+        commClaimBlockInput = CommClaimManager.isBlockInput();
+        commClaimHideGui = CommClaimManager.isHideGui();
         commissionHudEnabled = CommissionHUD.isEnabled();
         commissionHudX = CommissionHUD.getX();
         commissionHudY = CommissionHUD.getY();

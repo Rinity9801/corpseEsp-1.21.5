@@ -128,6 +128,8 @@ public class CommClaimManager {
     private static boolean wardrobeSwap = true; // Enable wardrobe armor swapping
     private static boolean batchMining = true;  // true: wait until ALL mining commissions are done;
                                                 // false: claim as soon as ANY commission is done
+    private static boolean blockInput = true;   // while running, swallow the player's clicks/keys
+    private static boolean hideGui = false;     // while running, hide the container GUI visuals
 
     // Config values
     private static int batPersonSlot = 1; // 1-12, loadout index in the /loadout grid (equip before claim)
@@ -725,5 +727,21 @@ public class CommClaimManager {
 
     public static void setBatchMining(boolean enabled) {
         batchMining = enabled;
+    }
+
+    public static boolean isBlockInput() {
+        return blockInput;
+    }
+
+    public static void setBlockInput(boolean enabled) {
+        blockInput = enabled;
+    }
+
+    public static boolean isHideGui() {
+        return hideGui;
+    }
+
+    public static void setHideGui(boolean enabled) {
+        hideGui = enabled;
     }
 }
