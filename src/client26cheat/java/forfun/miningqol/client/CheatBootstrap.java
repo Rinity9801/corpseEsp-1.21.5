@@ -23,8 +23,8 @@ public final class CheatBootstrap {
     private CheatBootstrap() {}
 
     public static void init() {
-        KeyMapping.Category category = KeyMapping.Category.register(
-            Identifier.fromNamespaceAndPath("miningqol", "category"));
+        // Reuse the category registered by the base MiningqolClient (runs first).
+        KeyMapping.Category category = MiningqolClient.MINING_CATEGORY;
 
         toggleAutoClickerKey = KeyMappingHelper.registerKeyMapping(new KeyMapping(
             "key.miningqol.toggle_coalclick", InputConstants.Type.KEYSYM, GLFW.GLFW_KEY_R, category));

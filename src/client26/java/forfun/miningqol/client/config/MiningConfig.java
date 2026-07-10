@@ -6,6 +6,7 @@ import forfun.miningqol.client.ColdTracker;
 import forfun.miningqol.client.CommandKeybindManager;
 import forfun.miningqol.client.CommissionHUD;
 import forfun.miningqol.client.CorpseESP;
+import forfun.miningqol.client.EfficientMinerOverlay;
 import forfun.miningqol.client.FiletWarning;
 import forfun.miningqol.client.LobbyFinder;
 import forfun.miningqol.client.PickaxeCooldownHUD;
@@ -48,6 +49,9 @@ public class MiningConfig {
     public int pickaxeCooldownTitleThreshold = 5;
 
     public boolean filetWarningEnabled = false;
+
+    public boolean efficientMinerEnabled = false;
+    public boolean useOldHeatmap = false;
 
     public java.util.List<String> lobbyFinderBlocks = new java.util.ArrayList<>();
     public java.util.Map<String, String> commandKeybinds = new java.util.HashMap<>();
@@ -183,6 +187,9 @@ public class MiningConfig {
 
         FiletWarning.setEnabled(filetWarningEnabled);
 
+        EfficientMinerOverlay.setEnabled(efficientMinerEnabled);
+        EfficientMinerOverlay.setUseOldHeatmap(useOldHeatmap);
+
         CommandKeybindManager.clearAll();
         for (java.util.Map.Entry<String, String> entry : commandKeybinds.entrySet()) {
             try {
@@ -256,6 +263,8 @@ public class MiningConfig {
         pickaxeCooldownTitleThreshold = PickaxeCooldownHUD.getTitleThreshold();
 
         filetWarningEnabled = FiletWarning.isEnabled();
+        efficientMinerEnabled = EfficientMinerOverlay.isEnabled();
+        useOldHeatmap = EfficientMinerOverlay.isUsingOldHeatmap();
 
         commandKeybinds.clear();
         for (java.util.Map.Entry<Integer, String> entry : CommandKeybindManager.getAllKeybinds().entrySet()) {

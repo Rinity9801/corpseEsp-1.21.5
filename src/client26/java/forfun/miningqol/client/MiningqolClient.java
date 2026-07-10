@@ -10,7 +10,12 @@ import net.fabricmc.fabric.api.client.command.v2.ClientCommandRegistrationCallba
 import net.fabricmc.fabric.api.client.event.lifecycle.v1.ClientLifecycleEvents;
 import net.fabricmc.fabric.api.client.event.lifecycle.v1.ClientTickEvents;
 import net.fabricmc.fabric.api.client.message.v1.ClientReceiveMessageEvents;
+import net.fabricmc.fabric.api.client.keymapping.v1.KeyMappingHelper;
+import net.minecraft.client.KeyMapping;
 import net.minecraft.network.chat.Component;
+import net.minecraft.resources.Identifier;
+import com.mojang.blaze3d.platform.InputConstants;
+import org.lwjgl.glfw.GLFW;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -23,9 +28,20 @@ public class MiningqolClient implements ClientModInitializer {
 
     private static MiningConfig config;
 
+    // Registered here (base) so both legit and cheat share one keybind category;
+    // CheatBootstrap reuses MINING_CATEGORY instead of registering its own.
+    public static KeyMapping.Category MINING_CATEGORY;
+    private static KeyMapping abilitySwitchKey;
+
     @Override
     public void onInitializeClient() {
         config = MiningConfig.load();
+
+        MINING_CATEGORY = KeyMapping.Category.register(
+            Identifier.fromNamespaceAndPath("miningqol", "category"));
+        abilitySwitchKey = KeyMappingHelper.registerKeyMapping(new KeyMapping(
+            "key.miningqol.ability_switch", InputConstants.Type.KEYSYM, GLFW.GLFW_KEY_H, MINING_CATEGORY));
+
         // Cheat-only wiring (keybinds, clicker ticks, comm claim, config hooks) lives in
         // CheatBootstrap, which only exists in the -cheat variant's source tree.
         try {
@@ -44,6 +60,7 @@ public class MiningqolClient implements ClientModInitializer {
 
         ClientTickEvents.END_CLIENT_TICK.register(client -> {
             OrderedWaypointManager.tick();
+            while (abilitySwitchKey.consumeClick()) AbilitySwitchManager.toggle();
             if (client.level != null && client.player != null) {
                 CorpseESP.tick();
                 ShaftESP.tick();
@@ -52,6 +69,8 @@ public class MiningqolClient implements ClientModInitializer {
                 LobbyFinder.tick();
                 ColdTracker.tick();
                 FiletWarning.tick();
+                AbilitySwitchManager.tick();
+                EfficientMinerOverlay.tick();
             }
         });
 
