@@ -6,6 +6,9 @@ import net.fabricmc.fabric.api.client.command.v2.ClientCommandRegistrationCallba
 import net.fabricmc.fabric.api.client.command.v2.ClientCommands;
 import net.fabricmc.fabric.api.client.event.lifecycle.v1.ClientTickEvents;
 import net.fabricmc.fabric.api.client.keymapping.v1.KeyMappingHelper;
+import net.fabricmc.fabric.api.client.screen.v1.ScreenEvents;
+import net.fabricmc.fabric.api.client.screen.v1.ScreenKeyboardEvents;
+import net.fabricmc.fabric.api.client.screen.v1.ScreenMouseEvents;
 import net.minecraft.client.KeyMapping;
 import net.minecraft.resources.Identifier;
 import org.lwjgl.glfw.GLFW;
@@ -51,6 +54,23 @@ public final class CheatBootstrap {
                 EmptyStashManager.tick();
                 forfun.miningqol.client.hotm.AutoHotmManager.tick();
             }
+        });
+
+        // While a claim is running, swallow the player's clicks/keys so stray input can't
+        // interfere with the automated GUI navigation. Esc still passes through and aborts.
+        ScreenEvents.AFTER_INIT.register((mc, screen, w, h) -> {
+            ScreenMouseEvents.allowMouseClick(screen).register(
+                (s, click) -> !(CommClaimManager.isRunning() && CommClaimManager.isBlockInput()));
+            ScreenKeyboardEvents.allowKeyPress(screen).register((s, keyEvent) -> {
+                if (CommClaimManager.isRunning() && CommClaimManager.isBlockInput()) {
+                    if (keyEvent.key() == GLFW.GLFW_KEY_ESCAPE) {
+                        CommClaimManager.stop();
+                        return true; // let Esc close the screen / abort the claim
+                    }
+                    return false; // swallow every other key
+                }
+                return true;
+            });
         });
 
         ClientCommandRegistrationCallback.EVENT.register((dispatcher, registryAccess) -> {
@@ -138,6 +158,7 @@ public final class CheatBootstrap {
             CommClaimManager.setAutoTrigger(config.commClaimAutoTrigger);
             CommClaimManager.setWardrobeSwap(config.commClaimWardrobeSwap);
             CommClaimManager.setBatchMining(config.commClaimBatchMining);
+            CommClaimManager.setBlockInput(config.commClaimBlockInput);
 
             EmptyStashManager.setMaterialByName(config.emptyStashMaterial);
             EmptyStashManager.setActionDelay(config.emptyStashDelay);
@@ -173,6 +194,7 @@ public final class CheatBootstrap {
             config.commClaimAutoTrigger = CommClaimManager.isAutoTrigger();
             config.commClaimWardrobeSwap = CommClaimManager.isWardrobeSwap();
             config.commClaimBatchMining = CommClaimManager.isBatchMining();
+            config.commClaimBlockInput = CommClaimManager.isBlockInput();
 
             config.emptyStashMaterial = EmptyStashManager.getMaterial().name();
             config.emptyStashDelay = EmptyStashManager.getActionDelay();

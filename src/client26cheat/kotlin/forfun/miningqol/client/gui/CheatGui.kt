@@ -149,7 +149,7 @@ class CommClaimCategoryScreen(parentScreen: Screen) : BaseCategoryScreen(parentS
     override fun afterInitialization() {
         SettingsUi.overlay(window)
         val panelWidth = 600f
-        val panel = SettingsUi.panel(window, panelWidth, 730f, "Comm Claim", "/claimcomms — automated commission claiming")
+        val panel = SettingsUi.panel(window, panelWidth, 800f, "Comm Claim", "/claimcomms — automated commission claiming")
 
         var y = 110f
         y = SettingsUi.toggleRow(panel, panelWidth, y, "Auto Trigger", "Run automatically when all mining commissions complete", accent,
@@ -163,6 +163,10 @@ class CommClaimCategoryScreen(parentScreen: Screen) : BaseCategoryScreen(parentS
         y = SettingsUi.toggleRow(panel, panelWidth, y, "Batch Mining", "On: wait for ALL mining commissions. Off: claim each as it completes", accent,
             CommClaimManager.isBatchMining()) {
             CommClaimManager.setBatchMining(it)
+        }
+        y = SettingsUi.toggleRow(panel, panelWidth, y, "Block Input", "Ignore your clicks/keys while a claim runs (Esc aborts)", accent,
+            CommClaimManager.isBlockInput()) {
+            CommClaimManager.setBlockInput(it)
         }
         y = SettingsUi.sliderRow(panel, panelWidth, y, "Bat Person Loadout", 1f, 12f, 1f,
             CommClaimManager.getBatPersonSlot().toFloat(), accent, { "loadout ${it.toInt()}" }) {
