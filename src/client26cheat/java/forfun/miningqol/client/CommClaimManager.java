@@ -77,8 +77,28 @@ public class CommClaimManager {
             fireAutoClaim("commission ready");
             return;
         }
-        // Mining commission in batch mode: defer to checkAutoTrigger's strict "all mining
-        // done" rule (via the fast-poll window opened above).
+        // Mining commission in batch mode: fire immediately if this was the LAST unfinished
+        // mining commission — i.e. every OTHER mining commission already reads done in the tab.
+        // Identifying the just-completed one by name means we don't wait for its (lagging) tab
+        // entry to flip to DONE. If others are still in progress, the fast-poll handles it.
+        String justCompleted = name.trim();
+        int otherMiningPending = 0;
+        for (String line : getTabListLines(client)) {
+            String l = line.replaceAll("§.", "").trim().toLowerCase();
+            if (!(l.contains("%") || l.contains("done"))) continue;
+            if (l.contains("slayer")) continue;
+            boolean m = false;
+            for (String kw : MINING_COMMISSION_KEYWORDS) {
+                if (l.contains(kw)) { m = true; break; }
+            }
+            if (!m) continue;
+            if (!justCompleted.isEmpty() && l.contains(justCompleted)) continue; // this one — its tab lags
+            if (!(l.contains("done") || l.contains("100%"))) otherMiningPending++;
+        }
+        if (otherMiningPending == 0) {
+            fireAutoClaim("all mining commissions done");
+        }
+        // else: other mining commissions still in progress — fast-poll handles it.
     }
 
     private static void fireAutoClaim(String reason) {
