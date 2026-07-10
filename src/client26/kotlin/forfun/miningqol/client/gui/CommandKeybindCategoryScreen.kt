@@ -152,11 +152,23 @@ class CommandKeybindCategoryScreen(private val parent: Screen) : BaseCategoryScr
         entry.keyText = keyText
         entry.keyBox = keyBox
 
-        keyBox.onClick { _ ->
-            capturingEntry = entry
-            keyText.text = "Press a key..."
-            keyBox.backgroundColor = 0xFF3A3A1A.toInt()
-            keyBox.borderColor = 0xFFAAAA40.toInt()
+        keyBox.onClick { event ->
+            if (capturingEntry === entry) {
+                // Already armed → this click binds the mouse button that was used.
+                val code = GLFW.GLFW_KEY_LAST + event.button + 1
+                entry.keyCode = code
+                keyText.text = getKeyDisplayName(code)
+                keyBox.backgroundColor = 0xFF252525.toInt()
+                keyBox.borderColor = 0xFF404040.toInt()
+                capturingEntry = null
+                saveKeybinds()
+            } else {
+                // Arm: next keyboard key (keyPressed) or click here (mouse button) binds it.
+                capturingEntry = entry
+                keyText.text = "Press a key or click here..."
+                keyBox.backgroundColor = 0xFF3A3A1A.toInt()
+                keyBox.borderColor = 0xFFAAAA40.toInt()
+            }
             true
         }
 
@@ -233,6 +245,14 @@ class CommandKeybindCategoryScreen(private val parent: Screen) : BaseCategoryScr
 
     private fun getKeyDisplayName(keyCode: Int): String {
         if (keyCode == -1) return "Click to bind"
+        if (keyCode > GLFW.GLFW_KEY_LAST) {
+            return when (val mb = keyCode - GLFW.GLFW_KEY_LAST - 1) {
+                0 -> "Mouse Left"
+                1 -> "Mouse Right"
+                2 -> "Mouse Middle"
+                else -> "Mouse ${mb + 1}"
+            }
+        }
         return try {
             InputConstants.Type.KEYSYM.getOrCreate(keyCode).displayName.string
         } catch (e: Exception) {
