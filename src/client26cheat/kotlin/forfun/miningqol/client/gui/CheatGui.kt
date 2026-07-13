@@ -116,7 +116,7 @@ class InShaftClickCategoryScreen(parentScreen: Screen) : BaseCategoryScreen(pare
             InShaftClickManager.getSecondDrillDelay().toFloat(), accent, { "${it.toInt()} ticks" }) {
             InShaftClickManager.setSecondDrillDelay(it.toInt())
         }
-        y = SettingsUi.sliderRow(panel, panelWidth, y, "Cold Threshold", 0f, 100f, 5f,
+        y = SettingsUi.sliderRow(panel, panelWidth, y, "Cold Threshold", 0f, 100f, 1f,
             InShaftClickManager.getColdThreshold().toFloat(), accent, { "${it.toInt()} cold" }) {
             InShaftClickManager.setColdThreshold(it.toInt())
         }
