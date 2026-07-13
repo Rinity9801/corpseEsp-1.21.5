@@ -52,6 +52,7 @@ public final class CheatBootstrap {
                 InShaftClickManager.tick();
                 ShaftClickerManager.tick();
                 EmptyStashManager.tick();
+                AutoForgeManager.tick(client);
                 forfun.miningqol.client.hotm.AutoHotmManager.tick();
             }
         });
@@ -59,8 +60,11 @@ public final class CheatBootstrap {
         // While a claim is running, swallow the player's clicks/keys so stray input can't
         // interfere with the automated GUI navigation. Esc still passes through and aborts.
         ScreenEvents.AFTER_INIT.register((mc, screen, w, h) -> {
-            ScreenMouseEvents.allowMouseClick(screen).register(
-                (s, click) -> !(CommClaimManager.isRunning() && CommClaimManager.isBlockInput()));
+            ScreenMouseEvents.allowMouseClick(screen).register((s, click) -> {
+                if (CommClaimManager.isRunning() && CommClaimManager.isBlockInput()) return false;
+                // Auto Forge picker: clicks on its buttons (and stray clicks under it) are consumed.
+                return !AutoForgeManager.handleMouseClick(s, click.x(), click.y(), click.button());
+            });
             ScreenKeyboardEvents.allowKeyPress(screen).register((s, keyEvent) -> {
                 if (CommClaimManager.isRunning() && CommClaimManager.isBlockInput()) {
                     if (keyEvent.key() == GLFW.GLFW_KEY_ESCAPE) {
@@ -68,6 +72,13 @@ public final class CheatBootstrap {
                         return true; // let Esc close the screen / abort the claim
                     }
                     return false; // swallow every other key
+                }
+                if (AutoForgeManager.shouldBlockKeys(s)) {
+                    if (keyEvent.key() == GLFW.GLFW_KEY_ESCAPE) {
+                        AutoForgeManager.onEscape();
+                        return true; // Esc cancels the craft / closes the picker
+                    }
+                    return false; // no hotbar-swap keys while the picker covers the slots
                 }
                 return true;
             });
@@ -104,6 +115,25 @@ public final class CheatBootstrap {
                     forfun.miningqol.client.hotm.HotmChestScreen.open();
                     return 1;
                 }));
+            dispatcher.register(ClientCommands.literal("autoforge")
+                .executes(context -> {
+                    AutoForgeManager.setEnabled(!AutoForgeManager.isEnabled());
+                    context.getSource().sendFeedback(net.minecraft.network.chat.Component.literal(
+                        AutoForgeManager.isEnabled()
+                            ? "§6[AutoForge] §aEnabled"
+                            : "§6[AutoForge] §cDisabled"));
+                    return 1;
+                })
+                .then(ClientCommands.literal("stop")
+                    .executes(context -> {
+                        AutoForgeManager.stop("Stopped");
+                        return 1;
+                    }))
+                .then(ClientCommands.literal("debug")
+                    .executes(context -> {
+                        AutoForgeManager.debugDump();
+                        return 1;
+                    })));
             dispatcher.register(ClientCommands.literal("commclaimdebug")
                 .executes(context -> {
                     CommClaimManager.setDebug(!CommClaimManager.isDebug());
@@ -129,6 +159,20 @@ public final class CheatBootstrap {
 
         // Hide the container GUI visuals while a claim is running (if the toggle is on).
         CheatHooks.hideContainerGui = () -> CommClaimManager.isRunning() && CommClaimManager.isHideGui();
+        // Auto Forge: side picker drawn over "The Forge", status card replacing GUIs mid-craft.
+        CheatHooks.containerGuiOverlay = new CheatHooks.ContainerGuiOverlay() {
+            @Override
+            public boolean renderReplacing(net.minecraft.client.gui.screens.Screen screen,
+                                           net.minecraft.client.gui.GuiGraphicsExtractor ctx, int mouseX, int mouseY) {
+                return AutoForgeManager.renderReplacing(screen, ctx, mouseX, mouseY);
+            }
+
+            @Override
+            public void renderOnTop(net.minecraft.client.gui.screens.Screen screen,
+                                    net.minecraft.client.gui.GuiGraphicsExtractor ctx, int mouseX, int mouseY) {
+                AutoForgeManager.renderOnTop(screen, ctx, mouseX, mouseY);
+            }
+        };
 
         CheatHooks.applyConfig = () -> {
             MiningConfig config = MiningqolClient.getConfig();
@@ -168,6 +212,10 @@ public final class CheatBootstrap {
 
             EmptyStashManager.setMaterialByName(config.emptyStashMaterial);
             EmptyStashManager.setActionDelay(config.emptyStashDelay);
+
+            AutoForgeManager.setEnabled(config.autoForgeEnabled);
+            AutoForgeManager.setTickDelay(config.autoForgeTickDelay);
+            AutoForgeManager.setRunCount(config.autoForgeRunCount);
         };
 
         CheatHooks.storeConfig = () -> {
@@ -207,6 +255,10 @@ public final class CheatBootstrap {
 
             config.emptyStashMaterial = EmptyStashManager.getMaterial().name();
             config.emptyStashDelay = EmptyStashManager.getActionDelay();
+
+            config.autoForgeEnabled = AutoForgeManager.isEnabled();
+            config.autoForgeTickDelay = AutoForgeManager.getTickDelay();
+            config.autoForgeRunCount = AutoForgeManager.getRunCount();
         };
     }
 }

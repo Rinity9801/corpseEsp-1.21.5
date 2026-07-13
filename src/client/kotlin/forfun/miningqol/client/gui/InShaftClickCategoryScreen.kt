@@ -161,7 +161,7 @@ class InShaftClickCategoryScreen(private val parentScreen: Screen) : VexelScreen
         )
 
         createSliderCard(
-            "Second Drill Delay",
+            "Third Drill Delay",
             1f, 20f,
             InShaftClickManager.getSecondDrillDelay().toFloat(),
             { value -> InShaftClickManager.setSecondDrillDelay(value.toInt()) },

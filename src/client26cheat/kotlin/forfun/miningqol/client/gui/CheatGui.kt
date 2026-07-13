@@ -2,6 +2,7 @@ package forfun.miningqol.client.gui
 
 import forfun.miningqol.client.AutoClickerHUD
 import forfun.miningqol.client.AutoClickerManager
+import forfun.miningqol.client.AutoForgeManager
 import forfun.miningqol.client.CommClaimManager
 import forfun.miningqol.client.EmptyStashManager
 import forfun.miningqol.client.InShaftClickManager
@@ -30,6 +31,9 @@ object CheatGui {
         }
         ExtraCategories.add("Empty Stash", "Supercraft-loop your material stash", 0xFFBB99FF.toInt()) {
             Minecraft.getInstance().setScreen(EmptyStashCategoryScreen(it))
+        }
+        ExtraCategories.add("Auto Forge", "One-click craft picker at The Forge", 0xFFFFAA66.toInt()) {
+            Minecraft.getInstance().setScreen(AutoForgeCategoryScreen(it))
         }
         ExtraCategories.add("HOTM Presets", "Heart of the Mountain editor + auto-apply", 0xFF66FFCC.toInt()) {
             forfun.miningqol.client.hotm.HotmChestScreen.open()
@@ -112,7 +116,7 @@ class InShaftClickCategoryScreen(parentScreen: Screen) : BaseCategoryScreen(pare
             InShaftClickManager.getMainDrillDelay().toFloat(), accent, { "${it.toInt()} ticks" }) {
             InShaftClickManager.setMainDrillDelay(it.toInt())
         }
-        y = SettingsUi.sliderRow(panel, panelWidth, y, "Second Drill Delay", 1f, 10f, 1f,
+        y = SettingsUi.sliderRow(panel, panelWidth, y, "Third Drill Delay", 1f, 10f, 1f,
             InShaftClickManager.getSecondDrillDelay().toFloat(), accent, { "${it.toInt()} ticks" }) {
             InShaftClickManager.setSecondDrillDelay(it.toInt())
         }
@@ -123,6 +127,33 @@ class InShaftClickCategoryScreen(parentScreen: Screen) : BaseCategoryScreen(pare
         SettingsUi.toggleRow(panel, panelWidth, y, "Toggle Message", "Chat message when toggled via keybind", accent,
             InShaftClickManager.isShowToggleMessage()) {
             InShaftClickManager.setShowToggleMessage(it)
+        }
+
+        SettingsUi.backButton(panel) { saveAndClose() }
+    }
+}
+
+class AutoForgeCategoryScreen(parentScreen: Screen) : BaseCategoryScreen(parentScreen, "Auto Forge Settings") {
+    private val accent = 0xFFFFAA66.toInt()
+
+    override fun afterInitialization() {
+        SettingsUi.overlay(window)
+        val panelWidth = 600f
+        val panel = SettingsUi.panel(window, panelWidth, 420f,
+            "Auto Forge", "Craft picker when opening The Forge (near the forge room) — /autoforge debug to inspect menus")
+
+        var y = 110f
+        y = SettingsUi.toggleRow(panel, panelWidth, y, "Enabled", "Show the craft picker when The Forge opens", accent,
+            AutoForgeManager.isEnabled()) {
+            AutoForgeManager.setEnabled(it)
+        }
+        y = SettingsUi.sliderRow(panel, panelWidth, y, "Tick Delay", 1f, 10f, 1f,
+            AutoForgeManager.getTickDelay().toFloat(), accent, { "${it.toInt()} ticks" }) {
+            AutoForgeManager.setTickDelay(it.toInt())
+        }
+        SettingsUi.sliderRow(panel, panelWidth, y, "Amount", 1f, 7f, 1f,
+            AutoForgeManager.getRunCount().toFloat(), accent, { "${it.toInt()}x per click" }) {
+            AutoForgeManager.setRunCount(it.toInt())
         }
 
         SettingsUi.backButton(panel) { saveAndClose() }

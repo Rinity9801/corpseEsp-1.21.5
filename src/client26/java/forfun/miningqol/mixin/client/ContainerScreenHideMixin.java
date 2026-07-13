@@ -20,6 +20,23 @@ public class ContainerScreenHideMixin {
     private void miningqol$hideDuringClaim(GuiGraphicsExtractor ctx, int mouseX, int mouseY, float delta, CallbackInfo ci) {
         if (CheatHooks.hideContainerGui != null && CheatHooks.hideContainerGui.getAsBoolean()) {
             ci.cancel();
+            return;
+        }
+        // Cheat replacement visuals (e.g. Auto Forge mid-craft status card).
+        if (CheatHooks.containerGuiOverlay != null
+                && CheatHooks.containerGuiOverlay.renderReplacing(
+                    (net.minecraft.client.gui.screens.Screen) (Object) this, ctx, mouseX, mouseY)) {
+            ci.cancel();
+        }
+    }
+
+    @Inject(method = "extractRenderState(Lnet/minecraft/client/gui/GuiGraphicsExtractor;IIF)V",
+            at = @At("RETURN"))
+    private void miningqol$overlayOnTop(GuiGraphicsExtractor ctx, int mouseX, int mouseY, float delta, CallbackInfo ci) {
+        // Cheat overlay drawn on top of the vanilla visuals (e.g. Auto Forge side picker).
+        if (CheatHooks.containerGuiOverlay != null) {
+            CheatHooks.containerGuiOverlay.renderOnTop(
+                (net.minecraft.client.gui.screens.Screen) (Object) this, ctx, mouseX, mouseY);
         }
     }
 }

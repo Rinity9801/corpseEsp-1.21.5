@@ -89,6 +89,9 @@ public class MiningConfig {
     public boolean commClaimHideGui = false;
     public String emptyStashMaterial = "COAL";
     public int emptyStashDelay = 4;
+    public boolean autoForgeEnabled = true;
+    public int autoForgeTickDelay = 3;
+    public int autoForgeRunCount = 1;
 
     public boolean orderedWaypointsEnabled = true;
     public float orderedWaypointRange = 4.5f;

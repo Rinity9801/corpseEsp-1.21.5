@@ -1,5 +1,8 @@
 package forfun.miningqol.client;
 
+import net.minecraft.client.gui.GuiGraphicsExtractor;
+import net.minecraft.client.gui.screens.Screen;
+
 import java.util.function.BooleanSupplier;
 import java.util.function.Consumer;
 
@@ -20,6 +23,19 @@ public final class CheatHooks {
     public static Runnable onStopping = null;
     /** True while an open container GUI should be hidden (e.g. mid comm-claim with Hide GUI on). */
     public static BooleanSupplier hideContainerGui = null;
+    /** Cheat drawing on container GUIs (e.g. the Auto Forge picker/status). */
+    public static ContainerGuiOverlay containerGuiOverlay = null;
+
+    public interface ContainerGuiOverlay {
+        /**
+         * Called before the vanilla container visuals are extracted. Return true after
+         * drawing a replacement (the vanilla visuals are then skipped entirely).
+         */
+        boolean renderReplacing(Screen screen, GuiGraphicsExtractor ctx, int mouseX, int mouseY);
+
+        /** Called after the vanilla container visuals — draws on top of them. */
+        void renderOnTop(Screen screen, GuiGraphicsExtractor ctx, int mouseX, int mouseY);
+    }
 
     private CheatHooks() {}
 }
