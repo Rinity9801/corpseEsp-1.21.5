@@ -37,7 +37,7 @@ class InShaftClickCategoryScreen(private val parentScreen: Screen) : VexelScreen
             borderRadius = 16f,
             borderThickness = 1f
         )
-            .setSizing(550f, Size.Pixels, 825f, Size.Pixels)
+            .setSizing(550f, Size.Pixels, 985f, Size.Pixels)
             .childOf(window)
             .apply {
                 dropShadow = true
@@ -49,7 +49,7 @@ class InShaftClickCategoryScreen(private val parentScreen: Screen) : VexelScreen
         mainPanel.xPositionConstraint = Pos.ScreenPixels
         mainPanel.yPositionConstraint = Pos.ScreenPixels
         mainPanel.xConstraint = (mainPanel.screenWidth - 550f) / 2f
-        mainPanel.yConstraint = (mainPanel.screenHeight - 825f) / 2f
+        mainPanel.yConstraint = (mainPanel.screenHeight - 985f) / 2f
         mainPanel.fadeIn(500, EasingType.EASE_OUT)
 
         // Title bar
@@ -81,11 +81,13 @@ class InShaftClickCategoryScreen(private val parentScreen: Screen) : VexelScreen
         // Toggle
         val toggles = listOf(
             Triple("Enable Rod Swap", 0xFF44AAFF.toInt()) { InShaftClickManager.isRodSwapEnabled() },
+            Triple("Third Drill", 0xFF44AAFF.toInt()) { InShaftClickManager.isThirdDrillEnabled() },
             Triple("Toggle Message", 0xFF44AAFF.toInt()) { InShaftClickManager.isShowToggleMessage() }
         )
 
         val toggleActions = listOf<() -> Unit>(
             { InShaftClickManager.setEnableRodSwap(!InShaftClickManager.isRodSwapEnabled()) },
+            { InShaftClickManager.setThirdDrillEnabled(!InShaftClickManager.isThirdDrillEnabled()) },
             { InShaftClickManager.setShowToggleMessage(!InShaftClickManager.isShowToggleMessage()) }
         )
 
@@ -137,13 +139,24 @@ class InShaftClickCategoryScreen(private val parentScreen: Screen) : VexelScreen
         )
 
         createSliderCard(
+            "Third Drill Slot",
+            1f, 9f,
+            (InShaftClickManager.getThirdDrillSlot() + 1).toFloat(),
+            { value -> InShaftClickManager.setThirdDrillSlot(value.toInt() - 1) },
+            "",
+            (mainPanel.width - toggleWidth) / 2f,
+            sliderStartY + sliderSpacing * 2,
+            toggleWidth, 75f, mainPanel, 550L
+        )
+
+        createSliderCard(
             "Main Drill Delay",
             1f, 20f,
             InShaftClickManager.getMainDrillDelay().toFloat(),
             { value -> InShaftClickManager.setMainDrillDelay(value.toInt()) },
             " ticks",
             (mainPanel.width - toggleWidth) / 2f,
-            sliderStartY + sliderSpacing * 2,
+            sliderStartY + sliderSpacing * 3,
             toggleWidth, 75f, mainPanel, 600L
         )
 
@@ -154,7 +167,7 @@ class InShaftClickCategoryScreen(private val parentScreen: Screen) : VexelScreen
             { value -> InShaftClickManager.setSecondDrillDelay(value.toInt()) },
             " ticks",
             (mainPanel.width - toggleWidth) / 2f,
-            sliderStartY + sliderSpacing * 3,
+            sliderStartY + sliderSpacing * 4,
             toggleWidth, 75f, mainPanel, 700L
         )
 
@@ -165,7 +178,7 @@ class InShaftClickCategoryScreen(private val parentScreen: Screen) : VexelScreen
             { value -> InShaftClickManager.setColdThreshold(value.toInt()) },
             "",
             (mainPanel.width - toggleWidth) / 2f,
-            sliderStartY + sliderSpacing * 4,
+            sliderStartY + sliderSpacing * 5,
             toggleWidth, 75f, mainPanel, 800L
         )
 

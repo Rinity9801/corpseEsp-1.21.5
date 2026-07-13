@@ -69,6 +69,8 @@ public class MiningConfig {
     public int coldClickerMiningSlot = 0;
     public boolean coldClickerRodSwap = true;
     public int coldClickerSecondDrillSlot = 3;
+    public boolean coldClickerThirdDrillEnabled = false;
+    public int coldClickerThirdDrillSlot = 4;
     public int coldClickerMainDrillDelay = 3;
     public int coldClickerSecondDrillDelay = 3;
     public int coldClickerColdThreshold = 50;

@@ -113,6 +113,8 @@ public class MiningConfig {
     public int coldClickerMiningSlot = 0;
     public boolean coldClickerRodSwap = true;
     public int coldClickerSecondDrillSlot = 3;
+    public boolean coldClickerThirdDrillEnabled = false;
+    public int coldClickerThirdDrillSlot = 4;
     public int coldClickerMainDrillDelay = 3;
     public int coldClickerSecondDrillDelay = 3;
     public int coldClickerColdThreshold = 50;
@@ -386,6 +388,8 @@ public class MiningConfig {
         InShaftClickManager.setMiningSlot(coldClickerMiningSlot);
         InShaftClickManager.setEnableRodSwap(coldClickerRodSwap);
         InShaftClickManager.setSecondDrillSlot(coldClickerSecondDrillSlot);
+        InShaftClickManager.setThirdDrillEnabled(coldClickerThirdDrillEnabled);
+        InShaftClickManager.setThirdDrillSlot(coldClickerThirdDrillSlot);
         InShaftClickManager.setMainDrillDelay(coldClickerMainDrillDelay);
         InShaftClickManager.setSecondDrillDelay(coldClickerSecondDrillDelay);
         InShaftClickManager.setColdThreshold(coldClickerColdThreshold);
@@ -528,6 +532,8 @@ public class MiningConfig {
         coldClickerMiningSlot = InShaftClickManager.getMiningSlot();
         coldClickerRodSwap = InShaftClickManager.isRodSwapEnabled();
         coldClickerSecondDrillSlot = InShaftClickManager.getSecondDrillSlot();
+        coldClickerThirdDrillEnabled = InShaftClickManager.isThirdDrillEnabled();
+        coldClickerThirdDrillSlot = InShaftClickManager.getThirdDrillSlot();
         coldClickerMainDrillDelay = InShaftClickManager.getMainDrillDelay();
         coldClickerSecondDrillDelay = InShaftClickManager.getSecondDrillDelay();
         coldClickerColdThreshold = InShaftClickManager.getColdThreshold();

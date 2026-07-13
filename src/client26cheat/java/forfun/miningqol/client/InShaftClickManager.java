@@ -15,6 +15,8 @@ public class InShaftClickManager {
     private static int miningSlot = 0;
     private static boolean enableRodSwap = true;
     private static int secondDrillSlot = 3;
+    private static boolean thirdDrillEnabled = false; // if on, swap to the third drill before the right-click
+    private static int thirdDrillSlot = 4;
     private static int mainDrillDelay = 3;
     private static int secondDrillDelay = 3;
     private static int coldThreshold = 50;
@@ -103,6 +105,11 @@ public class InShaftClickManager {
 
     public static void setSecondDrillSlot(int slot) { secondDrillSlot = slot; }
     public static int getSecondDrillSlot() { return secondDrillSlot; }
+
+    public static void setThirdDrillEnabled(boolean value) { thirdDrillEnabled = value; }
+    public static boolean isThirdDrillEnabled() { return thirdDrillEnabled; }
+    public static void setThirdDrillSlot(int slot) { thirdDrillSlot = slot; }
+    public static int getThirdDrillSlot() { return thirdDrillSlot; }
 
     public static void setMainDrillDelay(int ticks) { mainDrillDelay = ticks; }
     public static int getMainDrillDelay() { return mainDrillDelay; }
@@ -273,8 +280,8 @@ public class InShaftClickManager {
                 }
                 break;
 
-            case 5: // Switch to second drill
-                setSelectedSlot(client, secondDrillSlot);
+            case 5: // Switch to the ability drill (third drill if enabled, else second drill)
+                setSelectedSlot(client, thirdDrillEnabled ? thirdDrillSlot : secondDrillSlot);
                 sequenceStep = 6;
                 sequenceTickCounter = 0;
                 break;

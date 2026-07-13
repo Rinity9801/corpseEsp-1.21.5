@@ -145,6 +145,8 @@ public final class CheatBootstrap {
             InShaftClickManager.setMiningSlot(config.coldClickerMiningSlot);
             InShaftClickManager.setEnableRodSwap(config.coldClickerRodSwap);
             InShaftClickManager.setSecondDrillSlot(config.coldClickerSecondDrillSlot);
+            InShaftClickManager.setThirdDrillEnabled(config.coldClickerThirdDrillEnabled);
+            InShaftClickManager.setThirdDrillSlot(config.coldClickerThirdDrillSlot);
             InShaftClickManager.setMainDrillDelay(config.coldClickerMainDrillDelay);
             InShaftClickManager.setSecondDrillDelay(config.coldClickerSecondDrillDelay);
             InShaftClickManager.setColdThreshold(config.coldClickerColdThreshold);
@@ -182,6 +184,8 @@ public final class CheatBootstrap {
             config.coldClickerMiningSlot = InShaftClickManager.getMiningSlot();
             config.coldClickerRodSwap = InShaftClickManager.isRodSwapEnabled();
             config.coldClickerSecondDrillSlot = InShaftClickManager.getSecondDrillSlot();
+            config.coldClickerThirdDrillEnabled = InShaftClickManager.isThirdDrillEnabled();
+            config.coldClickerThirdDrillSlot = InShaftClickManager.getThirdDrillSlot();
             config.coldClickerMainDrillDelay = InShaftClickManager.getMainDrillDelay();
             config.coldClickerSecondDrillDelay = InShaftClickManager.getSecondDrillDelay();
             config.coldClickerColdThreshold = InShaftClickManager.getColdThreshold();

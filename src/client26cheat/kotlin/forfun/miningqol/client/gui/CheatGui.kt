@@ -85,7 +85,7 @@ class InShaftClickCategoryScreen(parentScreen: Screen) : BaseCategoryScreen(pare
     override fun afterInitialization() {
         SettingsUi.overlay(window)
         val panelWidth = 600f
-        val panel = SettingsUi.panel(window, panelWidth, 660f, "In Shaft Click", "Toggle with its keybind (Controls menu) — always starts disabled")
+        val panel = SettingsUi.panel(window, panelWidth, 796f, "In Shaft Click", "Toggle with its keybind (Controls menu) — always starts disabled")
 
         var y = 110f
         y = SettingsUi.sliderRow(panel, panelWidth, y, "Mining Slot", 0f, 8f, 1f,
@@ -99,6 +99,14 @@ class InShaftClickCategoryScreen(parentScreen: Screen) : BaseCategoryScreen(pare
         y = SettingsUi.sliderRow(panel, panelWidth, y, "Second Drill Slot", 0f, 8f, 1f,
             InShaftClickManager.getSecondDrillSlot().toFloat(), accent, { "slot ${it.toInt() + 1}" }) {
             InShaftClickManager.setSecondDrillSlot(it.toInt())
+        }
+        y = SettingsUi.toggleRow(panel, panelWidth, y, "Third Drill", "Swap to a third drill for the ability right-click", accent,
+            InShaftClickManager.isThirdDrillEnabled()) {
+            InShaftClickManager.setThirdDrillEnabled(it)
+        }
+        y = SettingsUi.sliderRow(panel, panelWidth, y, "Third Drill Slot", 0f, 8f, 1f,
+            InShaftClickManager.getThirdDrillSlot().toFloat(), accent, { "slot ${it.toInt() + 1}" }) {
+            InShaftClickManager.setThirdDrillSlot(it.toInt())
         }
         y = SettingsUi.sliderRow(panel, panelWidth, y, "Main Drill Delay", 1f, 10f, 1f,
             InShaftClickManager.getMainDrillDelay().toFloat(), accent, { "${it.toInt()} ticks" }) {
