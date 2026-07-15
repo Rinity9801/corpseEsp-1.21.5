@@ -53,6 +53,7 @@ public final class CheatBootstrap {
                 ShaftClickerManager.tick();
                 EmptyStashManager.tick();
                 AutoForgeManager.tick(client);
+                ShaftJoinCdManager.tick();
                 forfun.miningqol.client.hotm.AutoHotmManager.tick();
             }
         });
@@ -62,6 +63,8 @@ public final class CheatBootstrap {
         ScreenEvents.AFTER_INIT.register((mc, screen, w, h) -> {
             ScreenMouseEvents.allowMouseClick(screen).register((s, click) -> {
                 if (CommClaimManager.isRunning() && CommClaimManager.isBlockInput()) return false;
+                // Shaft join cooldown: all clicks in Glacite GUIs are swallowed while it runs.
+                if (ShaftJoinCdManager.isBlocking(s)) return false;
                 // Auto Forge picker: clicks on its buttons (and stray clicks under it) are consumed.
                 return !AutoForgeManager.handleMouseClick(s, click.x(), click.y(), click.button());
             });
@@ -79,6 +82,10 @@ public final class CheatBootstrap {
                         return true; // Esc cancels the craft / closes the picker
                     }
                     return false; // no hotbar-swap keys while the picker covers the slots
+                }
+                if (ShaftJoinCdManager.isBlocking(s)) {
+                    // No hotbar-swap keys into the blocked GUI either; Esc still closes it.
+                    return keyEvent.key() == GLFW.GLFW_KEY_ESCAPE;
                 }
                 return true;
             });
@@ -131,9 +138,14 @@ public final class CheatBootstrap {
                     }))
                 .then(ClientCommands.literal("debug")
                     .executes(context -> {
-                        AutoForgeManager.debugDump();
+                        AutoForgeManager.debugDump(false);
                         return 1;
-                    })));
+                    })
+                    .then(ClientCommands.literal("full")
+                        .executes(context -> {
+                            AutoForgeManager.debugDump(true);
+                            return 1;
+                        }))));
             dispatcher.register(ClientCommands.literal("commclaimdebug")
                 .executes(context -> {
                     CommClaimManager.setDebug(!CommClaimManager.isDebug());
@@ -148,6 +160,8 @@ public final class CheatBootstrap {
                 CommClaimManager.onCommissionComplete(messageText);
             }
             EmptyStashManager.onChatMessage(messageText);
+            AutoForgeManager.onChatMessage(messageText);
+            ShaftJoinCdManager.onChatMessage(messageText);
             forfun.miningqol.client.hotm.AutoHotmManager.onChatMessage(messageText);
         };
 
@@ -171,6 +185,7 @@ public final class CheatBootstrap {
             public void renderOnTop(net.minecraft.client.gui.screens.Screen screen,
                                     net.minecraft.client.gui.GuiGraphicsExtractor ctx, int mouseX, int mouseY) {
                 AutoForgeManager.renderOnTop(screen, ctx, mouseX, mouseY);
+                ShaftJoinCdManager.renderOnTop(screen, ctx, mouseX, mouseY);
             }
         };
 
@@ -216,6 +231,9 @@ public final class CheatBootstrap {
             AutoForgeManager.setEnabled(config.autoForgeEnabled);
             AutoForgeManager.setTickDelay(config.autoForgeTickDelay);
             AutoForgeManager.setRunCount(config.autoForgeRunCount);
+
+            ShaftJoinCdManager.setEnabled(config.shaftJoinCdEnabled);
+            ShaftJoinCdManager.setCooldownSeconds(config.shaftJoinCdSeconds);
         };
 
         CheatHooks.storeConfig = () -> {
@@ -259,6 +277,9 @@ public final class CheatBootstrap {
             config.autoForgeEnabled = AutoForgeManager.isEnabled();
             config.autoForgeTickDelay = AutoForgeManager.getTickDelay();
             config.autoForgeRunCount = AutoForgeManager.getRunCount();
+
+            config.shaftJoinCdEnabled = ShaftJoinCdManager.isEnabled();
+            config.shaftJoinCdSeconds = ShaftJoinCdManager.getCooldownSeconds();
         };
     }
 }

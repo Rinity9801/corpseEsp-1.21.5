@@ -69,6 +69,17 @@ public class AutoForgeManager {
     private static Step name(String needle) { return new Step(STEP_NAME, needle); }
     private static Step confirm() { return new Step(STEP_CONFIRM, null); }
 
+    /**
+     * Signs that the player can't afford the craft — checked on the lore of every
+     * item the machine is about to click, and on chat messages while running.
+     * Without this the chain keeps clicking into menus the server rejects.
+     */
+    private static final String[] MISSING_MARKERS = {
+        "you don't have the required items", // confirm-button lore when short on materials
+        "not enough", "requirements not met", "you don't have", "you do not have",
+        "missing", "can't afford", "cannot afford",
+    };
+
     private static final Craft[] CRAFTS = {
         new Craft("Refined Umber", book(), name("refining"), name("refined umber"), confirm()),
         new Craft("Umber Plate", book(), name("forging"), name("umber plate"), confirm()),
@@ -309,6 +320,11 @@ public class AutoForgeManager {
                 Step step = craft.steps[stepIndex];
                 int slot = findStep(menu, step);
                 if (slot != -1) {
+                    if (lacksMaterials(menu.slots.get(slot).getItem())) {
+                        stop("Not enough materials for " + craft.label
+                            + (runsDone > 0 ? " (started " + runsDone + ")" : ""));
+                        break;
+                    }
                     click(client, menu, slot);
                     stepIndex++;
                     if (stepIndex >= craft.steps.length) {
@@ -365,6 +381,31 @@ public class AutoForgeManager {
         waitForNewGui(menu);
     }
 
+    /** Chat safety net: the server rejecting a craft mid-chain aborts the run. */
+    public static void onChatMessage(String message) {
+        if (!running) return;
+        String s = clean(message);
+        for (String marker : MISSING_MARKERS) {
+            if (s.contains(marker)) {
+                stop("Server rejected the craft (missing materials?)"
+                    + (runsDone > 0 ? " — started " + runsDone + "/" + runCount : ""));
+                return;
+            }
+        }
+    }
+
+    private static boolean lacksMaterials(ItemStack stack) {
+        var lore = stack.get(DataComponents.LORE);
+        if (lore == null) return false;
+        for (var line : lore.lines()) {
+            String s = clean(line.getString());
+            for (String marker : MISSING_MARKERS) {
+                if (s.contains(marker)) return true;
+            }
+        }
+        return false;
+    }
+
     // ===== Container helpers =====
 
     private static int containerSlotCount(AbstractContainerMenu menu) {
@@ -411,8 +452,11 @@ public class AutoForgeManager {
         }
     }
 
-    /** /autoforge debug — dump the open container's slots to chat for tuning the matchers. */
-    public static void debugDump() {
+    /**
+     * /autoforge debug [full] — dump the open container's slots to chat for tuning
+     * the matchers. "full" prints every lore line instead of just the first.
+     */
+    public static void debugDump(boolean fullLore) {
         Minecraft client = Minecraft.getInstance();
         if (client.player == null) return;
         if (!(client.screen instanceof ContainerScreen screen)) {
@@ -426,13 +470,24 @@ public class AutoForgeManager {
         for (int i = 0; i < count; i++) {
             ItemStack stack = menu.slots.get(i).getItem();
             if (stack.isEmpty()) continue;
-            String lore = "";
             var loreComp = stack.get(DataComponents.LORE);
-            if (loreComp != null && !loreComp.lines().isEmpty()) {
-                lore = " §8| " + loreComp.lines().get(0).getString();
+            if (fullLore) {
+                client.player.sendSystemMessage(Component.literal(
+                    "§7#" + i + " §f" + stack.getHoverName().getString()
+                        + (lacksMaterials(stack) ? " §c[MISSING MATERIALS]" : "")));
+                if (loreComp != null) {
+                    for (var line : loreComp.lines()) {
+                        client.player.sendSystemMessage(Component.literal("§8    " + line.getString()));
+                    }
+                }
+            } else {
+                String lore = "";
+                if (loreComp != null && !loreComp.lines().isEmpty()) {
+                    lore = " §8| " + loreComp.lines().get(0).getString();
+                }
+                client.player.sendSystemMessage(Component.literal(
+                    "§7#" + i + " §f" + stack.getHoverName().getString() + lore));
             }
-            client.player.sendSystemMessage(Component.literal(
-                "§7#" + i + " §f" + stack.getHoverName().getString() + lore));
         }
     }
 }

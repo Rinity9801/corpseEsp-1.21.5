@@ -92,6 +92,8 @@ public class MiningConfig {
     public boolean autoForgeEnabled = true;
     public int autoForgeTickDelay = 3;
     public int autoForgeRunCount = 1;
+    public boolean shaftJoinCdEnabled = true;
+    public int shaftJoinCdSeconds = 30;
 
     public boolean orderedWaypointsEnabled = true;
     public float orderedWaypointRange = 4.5f;

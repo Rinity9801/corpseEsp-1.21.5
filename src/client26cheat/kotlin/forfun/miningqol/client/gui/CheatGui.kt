@@ -7,6 +7,7 @@ import forfun.miningqol.client.CommClaimManager
 import forfun.miningqol.client.EmptyStashManager
 import forfun.miningqol.client.InShaftClickManager
 import forfun.miningqol.client.ShaftClickerManager
+import forfun.miningqol.client.ShaftJoinCdManager
 import net.minecraft.client.Minecraft
 import net.minecraft.client.gui.screens.Screen
 
@@ -34,6 +35,10 @@ object CheatGui {
         }
         ExtraCategories.add("Auto Forge", "One-click craft picker at The Forge", 0xFFFFAA66.toInt()) {
             Minecraft.getInstance().setScreen(AutoForgeCategoryScreen(it))
+        }
+        ExtraMiscRows.addToggle("Shaft Join Cooldown", "Block clicks in Glacite GUIs right after you enter a shaft",
+            { ShaftJoinCdManager.isEnabled() }) {
+            ShaftJoinCdManager.setEnabled(it)
         }
         ExtraCategories.add("HOTM Presets", "Heart of the Mountain editor + auto-apply", 0xFF66FFCC.toInt()) {
             forfun.miningqol.client.hotm.HotmChestScreen.open()

@@ -23,3 +23,24 @@ object ExtraCategories {
         entries.add(Entry(title, description, accent, open))
     }
 }
+
+/**
+ * Extra rows for the Misc settings screen, contributed at runtime by the cheat
+ * source tree (same idea as ExtraCategories).
+ */
+object ExtraMiscRows {
+    class Toggle(
+        @JvmField val title: String,
+        @JvmField val description: String,
+        @JvmField val get: () -> Boolean,
+        @JvmField val set: (Boolean) -> Unit
+    )
+
+    @JvmField
+    val toggles = mutableListOf<Toggle>()
+
+    @JvmStatic
+    fun addToggle(title: String, description: String, get: () -> Boolean, set: (Boolean) -> Unit) {
+        toggles.add(Toggle(title, description, get, set))
+    }
+}
