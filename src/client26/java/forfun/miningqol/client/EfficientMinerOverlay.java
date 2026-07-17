@@ -18,7 +18,8 @@ import java.util.List;
 /**
  * Heatmap overlay that highlights the best blocks to mine (clay / red sandstone)
  * by clustering. 26.1.2 port of the 1.21.x EfficientMinerOverlay — draws filled
- * see-through boxes (like {@link ShaftESP}) instead of debug line boxes.
+ * boxes slightly inflated around each block. Depth-tested (textBackground, not
+ * the SeeThrough variant): it's an overlay on visible faces, not an ESP.
  */
 public class EfficientMinerOverlay {
     private static final int FULL_BRIGHT = 15728880;
@@ -75,15 +76,15 @@ public class EfficientMinerOverlay {
         Vec3 cam = cameraState.pos;
         MultiBufferSource.BufferSource buffers = client.renderBuffers().bufferSource();
         Matrix4f pose = new Matrix4f(viewMatrix);
-        VertexConsumer quads = buffers.getBuffer(RenderTypes.textBackgroundSeeThrough());
+        VertexConsumer quads = buffers.getBuffer(RenderTypes.textBackground());
 
         for (BlockData block : blocks) {
             float[] color = getColorForPriority(block.priority);
             float alpha = (0.1f + (block.priority / 10.0f)) * 0.5f;
 
-            float minX = (float) (block.x - cam.x);
-            float minY = (float) (block.y - cam.y - 0.001);
-            float minZ = (float) (block.z - cam.z);
+            float minX = (float) (block.x - 0.001 - cam.x);
+            float minY = (float) (block.y - 0.001 - cam.y);
+            float minZ = (float) (block.z - 0.001 - cam.z);
             float maxX = (float) (block.x + 1.001 - cam.x);
             float maxY = (float) (block.y + 1.002 - cam.y);
             float maxZ = (float) (block.z + 1.001 - cam.z);
