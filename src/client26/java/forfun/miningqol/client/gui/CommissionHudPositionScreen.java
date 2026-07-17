@@ -38,7 +38,7 @@ public class CommissionHudPositionScreen extends Screen {
         // The panel itself is drawn by CommissionHUD.renderNvg (editor mode) on
         // Vexel's NanoVG pass, on top of everything this screen draws.
         ctx.fill(0, 8, ctx.guiWidth(), 26, 0x90101018);
-        ctx.centeredText(font, Component.literal("Drag the panel — Esc or Done saves"),
+        ctx.centeredText(font, Component.literal("Drag (snaps to grid, Shift = free) — scroll to resize — Esc or Done saves"),
             ctx.guiWidth() / 2, 14, 0xFFE9ECF6);
 
         int bw = 84, bh = 20;
@@ -82,6 +82,8 @@ public class CommissionHudPositionScreen extends Screen {
         if (dragging) {
             int nx = (int) Math.round(click.x() - grabDx);
             int ny = (int) Math.round(click.y() - grabDy);
+            nx = HudDragSnap.snap(nx);
+            ny = HudDragSnap.snap(ny);
             nx = Math.max(0, Math.min(width - 40, nx));
             ny = Math.max(0, Math.min(height - 40, ny));
             CommissionHUD.setPosition(nx, ny);
@@ -94,6 +96,12 @@ public class CommissionHudPositionScreen extends Screen {
     public boolean mouseReleased(MouseButtonEvent click) {
         dragging = false;
         return super.mouseReleased(click);
+    }
+
+    @Override
+    public boolean mouseScrolled(double mouseX, double mouseY, double scrollX, double scrollY) {
+        CommissionHUD.setScale(CommissionHUD.getScale() + (float) scrollY * 0.05f);
+        return true;
     }
 
     @Override

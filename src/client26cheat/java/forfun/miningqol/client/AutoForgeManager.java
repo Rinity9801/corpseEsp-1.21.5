@@ -11,14 +11,13 @@ import net.minecraft.world.inventory.AbstractContainerMenu;
 import net.minecraft.world.inventory.ContainerInput;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.Items;
-import net.minecraft.world.phys.Vec3;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 /**
- * Auto Forge: when "The Forge" GUI is opened near the forge room, draws a craft
- * picker beside it (via CheatHooks.containerGuiOverlay). Picking a craft clicks
- * through the menu chain on the real containers:
+ * Auto Forge: when "The Forge" GUI is opened, draws a craft picker beside it
+ * (via CheatHooks.containerGuiOverlay). Picking a craft clicks through the
+ * menu chain on the real containers:
  *
  *   book -> category (Refining / Forging / nether star for keys) -> recipe item
  *        -> confirmation slot (row 4, col 5, 1-based)
@@ -29,9 +28,6 @@ import org.slf4j.LoggerFactory;
 public class AutoForgeManager {
     private static final Logger LOGGER = LoggerFactory.getLogger("AutoForgeManager");
 
-    // The Forge room block (-23, 151, -48); picker only triggers within this radius.
-    private static final Vec3 FORGE_POS = new Vec3(-22.5, 151.5, -47.5);
-    private static final double FORGE_RADIUS = 7.0;
     private static final String FORGE_TITLE = "the forge";
 
     // ===== Craft definitions =====
@@ -85,6 +81,7 @@ public class AutoForgeManager {
         new Craft("Umber Plate", book(), name("forging"), name("umber plate"), confirm()),
         new Craft("Refined Tungsten", book(), name("refining"), name("refined tungsten"), confirm()),
         new Craft("Tungsten Plate", book(), name("forging"), name("tungsten plate"), confirm()),
+        new Craft("Perfect Plate", book(), name("forging"), name("perfect plate"), confirm()),
         new Craft("Umber Key", book(), star(), name("umber key"), confirm()),
         new Craft("Tungsten Key", book(), star(), name("tungsten key"), confirm()),
         new Craft("Skeleton Key", book(), star(), name("skeleton key"), confirm()),
@@ -142,15 +139,10 @@ public class AutoForgeManager {
         menuScreen = null;
         if (!enabled) return;
         if (screen instanceof ContainerScreen cs
-                && clean(cs.getTitle().getString()).contains(FORGE_TITLE)
-                && isNearForge(client)) {
+                && clean(cs.getTitle().getString()).contains(FORGE_TITLE)) {
             menuScreen = cs;
             dismissed = false;
         }
-    }
-
-    private static boolean isNearForge(Minecraft client) {
-        return client.player != null && client.player.position().distanceTo(FORGE_POS) <= FORGE_RADIUS;
     }
 
     private static boolean isMenuVisible(Screen screen) {
@@ -466,7 +458,7 @@ public class AutoForgeManager {
         AbstractContainerMenu menu = screen.getMenu();
         int count = containerSlotCount(menu);
         msg(client, "§fTitle: §e" + screen.getTitle().getString()
-            + " §7(id " + menu.containerId + ", " + count + " container slots, near forge: " + isNearForge(client) + ")");
+            + " §7(id " + menu.containerId + ", " + count + " container slots)");
         for (int i = 0; i < count; i++) {
             ItemStack stack = menu.slots.get(i).getItem();
             if (stack.isEmpty()) continue;

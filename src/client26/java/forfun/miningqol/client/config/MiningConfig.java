@@ -3,6 +3,8 @@ package forfun.miningqol.client.config;
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
 import forfun.miningqol.client.ColdTracker;
+import forfun.miningqol.client.CommStatsHUD;
+import forfun.miningqol.client.CommTracker;
 import forfun.miningqol.client.CommandKeybindManager;
 import forfun.miningqol.client.CommissionHUD;
 import forfun.miningqol.client.CorpseESP;
@@ -30,6 +32,11 @@ public class MiningConfig {
     public float commissionHudScale = 1.0f;
     public boolean commissionHudBackground = true;
     public String commissionHudLayout = "GRID";
+    public boolean commissionStatsEnabled = true;
+    public long commTrackTotal = 0;
+    public int commStatsHudX = 10;
+    public int commStatsHudY = 220;
+    public float commStatsHudScale = 1.0f;
 
     public boolean lapisEnabled = true;
     public boolean tungstenEnabled = true;
@@ -142,6 +149,9 @@ public class MiningConfig {
         if (commissionHudScale < 0.5f || commissionHudScale > 2.0f) {
             commissionHudScale = 1.0f;
         }
+        if (commStatsHudScale < 0.5f || commStatsHudScale > 2.0f) {
+            commStatsHudScale = 1.0f;
+        }
         if (commissionHudLayout == null) {
             commissionHudLayout = "GRID";
         }
@@ -178,6 +188,10 @@ public class MiningConfig {
         } catch (Exception e) {
             CommissionHUD.setLayoutMode(CommissionHUD.LayoutMode.GRID);
         }
+        CommTracker.setStatsEnabled(commissionStatsEnabled);
+        CommTracker.setTotalCompleted(commTrackTotal);
+        CommStatsHUD.setPosition(commStatsHudX, commStatsHudY);
+        CommStatsHUD.setScale(commStatsHudScale);
 
         if (CorpseESP.isLapisEnabled() != lapisEnabled) CorpseESP.toggleLapis();
         if (CorpseESP.isTungstenEnabled() != tungstenEnabled) CorpseESP.toggleTungsten();
@@ -255,6 +269,11 @@ public class MiningConfig {
         commissionHudScale = CommissionHUD.getScale();
         commissionHudBackground = CommissionHUD.isBackgroundEnabled();
         commissionHudLayout = CommissionHUD.getLayoutMode().name();
+        commissionStatsEnabled = CommTracker.isStatsEnabled();
+        commTrackTotal = CommTracker.getTotalCompleted();
+        commStatsHudX = CommStatsHUD.getX();
+        commStatsHudY = CommStatsHUD.getY();
+        commStatsHudScale = CommStatsHUD.getScale();
 
         lapisEnabled = CorpseESP.isLapisEnabled();
         tungstenEnabled = CorpseESP.isTungstenEnabled();

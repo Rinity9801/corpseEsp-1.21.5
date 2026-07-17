@@ -1,7 +1,7 @@
 package forfun.miningqol.client.gui;
 
+import forfun.miningqol.client.CommStatsHUD;
 import forfun.miningqol.client.MiningqolClient;
-import forfun.miningqol.client.PickaxeCooldownHUD;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.GuiGraphicsExtractor;
 import net.minecraft.client.gui.screens.Screen;
@@ -11,19 +11,18 @@ import net.minecraft.network.chat.Component;
 import org.lwjgl.glfw.GLFW;
 
 /**
- * Drag-to-move editor for the pickaxe cooldown HUD (26.1.2). Draws a stand-in
- * cooldown line at the configured position so it works anywhere, not just while a
- * real cooldown is active. Mirrors {@link CommissionHudPositionScreen}.
+ * Drag-to-move / scroll-to-resize editor for the commission stats HUD.
+ * The panel itself is drawn by CommStatsHUD.renderNvg (editor mode).
+ * Mirrors {@link CommissionHudPositionScreen}.
  */
-public class PickaxeCooldownPositionScreen extends Screen {
-    private static final String PREVIEW = "§6Pickobulus: §c30s";
+public class CommStatsHudPositionScreen extends Screen {
     private final Screen parent;
     private boolean dragging = false;
     private double grabDx = 0;
     private double grabDy = 0;
 
-    public PickaxeCooldownPositionScreen(Screen parent) {
-        super(Component.literal("Move Pickaxe Cooldown HUD"));
+    public CommStatsHudPositionScreen(Screen parent) {
+        super(Component.literal("Move Commission Stats HUD"));
         this.parent = parent;
     }
 
@@ -31,21 +30,10 @@ public class PickaxeCooldownPositionScreen extends Screen {
     public void extractRenderState(GuiGraphicsExtractor ctx, int mouseX, int mouseY, float deltaTicks) {
         super.extractRenderState(ctx, mouseX, mouseY, deltaTicks);
 
-        int x = PickaxeCooldownHUD.getX();
-        int y = PickaxeCooldownHUD.getY();
-        int w = Math.max(60, PickaxeCooldownHUD.getWidth());
-        int h = Math.max(12, PickaxeCooldownHUD.getHeight());
-
-        // Header + instructions
         ctx.fill(0, 8, ctx.guiWidth(), 26, 0x90101018);
         ctx.centeredText(font, Component.literal("Drag (snaps to grid, Shift = free) — scroll to resize — Esc or Done saves"),
             ctx.guiWidth() / 2, 14, 0xFFE9ECF6);
 
-        // HUD preview + outline
-        ctx.outline(x - 2, y - 2, w + 4, h + 4, 0xFF7FA8DB);
-        ctx.text(font, PREVIEW, x, y, 0xFFFFFFFF, true);
-
-        // Done button
         int bw = 84, bh = 20;
         int bx = ctx.guiWidth() / 2 - bw / 2;
         int by = ctx.guiHeight() - 34;
@@ -60,7 +48,6 @@ public class PickaxeCooldownPositionScreen extends Screen {
         int mx = (int) click.x();
         int my = (int) click.y();
 
-        // Done button
         int bw = 84, bh = 20;
         int bx = width / 2 - bw / 2;
         int by = height - 34;
@@ -69,10 +56,10 @@ public class PickaxeCooldownPositionScreen extends Screen {
             return true;
         }
 
-        int x = PickaxeCooldownHUD.getX();
-        int y = PickaxeCooldownHUD.getY();
-        int w = Math.max(60, PickaxeCooldownHUD.getWidth());
-        int h = Math.max(12, PickaxeCooldownHUD.getHeight());
+        int x = CommStatsHUD.getX();
+        int y = CommStatsHUD.getY();
+        int w = Math.max(60, CommStatsHUD.getWidth());
+        int h = Math.max(14, CommStatsHUD.getHeight());
         if (mx >= x - 2 && mx <= x + w + 2 && my >= y - 2 && my <= y + h + 2) {
             dragging = true;
             grabDx = click.x() - x;
@@ -90,8 +77,8 @@ public class PickaxeCooldownPositionScreen extends Screen {
             nx = HudDragSnap.snap(nx);
             ny = HudDragSnap.snap(ny);
             nx = Math.max(0, Math.min(width - 20, nx));
-            ny = Math.max(0, Math.min(height - 12, ny));
-            PickaxeCooldownHUD.setPosition(nx, ny);
+            ny = Math.max(0, Math.min(height - 14, ny));
+            CommStatsHUD.setPosition(nx, ny);
             return true;
         }
         return super.mouseDragged(click, dx, dy);
@@ -105,7 +92,7 @@ public class PickaxeCooldownPositionScreen extends Screen {
 
     @Override
     public boolean mouseScrolled(double mouseX, double mouseY, double scrollX, double scrollY) {
-        PickaxeCooldownHUD.setScale(PickaxeCooldownHUD.getScale() + (float) scrollY * 0.05f);
+        CommStatsHUD.setScale(CommStatsHUD.getScale() + (float) scrollY * 0.05f);
         return true;
     }
 

@@ -85,6 +85,8 @@ public class MiningqolClient implements ClientModInitializer {
                 CorpseESP.onCorpseClaimed();
             }
 
+            CommTracker.onChatMessage(messageText);
+
             if (CheatHooks.onGameMessage != null) {
                 CheatHooks.onGameMessage.accept(messageText);
             }
@@ -111,6 +113,12 @@ public class MiningqolClient implements ClientModInitializer {
                     client.schedule(() -> client.setScreen(new forfun.miningqol.client.gui.VexelMainScreen()));
                     return 1;
                 }));
+            dispatcher.register(ClientCommands.literal("commtrack")
+                .then(ClientCommands.literal("reset")
+                    .executes(context -> {
+                        CommTracker.reset();
+                        return 1;
+                    })));
             dispatcher.register(ClientCommands.literal("commhuddebug")
                 .executes(context -> {
                     CommissionHUD.debugDump();

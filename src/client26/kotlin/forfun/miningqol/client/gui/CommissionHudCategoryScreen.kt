@@ -1,5 +1,6 @@
 package forfun.miningqol.client.gui
 
+import forfun.miningqol.client.CommTracker
 import forfun.miningqol.client.CommissionHUD
 import forfun.miningqol.client.MiningqolClient
 import net.minecraft.client.Minecraft
@@ -12,7 +13,7 @@ class CommissionHudCategoryScreen(private val parentScreen: Screen) : VexelScree
     override fun afterInitialization() {
         SettingsUi.overlay(window)
         val panelWidth = 600f
-        val panelHeight = 480f
+        val panelHeight = 616f
         val panel = SettingsUi.panel(window, panelWidth, panelHeight, "Commission HUD", "On-screen commission progress tracker")
 
         var y = 110f
@@ -24,13 +25,20 @@ class CommissionHudCategoryScreen(private val parentScreen: Screen) : VexelScree
             CommissionHUD.isBackgroundEnabled()) {
             CommissionHUD.setBackgroundEnabled(it)
         }
+        y = SettingsUi.toggleRow(panel, panelWidth, y, "Commission Stats", "Total completed + comms/hour on the HUD (/commtrack reset)", accent,
+            CommTracker.isStatsEnabled()) {
+            CommTracker.setStatsEnabled(it)
+        }
         y = SettingsUi.sliderRow(panel, panelWidth, y, "Scale", 0.5f, 2.0f, 0.05f,
             CommissionHUD.getScale(), accent, { String.format("%.2fx", it) }) {
             CommissionHUD.setScale(it)
         }
 
-        SettingsUi.linkRow(panel, panelWidth, y, "Move HUD", "Drag the panel to wherever you want it") {
+        y = SettingsUi.linkRow(panel, panelWidth, y, "Move HUD", "Drag the panel, scroll to resize") {
             Minecraft.getInstance().setScreen(CommissionHudPositionScreen(this))
+        }
+        SettingsUi.linkRow(panel, panelWidth, y, "Move Stats HUD", "The comms-completed panel is placed separately") {
+            Minecraft.getInstance().setScreen(CommStatsHudPositionScreen(this))
         }
 
         SettingsUi.backButton(panel) { close() }

@@ -84,6 +84,7 @@ public class CommissionHUD {
             xyz.meowing.vexel.Vexel.getEventBus().registerJava(
                 xyz.meowing.vexel.events.GuiEvent.Render.class, 0, true, event -> {
                     renderNvg();
+                    CommStatsHUD.renderNvg();
                     return kotlin.Unit.INSTANCE;
                 });
         });
@@ -316,7 +317,8 @@ public class CommissionHUD {
         cachedEntries = cachedAllowedLocation ? readCommissionEntries(mc) : List.of();
     }
 
-    private static boolean isAllowedHudLocation(Minecraft mc) {
+    /** Shared with CommStatsHUD, which shows in the same areas. */
+    static boolean isAllowedHudLocation(Minecraft mc) {
         List<String> lines = getSidebarLines(mc);
         boolean sawAllowedArea = false;
 

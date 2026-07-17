@@ -145,7 +145,7 @@ class AutoForgeCategoryScreen(parentScreen: Screen) : BaseCategoryScreen(parentS
         SettingsUi.overlay(window)
         val panelWidth = 600f
         val panel = SettingsUi.panel(window, panelWidth, 420f,
-            "Auto Forge", "Craft picker when opening The Forge (near the forge room) — /autoforge debug to inspect menus")
+            "Auto Forge", "Craft picker whenever The Forge opens — /autoforge debug to inspect menus")
 
         var y = 110f
         y = SettingsUi.toggleRow(panel, panelWidth, y, "Enabled", "Show the craft picker when The Forge opens", accent,

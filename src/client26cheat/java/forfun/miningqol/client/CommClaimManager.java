@@ -101,10 +101,40 @@ public class CommClaimManager {
         // else: other mining commissions still in progress — fast-poll handles it.
     }
 
+    /**
+     * The tab list only carries the "Commissions:" widget on islands where
+     * commissions exist. Elsewhere (hub, garden, ...) the tab still has skill
+     * widget lines like "Combat 57: 95.6%" and XP bars ending in "(100%)" that
+     * the line classifier would miscount as completed commissions — so no
+     * widget, no auto-claim.
+     */
+    private static boolean tabHasCommissionsWidget(Minecraft client) {
+        for (String line : getTabListLines(client)) {
+            String clean = line.replaceAll("§.", "").trim().toLowerCase();
+            if (clean.startsWith("commissions")) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    /** Tab skill/XP widget lines that contain a % but are not commissions. */
+    private static boolean isSkillOrXpLine(String lower) {
+        if (lower.contains("xp")) return true;
+        if (lower.startsWith("|")) return true; // XP progress bar "||||||| (100%)"
+        for (String skill : new String[]{"farming", "mining", "combat", "foraging", "fishing",
+                "enchanting", "alchemy", "carpentry", "runecrafting", "taming", "social", "skill"}) {
+            if (lower.startsWith(skill + " ")) return true;
+        }
+        return false;
+    }
+
     private static void fireAutoClaim(String reason) {
         if (running || autoTriggerLatch) return;
-        autoTriggerLatch = true;
         Minecraft client = Minecraft.getInstance();
+        if (client.level == null || client.player == null) return;
+        if (!tabHasCommissionsWidget(client)) return; // e.g. completion message parsed mid-warp
+        autoTriggerLatch = true;
         if (client.player != null) {
             client.player.sendSystemMessage(Component.literal("\u00A76[CommClaim] \u00A7a" + reason + " — auto-claiming..."));
         }
@@ -237,6 +267,8 @@ public class CommClaimManager {
         boolean printDebug = debug && (++debugPrintCounter >= 4);
         if (printDebug) debugPrintCounter = 0;
 
+        boolean commWidget = tabHasCommissionsWidget(client);
+
         int miningTotal = 0;
         int miningDone = 0;
         int nonMiningDone = 0;
@@ -252,6 +284,7 @@ public class CommClaimManager {
             // This excludes location/HUD text like "Glacite Tunnels".
             boolean commissionLine = lower.contains("%") || lower.contains("done");
             if (!commissionLine) continue;
+            if (isSkillOrXpLine(lower)) continue; // skill widget lines also carry percentages
             commissionLines++;
 
             boolean slayer = lower.contains("slayer");
@@ -283,13 +316,14 @@ public class CommClaimManager {
             client.player.sendSystemMessage(Component.literal(
                 "\u00A76[CommClaim debug] \u00A7ftab=" + tab.size() + " comm=" + commissionLines
                     + " mining=" + miningDone + "/" + miningTotal + " otherDone=" + nonMiningDone
-                    + " latch=" + autoTriggerLatch));
+                    + " latch=" + autoTriggerLatch + " commWidget=" + commWidget));
             for (String d : dbg) {
                 client.player.sendSystemMessage(Component.literal(d));
             }
         }
 
         if (!autoTrigger) return;
+        if (!commWidget) return; // not on a commission island — leave the latch as-is
 
         boolean claimable;
         String reason;

@@ -46,6 +46,9 @@ class VexelMainScreen : VexelScreen("MiningQOL Settings") {
             },
             Category("Command Keybinds", "Bind commands to keys", 0xFFA05BFF.toInt()) {
                 Minecraft.getInstance().setScreen(CommandKeybindCategoryScreen(it))
+            },
+            Category("Keybinds", "Rebind the mod's hotkeys", 0xFF7799FF.toInt()) {
+                Minecraft.getInstance().setScreen(KeybindsCategoryScreen(it))
             }
         )
         return builtIn + ExtraCategories.entries.map { e ->
