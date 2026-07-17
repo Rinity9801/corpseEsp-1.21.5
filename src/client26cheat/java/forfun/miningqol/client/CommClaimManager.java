@@ -49,6 +49,10 @@ public class CommClaimManager {
         Minecraft client = Minecraft.getInstance();
         if (client.level == null || client.player == null) return;
 
+        // A fresh completion is new evidence — re-arm even while the tab still shows
+        // stale DONE lines from the previous claim (those keep the latch stuck).
+        autoTriggerLatch = false;
+
         // "Claim after each" mode: any completion fires immediately.
         if (!batchMining) {
             fireAutoClaim("commission ready");
@@ -60,6 +64,13 @@ public class CommClaimManager {
         int idx = clean.toLowerCase().indexOf("commission complete");
         if (idx <= 0) return; // no name in this message: leave it to the fast-poll
         String name = clean.substring(0, idx).toLowerCase();
+
+        // Mineshaft Explorer completes the moment you enter a shaft \u2014 always claim
+        // instantly, never hold it for the mining batch.
+        if (name.contains("mineshaft explorer")) {
+            fireAutoClaim("mineshaft explorer complete");
+            return;
+        }
 
         boolean slayer = name.contains("slayer");
         boolean isMining = false;
@@ -87,6 +98,7 @@ public class CommClaimManager {
             String l = line.replaceAll("§.", "").trim().toLowerCase();
             if (!(l.contains("%") || l.contains("done"))) continue;
             if (l.contains("slayer")) continue;
+            if (l.contains("mineshaft explorer")) continue; // instant-claim, never batched
             boolean m = false;
             for (String kw : MINING_COMMISSION_KEYWORDS) {
                 if (l.contains(kw)) { m = true; break; }
@@ -129,11 +141,22 @@ public class CommClaimManager {
         return false;
     }
 
+    // A claim that arrived while the tab was still loading (fresh server right after
+    // entering a shaft) — held here and fired the moment the Commissions widget shows.
+    private static int pendingFireTicks = 0;
+    private static String pendingFireReason = null;
+
     private static void fireAutoClaim(String reason) {
         if (running || autoTriggerLatch) return;
         Minecraft client = Minecraft.getInstance();
         if (client.level == null || client.player == null) return;
-        if (!tabHasCommissionsWidget(client)) return; // e.g. completion message parsed mid-warp
+        if (!tabHasCommissionsWidget(client)) {
+            pendingFireTicks = 200; // keep trying for ~10s while the tab populates
+            pendingFireReason = reason;
+            return;
+        }
+        pendingFireTicks = 0;
+        pendingFireReason = null;
         autoTriggerLatch = true;
         if (client.player != null) {
             client.player.sendSystemMessage(Component.literal("\u00A76[CommClaim] \u00A7a" + reason + " — auto-claiming..."));
@@ -203,6 +226,11 @@ public class CommClaimManager {
     private static int completedClickAttempts = 0;
     private static final int MAX_COMPLETED_CLICKS = 10;
 
+    // The Royal Pigeon has a 5s use cooldown — using it earlier silently does
+    // nothing and the wait-for-GUI step would time out. Small buffer on top.
+    private static final long PIGEON_COOLDOWN_MS = 5_100;
+    private static long lastPigeonUseAt = 0;
+
     // Wardrobe phase timings (kept separate from the configurable pigeon/claim delays).
     private static final int WARDROBE_READY_TIMEOUT = 40; // max ticks to wait for the armor slot to load
     private static final int WARDROBE_EQUIP_TICKS = 2;    // wait after clicking armor before closing
@@ -257,6 +285,18 @@ public class CommClaimManager {
         if (!autoTrigger && !debug) return; // still scan when debugging so we can inspect
         if (client.level == null || client.player == null) return;
 
+        // Retry a claim that was held for the tab to load (checked every tick).
+        if (pendingFireTicks > 0) {
+            pendingFireTicks--;
+            if (tabHasCommissionsWidget(client)) {
+                String reason = pendingFireReason != null ? pendingFireReason : "commission ready";
+                pendingFireTicks = 0;
+                pendingFireReason = null;
+                fireAutoClaim(reason);
+                return;
+            }
+        }
+
         // After a completion message, check every tick for ~3s; otherwise ~4x/second.
         int interval = fastPollTicks > 0 ? 1 : CHECK_INTERVAL_TICKS;
         if (fastPollTicks > 0) fastPollTicks--;
@@ -288,8 +328,11 @@ public class CommClaimManager {
             commissionLines++;
 
             boolean slayer = lower.contains("slayer");
+            // Mineshaft Explorer stays non-mining even where its tab name carries a
+            // mining keyword (e.g. "Glacite Mineshaft Explorer") — done = claim now.
+            boolean instantComm = lower.contains("mineshaft explorer");
             boolean isMining = false;
-            if (!slayer) {
+            if (!slayer && !instantComm) {
                 for (String kw : MINING_COMMISSION_KEYWORDS) {
                     if (lower.contains(kw)) {
                         isMining = true;
@@ -418,7 +461,9 @@ public class CommClaimManager {
                 break;
 
             case STATE_DELAY_BEFORE_USE_PIGEON:
-                if (tickCounter >= tickDelay) {
+                // Also hold here until the pigeon's 5s cooldown from the previous claim is over.
+                if (tickCounter >= tickDelay
+                        && System.currentTimeMillis() - lastPigeonUseAt >= PIGEON_COOLDOWN_MS) {
                     state = STATE_USE_PIGEON;
                     tickCounter = 0;
                 }
@@ -427,6 +472,7 @@ public class CommClaimManager {
             case STATE_USE_PIGEON:
                 // Right click the pigeon
                 client.options.keyUse.setDown(true);
+                lastPigeonUseAt = System.currentTimeMillis();
                 if (tickCounter >= 3) {
                     client.options.keyUse.setDown(false);
                     // Immediately switch to refined tool after right-clicking pigeon
