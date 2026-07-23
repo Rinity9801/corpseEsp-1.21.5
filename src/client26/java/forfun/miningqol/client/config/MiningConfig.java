@@ -57,6 +57,7 @@ public class MiningConfig {
     public int pickaxeCooldownTitleThreshold = 5;
 
     public boolean filetWarningEnabled = false;
+    public boolean autoSkipShoLoad = false;
 
     public boolean efficientMinerEnabled = false;
     public boolean useOldHeatmap = false;

@@ -10,6 +10,7 @@ import net.fabricmc.fabric.api.client.command.v2.ClientCommandRegistrationCallba
 import net.fabricmc.fabric.api.client.event.lifecycle.v1.ClientLifecycleEvents;
 import net.fabricmc.fabric.api.client.event.lifecycle.v1.ClientTickEvents;
 import net.fabricmc.fabric.api.client.message.v1.ClientReceiveMessageEvents;
+import net.fabricmc.fabric.api.client.message.v1.ClientSendMessageEvents;
 import net.fabricmc.fabric.api.client.keymapping.v1.KeyMappingHelper;
 import net.minecraft.client.KeyMapping;
 import net.minecraft.network.chat.Component;
@@ -89,6 +90,27 @@ public class MiningqolClient implements ClientModInitializer {
 
             if (CheatHooks.onGameMessage != null) {
                 CheatHooks.onGameMessage.accept(messageText);
+            }
+        });
+
+        // /sho load <route> -> follow up with /sho skipto 1 (ported from 1.21.11)
+        ClientSendMessageEvents.COMMAND.register(command -> {
+            if (config.autoSkipShoLoad && command.startsWith("sho load ")) {
+                net.minecraft.client.Minecraft client = net.minecraft.client.Minecraft.getInstance();
+                if (client.player != null) {
+                    new Thread(() -> {
+                        try {
+                            Thread.sleep(100); // let the load command process first
+                            client.execute(() -> {
+                                if (client.player != null) {
+                                    client.player.connection.sendCommand("sho skipto 1");
+                                }
+                            });
+                        } catch (InterruptedException e) {
+                            LOGGER.error("Failed to auto-skip sho load", e);
+                        }
+                    }, "MiningQOL-ShoSkip").start();
+                }
             }
         });
 
