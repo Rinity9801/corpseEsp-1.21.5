@@ -48,10 +48,13 @@ object SettingsUi {
                 shadowColor = 0xA0000000.toInt()
             }
 
-        panel.xPositionConstraint = Pos.ScreenPixels
-        panel.yPositionConstraint = Pos.ScreenPixels
-        panel.xConstraint = (panel.screenWidth - width) / 2f
-        panel.yConstraint = (panel.screenHeight - height) / 2f
+        // ScreenCenter recomputes on every layout pass, so the panel stays centered across
+        // window resizes / fullscreen toggles / monitor moves (ScreenPixels bakes the position
+        // at open time and can leave the panel entirely off-screen after a resize).
+        panel.xPositionConstraint = Pos.ScreenCenter
+        panel.yPositionConstraint = Pos.ScreenCenter
+        panel.xConstraint = 0f
+        panel.yConstraint = 0f
         panel.fadeIn(500, EasingType.EASE_OUT)
 
         Rectangle(
