@@ -306,7 +306,7 @@ public class EmptyStashManager {
     private static void sendMessage(String msg) {
         Minecraft client = Minecraft.getInstance();
         if (client.player != null) {
-            client.player.sendSystemMessage(Component.literal("\u00A76[MQO] " + msg));
+            MqoChat.log(Component.literal("\u00A76[MQO] " + msg));
         }
     }
 }

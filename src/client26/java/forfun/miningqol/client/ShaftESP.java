@@ -42,6 +42,7 @@ public class ShaftESP {
     private static boolean littlefootEnabled = true;
     private static boolean littlefootTracer = true; // draw a line from the crosshair to each littlefoot
     private static boolean mobsEnabled = false;
+    private static boolean externalEsp = false;
 
     private static final float[] LITTLEFOOT_COLOR = {0.0f, 1.0f, 0.4f};
     private static final float LITTLEFOOT_ALPHA = 0.2f;
@@ -174,6 +175,10 @@ public class ShaftESP {
     }
 
     public static void render(CameraRenderState cameraState, Matrix4fc viewMatrix) {
+        // External mode hands rendering to the overlay app — drawing here too would
+        // double up every box. Gated on a live overlay so closing the overlay (or the
+        // feed being off) falls back to in-game drawing instead of showing nothing.
+        if (externalEsp && EspHooks.isOverlayConnected()) return;
         Minecraft client = Minecraft.getInstance();
         if (client.level == null || trackedEntities.isEmpty()) return;
 
@@ -332,6 +337,42 @@ public class ShaftESP {
 
     public static boolean isMobsEnabled() {
         return mobsEnabled;
+    }
+
+    /**
+     * External mode: the overlay draws these instead of the in-game renderer, so exactly
+     * one of the two is ever responsible for a given mob.
+     */
+    public static void setExternalEsp(boolean value) {
+        externalEsp = value;
+        if (value) EspHooks.enableFeed();
+    }
+
+    public static boolean isExternalEsp() {
+        return externalEsp;
+    }
+
+    /** Snapshot for the external overlay feed. Client thread only. */
+    public static java.util.List<EspTarget> espTargets() {
+        Minecraft client = Minecraft.getInstance();
+        java.util.List<EspTarget> out = new java.util.ArrayList<>();
+        if (!externalEsp || client.level == null) return out;
+
+        for (Map.Entry<Integer, Boolean> entry : trackedEntities.entrySet()) {
+            Entity entity = client.level.getEntity(entry.getKey());
+            if (entity == null) continue;
+            boolean littlefoot = entry.getValue();
+            // Marker armour stands sit ~1.8 above the mob they label; drop to the mob itself.
+            double y = entity instanceof ArmorStand stand && stand.isMarker()
+                ? entity.getY() - 1.8
+                : entity.getY();
+            out.add(new EspTarget(
+                entity.getX(), y, entity.getZ(),
+                littlefoot ? "Littlefoot" : entity.getName().getString(),
+                littlefoot ? "littlefoot" : "mob",
+                EspTarget.packColor(littlefoot ? LITTLEFOOT_COLOR : mobColor)));
+        }
+        return out;
     }
 
     // Legacy compat - maps to littlefoot toggle

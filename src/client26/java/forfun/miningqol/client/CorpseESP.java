@@ -53,6 +53,7 @@ public class CorpseESP {
     private static boolean tungstenEnabled = true;
     private static boolean umberEnabled = true;
     private static boolean vanguardEnabled = true;
+    private static boolean externalEsp = false;
 
     private static class CorpseWaypoint {
         final BlockPos pos;
@@ -214,6 +215,10 @@ public class CorpseESP {
     }
 
     public static void render(CameraRenderState cameraState, Matrix4fc viewMatrix) {
+        // External mode hands rendering to the overlay app — drawing here too would
+        // double up every box. Gated on a live overlay so closing the overlay (or the
+        // feed being off) falls back to in-game drawing instead of showing nothing.
+        if (externalEsp && EspHooks.isOverlayConnected()) return;
         Minecraft client = Minecraft.getInstance();
         if (client.level == null || activeWaypoints.isEmpty()) return;
 
@@ -341,6 +346,36 @@ public class CorpseESP {
         return vanguardEnabled;
     }
 
+    /**
+     * External mode: the overlay draws these instead of the in-game renderer, so exactly
+     * one of the two is ever responsible for a given corpse.
+     */
+    public static void setExternalEsp(boolean value) {
+        externalEsp = value;
+        if (value) EspHooks.enableFeed();
+    }
+
+    public static boolean isExternalEsp() {
+        return externalEsp;
+    }
+
+    /** Snapshot for the external overlay feed. Client thread only. */
+    public static java.util.List<EspTarget> espTargets() {
+        if (!externalEsp) return java.util.List.of();
+        java.util.List<EspTarget> out = new java.util.ArrayList<>(activeWaypoints.size());
+        for (CorpseWaypoint waypoint : activeWaypoints) {
+            // Centre of the highlighted block, so the overlay's box lines up with the in-game one.
+            out.add(new EspTarget(
+                waypoint.pos.getX() + 0.5,
+                waypoint.pos.getY(),
+                waypoint.pos.getZ() + 0.5,
+                waypoint.name,
+                "corpse",
+                EspTarget.packColor(waypoint.color)));
+        }
+        return out;
+    }
+
     public static void getCorpseInfo() {
         Minecraft client = Minecraft.getInstance();
         if (client.player == null || client.level == null) {
@@ -349,7 +384,7 @@ public class CorpseESP {
 
         HitResult hitResult = client.hitResult;
         if (hitResult == null || hitResult.getType() != HitResult.Type.ENTITY) {
-            client.player.sendSystemMessage(Component.literal("\u00A7c[Corpse ESP] You must be looking at an entity!"));
+            MqoChat.reply(Component.literal("\u00A7c[Corpse ESP] You must be looking at an entity!"));
             return;
         }
 
@@ -357,7 +392,7 @@ public class CorpseESP {
         Entity entity = entityHit.getEntity();
 
         if (!(entity instanceof ArmorStand)) {
-            client.player.sendSystemMessage(Component.literal("\u00A7c[Corpse ESP] You must be looking at an armor stand!"));
+            MqoChat.reply(Component.literal("\u00A7c[Corpse ESP] You must be looking at an armor stand!"));
             return;
         }
 
@@ -384,31 +419,31 @@ public class CorpseESP {
         boolean isInvisible = armorStand.isInvisible();
         boolean hasBasePlate = armorStand.showBasePlate();
 
-        client.player.sendSystemMessage(Component.literal("\u00A7e========== ARMOR STAND INFO =========="));
-        client.player.sendSystemMessage(Component.literal("\u00A76Position: \u00A7f" + blockPos));
-        client.player.sendSystemMessage(Component.literal("\u00A76Has Custom Name: \u00A7f" + hasCustomName + " \u00A77(" + customName + ")"));
-        client.player.sendSystemMessage(Component.literal("\u00A76Invisible: \u00A7f" + isInvisible));
-        client.player.sendSystemMessage(Component.literal("\u00A76Has Base Plate: \u00A7f" + hasBasePlate));
-        client.player.sendSystemMessage(Component.literal("\u00A7e------- EQUIPMENT -------"));
-        client.player.sendSystemMessage(Component.literal("\u00A76Helmet: \u00A7f" + helmetName));
-        client.player.sendSystemMessage(Component.literal("\u00A76  Skyblock ID: \u00A7f" + (helmetId != null ? helmetId : "NONE")));
-        client.player.sendSystemMessage(Component.literal("\u00A76Chestplate: \u00A7f" + chestplateName));
-        client.player.sendSystemMessage(Component.literal("\u00A76  Skyblock ID: \u00A7f" + (chestplateId != null ? chestplateId : "NONE")));
-        client.player.sendSystemMessage(Component.literal("\u00A76Leggings: \u00A7f" + leggingsName));
-        client.player.sendSystemMessage(Component.literal("\u00A76  Skyblock ID: \u00A7f" + (leggingsId != null ? leggingsId : "NONE")));
-        client.player.sendSystemMessage(Component.literal("\u00A76Boots: \u00A7f" + bootsName));
-        client.player.sendSystemMessage(Component.literal("\u00A76  Skyblock ID: \u00A7f" + (bootsId != null ? bootsId : "NONE")));
-        client.player.sendSystemMessage(Component.literal("\u00A7e===================================="));
+        MqoChat.reply(Component.literal("\u00A7e========== ARMOR STAND INFO =========="));
+        MqoChat.reply(Component.literal("\u00A76Position: \u00A7f" + blockPos));
+        MqoChat.reply(Component.literal("\u00A76Has Custom Name: \u00A7f" + hasCustomName + " \u00A77(" + customName + ")"));
+        MqoChat.reply(Component.literal("\u00A76Invisible: \u00A7f" + isInvisible));
+        MqoChat.reply(Component.literal("\u00A76Has Base Plate: \u00A7f" + hasBasePlate));
+        MqoChat.reply(Component.literal("\u00A7e------- EQUIPMENT -------"));
+        MqoChat.reply(Component.literal("\u00A76Helmet: \u00A7f" + helmetName));
+        MqoChat.reply(Component.literal("\u00A76  Skyblock ID: \u00A7f" + (helmetId != null ? helmetId : "NONE")));
+        MqoChat.reply(Component.literal("\u00A76Chestplate: \u00A7f" + chestplateName));
+        MqoChat.reply(Component.literal("\u00A76  Skyblock ID: \u00A7f" + (chestplateId != null ? chestplateId : "NONE")));
+        MqoChat.reply(Component.literal("\u00A76Leggings: \u00A7f" + leggingsName));
+        MqoChat.reply(Component.literal("\u00A76  Skyblock ID: \u00A7f" + (leggingsId != null ? leggingsId : "NONE")));
+        MqoChat.reply(Component.literal("\u00A76Boots: \u00A7f" + bootsName));
+        MqoChat.reply(Component.literal("\u00A76  Skyblock ID: \u00A7f" + (bootsId != null ? bootsId : "NONE")));
+        MqoChat.reply(Component.literal("\u00A7e===================================="));
 
         if (!helmet.isEmpty()) {
             try {
                 CustomData customDataComponent = helmet.getComponents().get(DataComponents.CUSTOM_DATA);
                 if (customDataComponent != null) {
                     CompoundTag customData = customDataComponent.copyTag();
-                    client.player.sendSystemMessage(Component.literal("\u00A76Helmet NBT: \u00A7f" + customData.toString()));
+                    MqoChat.reply(Component.literal("\u00A76Helmet NBT: \u00A7f" + customData.toString()));
                 }
             } catch (Exception e) {
-                client.player.sendSystemMessage(Component.literal("\u00A7cError reading helmet NBT: " + e.getMessage()));
+                MqoChat.reply(Component.literal("\u00A7cError reading helmet NBT: " + e.getMessage()));
             }
         }
     }

@@ -9,7 +9,7 @@ class ShaftESPCategoryScreen(parentScreen: Screen) : BaseCategoryScreen(parentSc
     override fun afterInitialization() {
         SettingsUi.overlay(window)
         val panelWidth = 600f
-        val panelHeight = 110f + 3 * (SettingsUi.ROW_HEIGHT + SettingsUi.ROW_SPACING) +
+        val panelHeight = 110f + (3 + ExtraEspRows.shaft.size) * (SettingsUi.ROW_HEIGHT + SettingsUi.ROW_SPACING) +
             (SettingsUi.COLOR_ROW_HEIGHT + SettingsUi.ROW_SPACING) + 76f
         val panel = SettingsUi.panel(window, panelWidth, panelHeight, "Shaft ESP", "Highlights inside mineshafts")
 
@@ -25,6 +25,11 @@ class ShaftESPCategoryScreen(parentScreen: Screen) : BaseCategoryScreen(parentSc
         y = SettingsUi.toggleRow(panel, panelWidth, y, "Mob ESP", "Highlight mineshaft mobs", accent,
             ShaftESP.isMobsEnabled()) {
             ShaftESP.setMobsEnabled(it)
+        }
+        for (row in ExtraEspRows.shaft) {
+            y = SettingsUi.toggleRow(panel, panelWidth, y, row.title, row.description, accent, row.get()) {
+                row.set(it)
+            }
         }
         SettingsUi.colorRow(panel, panelWidth, y, "Mob ESP Color",
             { ShaftESP.getMobColor() },

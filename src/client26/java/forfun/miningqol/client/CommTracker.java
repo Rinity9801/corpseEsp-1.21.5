@@ -68,7 +68,7 @@ public class CommTracker {
         lastCompletionAt = 0;
         Minecraft client = Minecraft.getInstance();
         if (client.player != null) {
-            client.player.sendSystemMessage(Component.literal(
+            MqoChat.log(Component.literal(
                 "§6[MQO] §aCommission tracker reset"));
         }
     }

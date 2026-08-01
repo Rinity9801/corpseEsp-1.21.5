@@ -159,7 +159,7 @@ public class CommClaimManager {
         pendingFireReason = null;
         autoTriggerLatch = true;
         if (client.player != null) {
-            client.player.sendSystemMessage(Component.literal("\u00A76[CommClaim] \u00A7a" + reason + " — auto-claiming..."));
+            MqoChat.log(Component.literal("\u00A76[CommClaim] \u00A7a" + reason + " — auto-claiming..."));
         }
         start();
     }
@@ -253,7 +253,7 @@ public class CommClaimManager {
         pigeonSlot = -1;
 
         LOGGER.info("[CommClaim] Starting commission claim sequence (wardrobeSwap={})", wardrobeSwap);
-        client.player.sendSystemMessage(Component.literal("\u00A76[CommClaim] \u00A7aStarting commission claim..."));
+        MqoChat.log(Component.literal("\u00A76[CommClaim] \u00A7aStarting commission claim..."));
     }
 
     public static void stop() {
@@ -266,7 +266,7 @@ public class CommClaimManager {
             client.options.keyUse.setDown(false);
         }
         if (client != null && client.player != null) {
-            client.player.sendSystemMessage(Component.literal("\u00A76[CommClaim] \u00A7cStopped"));
+            MqoChat.log(Component.literal("\u00A76[CommClaim] \u00A7cStopped"));
         }
     }
 
@@ -356,12 +356,12 @@ public class CommClaimManager {
         }
 
         if (dbg != null) {
-            client.player.sendSystemMessage(Component.literal(
+            MqoChat.log(Component.literal(
                 "\u00A76[CommClaim debug] \u00A7ftab=" + tab.size() + " comm=" + commissionLines
                     + " mining=" + miningDone + "/" + miningTotal + " otherDone=" + nonMiningDone
                     + " latch=" + autoTriggerLatch + " commWidget=" + commWidget));
             for (String d : dbg) {
-                client.player.sendSystemMessage(Component.literal(d));
+                MqoChat.log(Component.literal(d));
             }
         }
 
@@ -455,7 +455,7 @@ public class CommClaimManager {
                     tickCounter = 0;
                 } else {
                     LOGGER.warn("[CommClaim] Could not find Royal Pigeon in hotbar");
-                    client.player.sendSystemMessage(Component.literal("\u00A76[CommClaim] \u00A7cCould not find Royal Pigeon in hotbar"));
+                    MqoChat.log(Component.literal("\u00A76[CommClaim] \u00A7cCould not find Royal Pigeon in hotbar"));
                     stop();
                 }
                 break;
@@ -586,7 +586,7 @@ public class CommClaimManager {
                 break;
 
             case STATE_DONE:
-                client.player.sendSystemMessage(Component.literal("\u00A76[CommClaim] \u00A7aCommission claim complete!"));
+                MqoChat.log(Component.literal("\u00A76[CommClaim] \u00A7aCommission claim complete!"));
                 LOGGER.info("[CommClaim] Sequence complete");
                 running = false;
                 state = STATE_IDLE;

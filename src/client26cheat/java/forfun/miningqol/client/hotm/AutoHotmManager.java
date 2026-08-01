@@ -1,5 +1,6 @@
 package forfun.miningqol.client.hotm;
 
+import forfun.miningqol.client.MqoChat;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.screens.inventory.ContainerScreen;
 import net.minecraft.network.chat.Component;
@@ -104,7 +105,7 @@ public class AutoHotmManager {
         currentPage = 1;
         lastChatMessage = "";
 
-        client.player.sendSystemMessage(Component.literal("\u00A76[MQO] \u00A7aStarting Auto-HOTM..."));
+        MqoChat.log(Component.literal("\u00A76[MQO] \u00A7aStarting Auto-HOTM..."));
         LOGGER.info("[AutoHotm] Starting");
     }
 
@@ -117,7 +118,7 @@ public class AutoHotmManager {
 
         Minecraft client = Minecraft.getInstance();
         if (client != null && client.player != null) {
-            client.player.sendSystemMessage(Component.literal("\u00A76[MQO] \u00A7cAuto-HOTM stopped"));
+            MqoChat.log(Component.literal("\u00A76[MQO] \u00A7cAuto-HOTM stopped"));
         }
     }
 
@@ -150,7 +151,7 @@ public class AutoHotmManager {
                     state = STATE_CHECK_RESET;
                     tickCounter = 0;
                 } else if (tickCounter >= 60) {
-                    client.player.sendSystemMessage(Component.literal("\u00A76[MQO] \u00A7cHOTM GUI didn't open"));
+                    MqoChat.log(Component.literal("\u00A76[MQO] \u00A7cHOTM GUI didn't open"));
                     stop();
                 }
                 break;
@@ -361,7 +362,7 @@ public class AutoHotmManager {
                 if (client.screen != null) {
                     client.screen.onClose();
                 }
-                client.player.sendSystemMessage(Component.literal("\u00A76[MQO] \u00A7aAuto-HOTM complete!"));
+                MqoChat.log(Component.literal("\u00A76[MQO] \u00A7aAuto-HOTM complete!"));
                 running = false;
                 state = STATE_IDLE;
                 break;
@@ -422,8 +423,8 @@ public class AutoHotmManager {
 
         Minecraft c = Minecraft.getInstance();
         if (c.player != null) {
-            c.player.sendSystemMessage(Component.literal("\u00A76[MQO] \u00A77Tree has " + treePage1 + " active on P1, " + treePage2 + " on P2"));
-            c.player.sendSystemMessage(Component.literal("\u00A76[MQO] \u00A77Actions: " + actions.size()
+            MqoChat.log(Component.literal("\u00A76[MQO] \u00A77Tree has " + treePage1 + " active on P1, " + treePage2 + " on P2"));
+            MqoChat.log(Component.literal("\u00A76[MQO] \u00A77Actions: " + actions.size()
                 + " enable (P1:" + page1Count + " P2:" + page2Count + "), "
                 + disableActions.size() + " disable"));
         }

@@ -1,5 +1,6 @@
 package forfun.miningqol.client.waypoints;
 
+import forfun.miningqol.client.MqoChat;
 import net.minecraft.client.Minecraft;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.registries.BuiltInRegistries;
@@ -742,7 +743,7 @@ public class OrderedWaypointManager {
     private static void sendMessage(String msg) {
         Minecraft client = Minecraft.getInstance();
         if (client.player != null) {
-            client.player.sendSystemMessage(Component.literal("\u00A76[MQO] " + msg));
+            MqoChat.reply(Component.literal("\u00A76[MQO] " + msg));
         }
     }
 }

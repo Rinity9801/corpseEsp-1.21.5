@@ -43,7 +43,7 @@ public class ShaftClickerManager {
         if (!showToggleMessage) return;
         Minecraft client = Minecraft.getInstance();
         if (client != null && client.player != null) {
-            client.player.sendSystemMessage(Component.literal(
+            MqoChat.log(Component.literal(
                 enabled ? "\u00A76[MQO] \u00A7aShaft Clicker enabled" : "\u00A76[MQO] \u00A7cShaft Clicker disabled"));
         }
     }

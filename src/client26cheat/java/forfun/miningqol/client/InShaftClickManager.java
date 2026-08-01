@@ -38,7 +38,7 @@ public class InShaftClickManager {
         if (showToggleMessage) {
             Minecraft mc = Minecraft.getInstance();
             if (mc != null && mc.player != null) {
-                mc.player.sendSystemMessage(Component.literal(
+                MqoChat.log(Component.literal(
                     enabled ? "\u00A76[MQO] \u00A7aIn Shaft Click enabled" : "\u00A76[MQO] \u00A7cIn Shaft Click disabled"));
             }
         }

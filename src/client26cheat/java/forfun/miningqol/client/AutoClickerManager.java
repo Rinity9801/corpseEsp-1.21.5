@@ -174,7 +174,7 @@ public class AutoClickerManager {
 
     private static void debug(Minecraft client, String msg) {
         if (DEBUG && client.player != null) {
-            client.player.sendSystemMessage(Component.literal("\u00A76[MQO] \u00A77" + msg));
+            MqoChat.log(Component.literal("\u00A76[MQO] \u00A77" + msg));
         }
     }
 

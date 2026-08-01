@@ -10,6 +10,12 @@ val mc = fullVersion.substringBefore("-")
 val is26_1_2 = mc == "26.1.2"
 val isCheatVariant = fullVersion.endsWith("-cheat")
 
+// The external ESP feed lives in local/ and must never reach a published jar. It's
+// compiled in only when that directory exists AND this isn't a release build, so
+// `-Prelease` produces a clean jar from a working tree that still has local/ in it.
+val isRelease = providers.gradleProperty("release").isPresent
+val includeLocalEsp = !isRelease && rootProject.file("local/esp/java").exists()
+
 version = property("mod_version").toString()
 group = property("maven_group").toString()
 
@@ -42,9 +48,14 @@ sourceSets {
         if (is26_1_2) {
             // client26 files are synced verbatim (no stonecutter preprocessing), so
             // cheat-only code lives in its own tree included only for -cheat.
+            // local/esp/ is the external ESP feed: present on dev machines, never copied
+            // into a release, so it compiles in here and is simply absent from published
+            // jars. Guarded on existence rather than a flag — nothing to remember, and a
+            // checkout without the directory still builds.
             java.setSrcDirs(buildList {
                 add(rootProject.file("src/client26/java").path)
                 if (isCheatVariant) add(rootProject.file("src/client26cheat/java").path)
+                if (includeLocalEsp) add(rootProject.file("local/esp/java").path)
             })
             resources.srcDir(rootProject.file("src/client26/resources"))
             // 26.1.2 Kotlin (Vexel GUI screens) lives in its own tree — the shared
@@ -54,6 +65,10 @@ sourceSets {
             kotlin.setSrcDirs(buildList {
                 add(rootProject.file("src/client26/kotlin").path)
                 add(rootProject.file("src/client26/java").path)
+                if (includeLocalEsp) {
+                    add(rootProject.file("local/esp/java").path)
+                    add(rootProject.file("local/esp/kotlin").path)
+                }
                 if (isCheatVariant) {
                     add(rootProject.file("src/client26cheat/kotlin").path)
                     add(rootProject.file("src/client26cheat/java").path)

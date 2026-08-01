@@ -43,3 +43,6 @@ replay_*.log
 node_modules/
 tools/pet-flip/scanner/payload.json
 log.txt
+
+# local-only external ESP feed — must never be published
+local/

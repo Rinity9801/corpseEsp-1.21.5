@@ -3,6 +3,9 @@ package forfun.miningqol.client.gui
 import forfun.miningqol.client.EfficientMinerOverlay
 import forfun.miningqol.client.FiletWarning
 import forfun.miningqol.client.MiningqolClient
+import forfun.miningqol.client.CritParticleDrop
+import forfun.miningqol.client.MqoChat
+import forfun.miningqol.client.SoundBlocker
 import net.minecraft.client.gui.screens.Screen
 
 class MiscCategoryScreen(parentScreen: Screen) : BaseCategoryScreen(parentScreen, "Misc Settings") {
@@ -11,10 +14,25 @@ class MiscCategoryScreen(parentScreen: Screen) : BaseCategoryScreen(parentScreen
     override fun afterInitialization() {
         SettingsUi.overlay(window)
         val panelWidth = 600f
-        val panelHeight = 468f + ExtraMiscRows.toggles.size * (SettingsUi.ROW_HEIGHT + SettingsUi.ROW_SPACING)
+        val panelHeight = 468f + (ExtraMiscRows.toggles.size + 3) * (SettingsUi.ROW_HEIGHT + SettingsUi.ROW_SPACING)
         val panel = SettingsUi.panel(window, panelWidth, panelHeight, "Misc", "Everything without its own category")
 
         var y = 110f
+        y = SettingsUi.toggleRow(panel, panelWidth, y, "Mod Chat Messages",
+            "Status chatter in chat (toggles, auto-claim progress). Command output is never hidden", accent,
+            MqoChat.isLogsEnabled()) {
+            MqoChat.setLogsEnabled(it)
+        }
+        y = SettingsUi.toggleRow(panel, panelWidth, y, "Crit Particle Drop",
+            "While sneaking, lower mining crit particles to the spot the server registered", accent,
+            CritParticleDrop.isEnabled()) {
+            CritParticleDrop.setEnabled(it)
+        }
+        y = SettingsUi.toggleRow(panel, panelWidth, y, "Remove Corpse Ding Sound",
+            "Mutes the note-block ding Hypixel plays for corpses (all pitches)", accent,
+            SoundBlocker.isCorpseDingBlocked()) {
+            SoundBlocker.setCorpseDingBlocked(it)
+        }
         y = SettingsUi.toggleRow(panel, panelWidth, y, "Auto-skip /sho load", "Automatically runs /sho skipto 1 after /sho load", accent,
             MiningqolClient.getConfig()?.autoSkipShoLoad ?: false) {
             MiningqolClient.getConfig()?.autoSkipShoLoad = it

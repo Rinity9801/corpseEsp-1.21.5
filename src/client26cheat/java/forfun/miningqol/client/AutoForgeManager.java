@@ -440,7 +440,7 @@ public class AutoForgeManager {
 
     private static void msg(Minecraft client, String s) {
         if (client.player != null) {
-            client.player.sendSystemMessage(Component.literal("§6[AutoForge] " + s));
+            MqoChat.log(Component.literal("§6[AutoForge] " + s));
         }
     }
 
@@ -464,12 +464,12 @@ public class AutoForgeManager {
             if (stack.isEmpty()) continue;
             var loreComp = stack.get(DataComponents.LORE);
             if (fullLore) {
-                client.player.sendSystemMessage(Component.literal(
+                MqoChat.log(Component.literal(
                     "§7#" + i + " §f" + stack.getHoverName().getString()
                         + (lacksMaterials(stack) ? " §c[MISSING MATERIALS]" : "")));
                 if (loreComp != null) {
                     for (var line : loreComp.lines()) {
-                        client.player.sendSystemMessage(Component.literal("§8    " + line.getString()));
+                        MqoChat.log(Component.literal("§8    " + line.getString()));
                     }
                 }
             } else {
@@ -477,7 +477,7 @@ public class AutoForgeManager {
                 if (loreComp != null && !loreComp.lines().isEmpty()) {
                     lore = " §8| " + loreComp.lines().get(0).getString();
                 }
-                client.player.sendSystemMessage(Component.literal(
+                MqoChat.log(Component.literal(
                     "§7#" + i + " §f" + stack.getHoverName().getString() + lore));
             }
         }

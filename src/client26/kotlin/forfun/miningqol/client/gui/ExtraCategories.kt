@@ -44,3 +44,25 @@ object ExtraMiscRows {
         toggles.add(Toggle(title, description, get, set))
     }
 }
+
+/**
+ * Extra rows for the Corpse/Shaft ESP screens, contributed at runtime — used by the
+ * local-only ESP feed module so the released screens never reference it.
+ */
+object ExtraEspRows {
+    @JvmField
+    val corpse = mutableListOf<ExtraMiscRows.Toggle>()
+
+    @JvmField
+    val shaft = mutableListOf<ExtraMiscRows.Toggle>()
+
+    @JvmStatic
+    fun addCorpse(title: String, description: String, get: () -> Boolean, set: (Boolean) -> Unit) {
+        corpse.add(ExtraMiscRows.Toggle(title, description, get, set))
+    }
+
+    @JvmStatic
+    fun addShaft(title: String, description: String, get: () -> Boolean, set: (Boolean) -> Unit) {
+        shaft.add(ExtraMiscRows.Toggle(title, description, get, set))
+    }
+}

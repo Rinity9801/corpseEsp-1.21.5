@@ -148,16 +148,16 @@ public class CommissionHUD {
         Minecraft mc = Minecraft.getInstance();
         if (mc.player == null) return;
         List<String> tabLines = getTabLines(mc);
-        mc.player.sendSystemMessage(Component.literal("\u00A76[MQO] \u00A7fCommission HUD debug \u00A77(tab lines: " + tabLines.size() + ")"));
+        MqoChat.reply(Component.literal("\u00A76[MQO] \u00A7fCommission HUD debug \u00A77(tab lines: " + tabLines.size() + ")"));
         for (String line : tabLines) {
             CommissionEntry parsed = parseCommission(line);
             if (parsed != null) {
-                mc.player.sendSystemMessage(Component.literal("\u00A78  '" + line + "' \u00A7a-> commission " + parsed.name() + " " + Math.round(parsed.progress() * 100) + "%"));
+                MqoChat.reply(Component.literal("\u00A78  '" + line + "' \u00A7a-> commission " + parsed.name() + " " + Math.round(parsed.progress() * 100) + "%"));
             }
         }
         lastDataRefreshAt = 0; // force a fresh evaluation
         refreshCachedState(mc);
-        mc.player.sendSystemMessage(Component.literal("\u00A76[MQO] \u00A7fenabled=" + enabled
+        MqoChat.reply(Component.literal("\u00A76[MQO] \u00A7fenabled=" + enabled
             + " \u00A7fallowedLocation=" + cachedAllowedLocation
             + " \u00A7fcommissions=" + cachedEntries.size()
             + " \u00A7fpos=" + hudX + "," + hudY));

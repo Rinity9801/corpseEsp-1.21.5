@@ -53,6 +53,16 @@ public class MiningqolClient implements ClientModInitializer {
         } catch (Exception e) {
             LOGGER.error("[MiningQOL] Failed to init cheat features", e);
         }
+
+        // Local-only external ESP feed (local/esp/). Absent from every released build.
+        try {
+            Class.forName("forfun.miningqol.client.EspBootstrap").getMethod("init").invoke(null);
+            LOGGER.info("[MiningQOL] External ESP feed enabled (local build)");
+        } catch (ClassNotFoundException e) {
+            // released build — no external ESP
+        } catch (Exception e) {
+            LOGGER.error("[MiningQOL] Failed to init external ESP feed", e);
+        }
         config.applyToGame();
         CommissionHUD.register();
         PickaxeCooldownHUD.register();
@@ -146,6 +156,87 @@ public class MiningqolClient implements ClientModInitializer {
                     CommissionHUD.debugDump();
                     return 1;
                 }));
+            // Sound scanner: /soundscan to capture what's playing, /soundblock to silence it.
+            dispatcher.register(ClientCommands.literal("soundscan")
+                .executes(context -> {
+                    SoundBlocker.toggleScanning();
+                    return 1;
+                })
+                .then(ClientCommands.literal("on")
+                    .executes(context -> {
+                        SoundBlocker.setScanning(true);
+                        return 1;
+                    }))
+                .then(ClientCommands.literal("off")
+                    .executes(context -> {
+                        SoundBlocker.setScanning(false);
+                        return 1;
+                    }))
+                .then(ClientCommands.literal("list")
+                    .executes(context -> {
+                        SoundBlocker.listCaptured();
+                        return 1;
+                    }))
+                .then(ClientCommands.literal("clear")
+                    .executes(context -> {
+                        SoundBlocker.clearCaptured();
+                        return 1;
+                    }))
+                .then(ClientCommands.literal("verbose")
+                    .executes(context -> {
+                        SoundBlocker.setVerbose(!SoundBlocker.isVerbose());
+                        return 1;
+                    }))
+                .then(ClientCommands.literal("status")
+                    .executes(context -> {
+                        SoundBlocker.status();
+                        return 1;
+                    }))
+                .then(ClientCommands.literal("block")
+                    .then(ClientCommands.argument("number", IntegerArgumentType.integer(1))
+                        .executes(context -> {
+                            SoundBlocker.blockCaptured(IntegerArgumentType.getInteger(context, "number"), false);
+                            return 1;
+                        })
+                        .then(ClientCommands.literal("all")
+                            .executes(context -> {
+                                SoundBlocker.blockCaptured(IntegerArgumentType.getInteger(context, "number"), true);
+                                return 1;
+                            })))));
+            dispatcher.register(ClientCommands.literal("soundblock")
+                .executes(context -> {
+                    SoundBlocker.listRules();
+                    return 1;
+                })
+                .then(ClientCommands.literal("add")
+                    .then(ClientCommands.argument("rule", StringArgumentType.greedyString())
+                        .executes(context -> {
+                            SoundBlocker.addRule(StringArgumentType.getString(context, "rule"));
+                            return 1;
+                        })))
+                .then(ClientCommands.literal("remove")
+                    .then(ClientCommands.argument("number", IntegerArgumentType.integer(1))
+                        .executes(context -> {
+                            SoundBlocker.removeRule(IntegerArgumentType.getInteger(context, "number"));
+                            return 1;
+                        })))
+                .then(ClientCommands.literal("list")
+                    .executes(context -> {
+                        SoundBlocker.listRules();
+                        return 1;
+                    }))
+                .then(ClientCommands.literal("clear")
+                    .executes(context -> {
+                        SoundBlocker.clearRules();
+                        return 1;
+                    }))
+                .then(ClientCommands.literal("toggle")
+                    .executes(context -> {
+                        SoundBlocker.setBlockingEnabled(!SoundBlocker.isBlockingEnabled());
+                        SoundBlocker.listRules();
+                        saveConfig();
+                        return 1;
+                    })));
             dispatcher.register(ClientCommands.literal("getcorpse")
                 .executes(context -> {
                     CorpseESP.getCorpseInfo();
@@ -155,7 +246,7 @@ public class MiningqolClient implements ClientModInitializer {
                 .executes(context -> {
                     net.minecraft.client.Minecraft client = net.minecraft.client.Minecraft.getInstance();
                     if (client.player != null) {
-                        client.player.sendSystemMessage(Component.literal(
+                        MqoChat.reply(Component.literal(
                             "\u00A76[MQO] \u00A7fCurrent Cold: \u00A7b" + ColdTracker.getCold()));
                     }
                     return 1;
@@ -287,5 +378,12 @@ public class MiningqolClient implements ClientModInitializer {
 
     public static MiningConfig getConfig() {
         return config;
+    }
+
+    /** Snapshots current in-game state and writes it out — for settings changed mid-session. */
+    public static void saveConfig() {
+        if (config == null) return;
+        config.loadFromGame();
+        config.save();
     }
 }

@@ -8,11 +8,14 @@ import forfun.miningqol.client.CommTracker;
 import forfun.miningqol.client.CommandKeybindManager;
 import forfun.miningqol.client.CommissionHUD;
 import forfun.miningqol.client.CorpseESP;
+import forfun.miningqol.client.CritParticleDrop;
 import forfun.miningqol.client.EfficientMinerOverlay;
 import forfun.miningqol.client.FiletWarning;
 import forfun.miningqol.client.LobbyFinder;
 import forfun.miningqol.client.PickaxeCooldownHUD;
+import forfun.miningqol.client.MqoChat;
 import forfun.miningqol.client.ShaftESP;
+import forfun.miningqol.client.SoundBlocker;
 import forfun.miningqol.client.waypoints.OrderedWaypointManager;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -64,6 +67,12 @@ public class MiningConfig {
 
     public java.util.List<String> lobbyFinderBlocks = new java.util.ArrayList<>();
     public java.util.Map<String, String> commandKeybinds = new java.util.HashMap<>();
+
+    public boolean chatLogsEnabled = true;
+    public boolean critParticleDrop = false;
+
+    public boolean soundBlockingEnabled = true;
+    public java.util.List<String> soundBlockRules = new java.util.ArrayList<>();
 
     // Cheat-only fields (plain data; applied via CheatHooks on -cheat builds,
     // harmlessly ignored on legit)
@@ -166,6 +175,7 @@ public class MiningConfig {
         if (orderedWaypointLobbyCheckBlock == null) orderedWaypointLobbyCheckBlock = "minecraft:coal_ore";
         if (lobbyFinderBlocks == null) lobbyFinderBlocks = new java.util.ArrayList<>();
         if (commandKeybinds == null) commandKeybinds = new java.util.HashMap<>();
+        if (soundBlockRules == null) soundBlockRules = new java.util.ArrayList<>();
     }
 
     public void save() {
@@ -234,6 +244,12 @@ public class MiningConfig {
             } catch (NumberFormatException ignored) {}
         }
         LobbyFinder.setTrackedBlocks(blocks);
+
+        MqoChat.setLogsEnabled(chatLogsEnabled);
+        CritParticleDrop.setEnabled(critParticleDrop);
+
+        SoundBlocker.setBlockingEnabled(soundBlockingEnabled);
+        SoundBlocker.setRules(soundBlockRules);
 
         if (forfun.miningqol.client.CheatHooks.applyConfig != null) {
             forfun.miningqol.client.CheatHooks.applyConfig.run();
@@ -307,6 +323,12 @@ public class MiningConfig {
         for (net.minecraft.core.BlockPos pos : LobbyFinder.getTrackedBlocks()) {
             lobbyFinderBlocks.add(pos.getX() + "," + pos.getY() + "," + pos.getZ());
         }
+
+        chatLogsEnabled = MqoChat.isLogsEnabled();
+        critParticleDrop = CritParticleDrop.isEnabled();
+
+        soundBlockingEnabled = SoundBlocker.isBlockingEnabled();
+        soundBlockRules = SoundBlocker.getRules();
 
         if (forfun.miningqol.client.CheatHooks.storeConfig != null) {
             forfun.miningqol.client.CheatHooks.storeConfig.run();

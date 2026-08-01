@@ -53,7 +53,7 @@ public class AbilitySwitchManager {
         tickCounter = 0;
 
         LOGGER.info("[AbilitySwitch] Starting ability switch");
-        client.player.sendSystemMessage(Component.literal("§6[MQO] §aSwitching mining ability..."));
+        MqoChat.log(Component.literal("§6[MQO] §aSwitching mining ability..."));
     }
 
     public static void stop() {
@@ -90,7 +90,7 @@ public class AbilitySwitchManager {
                     tickCounter = 0;
                 } else if (tickCounter >= 60) {
                     LOGGER.warn("[AbilitySwitch] HOTM GUI didn't open in time");
-                    client.player.sendSystemMessage(Component.literal("§6[MQO] §cHOTM GUI didn't open in time"));
+                    MqoChat.log(Component.literal("§6[MQO] §cHOTM GUI didn't open in time"));
                     stop();
                 }
                 break;
@@ -151,7 +151,7 @@ public class AbilitySwitchManager {
                 break;
 
             case STATE_DONE:
-                client.player.sendSystemMessage(Component.literal("§6[MQO] §aMining ability switched!"));
+                MqoChat.log(Component.literal("§6[MQO] §aMining ability switched!"));
                 LOGGER.info("[AbilitySwitch] Complete");
                 running = false;
                 state = STATE_IDLE;

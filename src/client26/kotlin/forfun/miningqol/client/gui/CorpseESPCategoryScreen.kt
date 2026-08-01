@@ -9,7 +9,8 @@ class CorpseESPCategoryScreen(parentScreen: Screen) : BaseCategoryScreen(parentS
     override fun afterInitialization() {
         SettingsUi.overlay(window)
         val panelWidth = 600f
-        val panel = SettingsUi.panel(window, panelWidth, 480f, "Corpse ESP", "Frozen corpse waypoints in the Glacite Mineshafts")
+        val panel = SettingsUi.panel(window, panelWidth, 480f + ExtraEspRows.corpse.size * (SettingsUi.ROW_HEIGHT + SettingsUi.ROW_SPACING),
+            "Corpse ESP", "Frozen corpse waypoints in the Glacite Mineshafts")
 
         var y = 110f
         y = SettingsUi.toggleRow(panel, panelWidth, y, "Lapis Corpses", "Track Lapis armor corpses", accent,
@@ -24,9 +25,14 @@ class CorpseESPCategoryScreen(parentScreen: Screen) : BaseCategoryScreen(parentS
             CorpseESP.isUmberEnabled()) {
             if (CorpseESP.isUmberEnabled() != it) CorpseESP.toggleUmber()
         }
-        SettingsUi.toggleRow(panel, panelWidth, y, "Vanguard Corpses", "Track Vanguard armor corpses", accent,
+        y = SettingsUi.toggleRow(panel, panelWidth, y, "Vanguard Corpses", "Track Vanguard armor corpses", accent,
             CorpseESP.isVanguardEnabled()) {
             if (CorpseESP.isVanguardEnabled() != it) CorpseESP.toggleVanguard()
+        }
+        for (row in ExtraEspRows.corpse) {
+            y = SettingsUi.toggleRow(panel, panelWidth, y, row.title, row.description, accent, row.get()) {
+                row.set(it)
+            }
         }
 
         SettingsUi.backButton(panel) { saveAndClose() }

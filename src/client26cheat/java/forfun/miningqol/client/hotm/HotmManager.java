@@ -1,5 +1,6 @@
 package forfun.miningqol.client.hotm;
 
+import forfun.miningqol.client.MqoChat;
 import net.minecraft.client.Minecraft;
 import net.minecraft.network.chat.Component;
 
@@ -43,7 +44,7 @@ public class HotmManager {
     private static void sendMessage(String message) {
         Minecraft client = Minecraft.getInstance();
         if (client.player != null) {
-            client.player.sendSystemMessage(Component.literal("\u00A76[MQO] " + message));
+            MqoChat.reply(Component.literal("\u00A76[MQO] " + message));
         }
     }
 }

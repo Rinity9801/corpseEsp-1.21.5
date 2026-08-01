@@ -32,7 +32,7 @@ public class LobbyFinder {
 
         HitResult hit = client.hitResult;
         if (hit == null || hit.getType() != HitResult.Type.BLOCK) {
-            client.player.sendSystemMessage(Component.literal("§cNo block in crosshair!"));
+            MqoChat.reply(Component.literal("§cNo block in crosshair!"));
             return;
         }
 
@@ -40,10 +40,10 @@ public class LobbyFinder {
         BlockPos pos = blockHit.getBlockPos();
 
         if (trackedBlocks.add(pos)) {
-            client.player.sendSystemMessage(Component.literal("§aAdded block at " + pos.getX() + ", " + pos.getY() + ", " + pos.getZ()));
+            MqoChat.reply(Component.literal("§aAdded block at " + pos.getX() + ", " + pos.getY() + ", " + pos.getZ()));
             LOGGER.info("[LobbyFinder] Added block at {}", pos);
         } else {
-            client.player.sendSystemMessage(Component.literal("§eBlock already tracked!"));
+            MqoChat.reply(Component.literal("§eBlock already tracked!"));
         }
     }
 
@@ -55,7 +55,7 @@ public class LobbyFinder {
 
         HitResult hit = client.hitResult;
         if (hit == null || hit.getType() != HitResult.Type.BLOCK) {
-            client.player.sendSystemMessage(Component.literal("§cNo block in crosshair!"));
+            MqoChat.reply(Component.literal("§cNo block in crosshair!"));
             return;
         }
 
@@ -63,10 +63,10 @@ public class LobbyFinder {
         BlockPos pos = blockHit.getBlockPos();
 
         if (trackedBlocks.remove(pos)) {
-            client.player.sendSystemMessage(Component.literal("§aRemoved block at " + pos.getX() + ", " + pos.getY() + ", " + pos.getZ()));
+            MqoChat.reply(Component.literal("§aRemoved block at " + pos.getX() + ", " + pos.getY() + ", " + pos.getZ()));
             LOGGER.info("[LobbyFinder] Removed block at {}", pos);
         } else {
-            client.player.sendSystemMessage(Component.literal("§eBlock not tracked!"));
+            MqoChat.reply(Component.literal("§eBlock not tracked!"));
         }
     }
 
@@ -74,7 +74,7 @@ public class LobbyFinder {
         trackedBlocks.clear();
         Minecraft client = Minecraft.getInstance();
         if (client.player != null) {
-            client.player.sendSystemMessage(Component.literal("§aCleared all tracked blocks!"));
+            MqoChat.reply(Component.literal("§aCleared all tracked blocks!"));
         }
         LOGGER.info("[LobbyFinder] Cleared all tracked blocks");
     }
@@ -84,13 +84,13 @@ public class LobbyFinder {
         if (client.player == null) return;
 
         if (trackedBlocks.isEmpty()) {
-            client.player.sendSystemMessage(Component.literal("§eNo blocks tracked!"));
+            MqoChat.reply(Component.literal("§eNo blocks tracked!"));
             return;
         }
 
-        client.player.sendSystemMessage(Component.literal("§6Tracked blocks:"));
+        MqoChat.reply(Component.literal("§6Tracked blocks:"));
         for (BlockPos pos : trackedBlocks) {
-            client.player.sendSystemMessage(Component.literal("§7- " + pos.getX() + ", " + pos.getY() + ", " + pos.getZ()));
+            MqoChat.reply(Component.literal("§7- " + pos.getX() + ", " + pos.getY() + ", " + pos.getZ()));
         }
     }
 
