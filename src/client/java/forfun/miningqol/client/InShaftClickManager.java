@@ -1,8 +1,6 @@
 package forfun.miningqol.client;
 
 import net.minecraft.client.MinecraftClient;
-import net.minecraft.item.FishingRodItem;
-import net.minecraft.item.ItemStack;
 
 public class InShaftClickManager {
     private static boolean enabled = false;
@@ -12,7 +10,6 @@ public class InShaftClickManager {
     private static int sequenceTickCounter = 0;
     private static boolean firstEnable = true;
     private static int miningSlot = 0;
-    private static boolean enableRodSwap = true;
     private static int secondDrillSlot = 3;
     private static boolean thirdDrillEnabled = false; // if on, swap to the third drill before the right-click
     private static int thirdDrillSlot = 4;
@@ -99,8 +96,6 @@ public class InShaftClickManager {
     public static void setMiningSlot(int slot) { miningSlot = slot; }
     public static int getMiningSlot() { return miningSlot; }
 
-    public static void setEnableRodSwap(boolean value) { enableRodSwap = value; }
-    public static boolean isRodSwapEnabled() { return enableRodSwap; }
 
     public static void setSecondDrillSlot(int slot) { secondDrillSlot = slot; }
     public static int getSecondDrillSlot() { return secondDrillSlot; }
@@ -129,17 +124,6 @@ public class InShaftClickManager {
      */
     private static int getActiveMiningSlot() {
         return isColdMode() ? secondDrillSlot : miningSlot;
-    }
-
-    private static int findFishingRodSlot(MinecraftClient client) {
-        if (client.player == null) return -1;
-        for (int i = 0; i < 9; i++) {
-            ItemStack stack = client.player.getInventory().getStack(i);
-            if (stack.getItem() instanceof FishingRodItem) {
-                return i;
-            }
-        }
-        return -1;
     }
 
     private static int getSelectedSlot(MinecraftClient client) {
@@ -235,35 +219,9 @@ public class InShaftClickManager {
         int activeSlot = getActiveMiningSlot();
 
         switch (sequenceStep) {
-            case 0: // Switch to rod or skip
-                if (enableRodSwap) {
-                    int rodSlot = findFishingRodSlot(client);
-                    if (rodSlot != -1) {
-                        setSelectedSlot(client, rodSlot);
-                        sequenceStep = 1;
-                    } else {
-                        sequenceStep = 3;
-                    }
-                } else {
-                    sequenceStep = 3;
-                }
+            case 0: // Start — steps 1-2 were the rod swap, which no longer does anything
+                sequenceStep = 3;
                 sequenceTickCounter = 0;
-                break;
-
-            case 1: // Wait before rod right click
-                if (sequenceTickCounter >= 2) {
-                    sequenceStep = 2;
-                    sequenceTickCounter = 0;
-                }
-                break;
-
-            case 2: // Right click rod
-                client.options.useKey.setPressed(true);
-                if (sequenceTickCounter >= 2) {
-                    client.options.useKey.setPressed(false);
-                    sequenceStep = 3;
-                    sequenceTickCounter = 0;
-                }
                 break;
 
             case 3: // Switch to active mining slot

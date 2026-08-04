@@ -77,14 +77,12 @@ public class MiningConfig {
     // Cheat-only fields (plain data; applied via CheatHooks on -cheat builds,
     // harmlessly ignored on legit)
     public int autoClickerMiningSlot = 0;
-    public boolean autoClickerRodSwap = true;
     public boolean autoClickerSecondDrill = false;
     public int autoClickerSecondDrillSlot = 3;
     public boolean autoClickerHudEnabled = true;
     public int autoClickerMainDrillDelay = 3;
     public int autoClickerSecondDrillDelay = 3;
     public int coldClickerMiningSlot = 0;
-    public boolean coldClickerRodSwap = true;
     public int coldClickerSecondDrillSlot = 3;
     public boolean coldClickerThirdDrillEnabled = false;
     public int coldClickerThirdDrillSlot = 4;

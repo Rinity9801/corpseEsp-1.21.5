@@ -52,16 +52,12 @@ class AutoClickerCategoryScreen(parentScreen: Screen) : BaseCategoryScreen(paren
     override fun afterInitialization() {
         SettingsUi.overlay(window)
         val panelWidth = 600f
-        val panel = SettingsUi.panel(window, panelWidth, 660f, "CoalClick", "Toggle with its keybind (Controls menu) — always starts disabled")
+        val panel = SettingsUi.panel(window, panelWidth, 592f, "CoalClick", "Toggle with its keybind (Controls menu) — always starts disabled")
 
         var y = 110f
         y = SettingsUi.sliderRow(panel, panelWidth, y, "Mining Slot", 0f, 8f, 1f,
             AutoClickerManager.getMiningSlot().toFloat(), accent, { "slot ${it.toInt() + 1}" }) {
             AutoClickerManager.setMiningSlot(it.toInt())
-        }
-        y = SettingsUi.toggleRow(panel, panelWidth, y, "Rod Swap", "Swap to fishing rod between cycles", accent,
-            AutoClickerManager.isRodSwapEnabled()) {
-            AutoClickerManager.setEnableRodSwap(it)
         }
         y = SettingsUi.toggleRow(panel, panelWidth, y, "Second Drill", "Rotate a second drill into the cycle", accent,
             AutoClickerManager.isSecondDrillEnabled()) {
@@ -94,16 +90,12 @@ class InShaftClickCategoryScreen(parentScreen: Screen) : BaseCategoryScreen(pare
     override fun afterInitialization() {
         SettingsUi.overlay(window)
         val panelWidth = 600f
-        val panel = SettingsUi.panel(window, panelWidth, 796f, "In Shaft Click", "Toggle with its keybind (Controls menu) — always starts disabled")
+        val panel = SettingsUi.panel(window, panelWidth, 728f, "In Shaft Click", "Toggle with its keybind (Controls menu) — always starts disabled")
 
         var y = 110f
         y = SettingsUi.sliderRow(panel, panelWidth, y, "Mining Slot", 0f, 8f, 1f,
             InShaftClickManager.getMiningSlot().toFloat(), accent, { "slot ${it.toInt() + 1}" }) {
             InShaftClickManager.setMiningSlot(it.toInt())
-        }
-        y = SettingsUi.toggleRow(panel, panelWidth, y, "Rod Swap", "Swap to fishing rod between cycles", accent,
-            InShaftClickManager.isRodSwapEnabled()) {
-            InShaftClickManager.setEnableRodSwap(it)
         }
         y = SettingsUi.sliderRow(panel, panelWidth, y, "Second Drill Slot", 0f, 8f, 1f,
             InShaftClickManager.getSecondDrillSlot().toFloat(), accent, { "slot ${it.toInt() + 1}" }) {

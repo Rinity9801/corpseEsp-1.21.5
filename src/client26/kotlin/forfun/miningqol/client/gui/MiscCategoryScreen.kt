@@ -14,7 +14,7 @@ class MiscCategoryScreen(parentScreen: Screen) : BaseCategoryScreen(parentScreen
     override fun afterInitialization() {
         SettingsUi.overlay(window)
         val panelWidth = 600f
-        val panelHeight = 468f + (ExtraMiscRows.toggles.size + 3) * (SettingsUi.ROW_HEIGHT + SettingsUi.ROW_SPACING)
+        val panelHeight = 468f + (ExtraMiscRows.toggles.size + 4) * (SettingsUi.ROW_HEIGHT + SettingsUi.ROW_SPACING)
         val panel = SettingsUi.panel(window, panelWidth, panelHeight, "Misc", "Everything without its own category")
 
         var y = 110f

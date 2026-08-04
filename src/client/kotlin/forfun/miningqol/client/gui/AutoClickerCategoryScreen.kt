@@ -87,13 +87,11 @@ class AutoClickerCategoryScreen(private val parentScreen: Screen) : VexelScreen(
         // Toggles
         val toggles = listOf(
             Triple("Show HUD", 0xFFFF4444.toInt()) { AutoClickerHUD.isEnabled() },
-            Triple("Enable Rod Swap", 0xFFFF4444.toInt()) { AutoClickerManager.isRodSwapEnabled() },
             Triple("Enable Second Drill", 0xFFFF4444.toInt()) { AutoClickerManager.isSecondDrillEnabled() }
         )
 
         val toggleActions = listOf<() -> Unit>(
             { AutoClickerHUD.setEnabled(!AutoClickerHUD.isEnabled()) },
-            { AutoClickerManager.setEnableRodSwap(!AutoClickerManager.isRodSwapEnabled()) },
             { AutoClickerManager.setEnableSecondDrill(!AutoClickerManager.isSecondDrillEnabled()) }
         )
 

@@ -80,13 +80,11 @@ class InShaftClickCategoryScreen(private val parentScreen: Screen) : VexelScreen
 
         // Toggle
         val toggles = listOf(
-            Triple("Enable Rod Swap", 0xFF44AAFF.toInt()) { InShaftClickManager.isRodSwapEnabled() },
             Triple("Third Drill", 0xFF44AAFF.toInt()) { InShaftClickManager.isThirdDrillEnabled() },
             Triple("Toggle Message", 0xFF44AAFF.toInt()) { InShaftClickManager.isShowToggleMessage() }
         )
 
         val toggleActions = listOf<() -> Unit>(
-            { InShaftClickManager.setEnableRodSwap(!InShaftClickManager.isRodSwapEnabled()) },
             { InShaftClickManager.setThirdDrillEnabled(!InShaftClickManager.isThirdDrillEnabled()) },
             { InShaftClickManager.setShowToggleMessage(!InShaftClickManager.isShowToggleMessage()) }
         )

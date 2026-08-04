@@ -194,7 +194,6 @@ public final class CheatBootstrap {
             if (config == null) return;
             // Never restore enabled state for clickers - always start disabled for safety
             AutoClickerManager.setMiningSlot(config.autoClickerMiningSlot);
-            AutoClickerManager.setEnableRodSwap(config.autoClickerRodSwap);
             AutoClickerManager.setEnableSecondDrill(config.autoClickerSecondDrill);
             AutoClickerManager.setSecondDrillSlot(config.autoClickerSecondDrillSlot);
             AutoClickerManager.setMainDrillDelay(config.autoClickerMainDrillDelay);
@@ -202,7 +201,6 @@ public final class CheatBootstrap {
             AutoClickerHUD.setEnabled(config.autoClickerHudEnabled);
 
             InShaftClickManager.setMiningSlot(config.coldClickerMiningSlot);
-            InShaftClickManager.setEnableRodSwap(config.coldClickerRodSwap);
             InShaftClickManager.setSecondDrillSlot(config.coldClickerSecondDrillSlot);
             InShaftClickManager.setThirdDrillEnabled(config.coldClickerThirdDrillEnabled);
             InShaftClickManager.setThirdDrillSlot(config.coldClickerThirdDrillSlot);
@@ -240,7 +238,6 @@ public final class CheatBootstrap {
             MiningConfig config = MiningqolClient.getConfig();
             if (config == null) return;
             config.autoClickerMiningSlot = AutoClickerManager.getMiningSlot();
-            config.autoClickerRodSwap = AutoClickerManager.isRodSwapEnabled();
             config.autoClickerSecondDrill = AutoClickerManager.isSecondDrillEnabled();
             config.autoClickerSecondDrillSlot = AutoClickerManager.getSecondDrillSlot();
             config.autoClickerMainDrillDelay = AutoClickerManager.getMainDrillDelay();
@@ -248,7 +245,6 @@ public final class CheatBootstrap {
             config.autoClickerHudEnabled = AutoClickerHUD.isEnabled();
 
             config.coldClickerMiningSlot = InShaftClickManager.getMiningSlot();
-            config.coldClickerRodSwap = InShaftClickManager.isRodSwapEnabled();
             config.coldClickerSecondDrillSlot = InShaftClickManager.getSecondDrillSlot();
             config.coldClickerThirdDrillEnabled = InShaftClickManager.isThirdDrillEnabled();
             config.coldClickerThirdDrillSlot = InShaftClickManager.getThirdDrillSlot();

@@ -1,8 +1,6 @@
 package forfun.miningqol.client;
 
 import net.minecraft.client.MinecraftClient;
-import net.minecraft.item.FishingRodItem;
-import net.minecraft.item.ItemStack;
 
 public class AutoClickerManager {
     private static boolean enabled = false;
@@ -11,7 +9,6 @@ public class AutoClickerManager {
     private static int sequenceTickCounter = 0;
     private static boolean firstEnable = true;
     private static int expectedSlot = 0;
-    private static boolean enableRodSwap = true;
     private static boolean enableSecondDrill = false;
     private static int secondDrillSlot = 3;
     private static int mainDrillDelay = 3;
@@ -103,14 +100,6 @@ public class AutoClickerManager {
         return expectedSlot;
     }
 
-    public static void setEnableRodSwap(boolean value) {
-        enableRodSwap = value;
-    }
-
-    public static boolean isRodSwapEnabled() {
-        return enableRodSwap;
-    }
-
     public static void setEnableSecondDrill(boolean value) {
         enableSecondDrill = value;
     }
@@ -141,18 +130,6 @@ public class AutoClickerManager {
 
     public static int getSecondDrillDelay() {
         return secondDrillDelay;
-    }
-
-    private static int findFishingRodSlot(MinecraftClient client) {
-        if (client.player == null) return -1;
-
-        for (int i = 0; i < 9; i++) {
-            ItemStack stack = client.player.getInventory().getStack(i);
-            if (stack.getItem() instanceof FishingRodItem) {
-                return i;
-            }
-        }
-        return -1;
     }
 
     private static int getSelectedSlot(MinecraftClient client) {
@@ -253,9 +230,7 @@ public class AutoClickerManager {
         sequenceTickCounter++;
 
         // Sequence:
-        // 0: Switch to rod (or skip if no rod swap)
-        // 1: Wait 2 ticks for rod switch
-        // 2: Right click rod (2 ticks)
+        // 0: Start
         // 3: Switch to main drill
         // 4: Wait mainDrillDelay ticks
         // 5: If second drill: switch to second drill; else: right click main drill
@@ -268,39 +243,13 @@ public class AutoClickerManager {
             case 0:
                 activationCount++;
                 debug(client, "Activation #" + activationCount + " START | held=" + heldItemName(client)
-                        + " miningSlot=" + expectedSlot + " rodSlot=" + findFishingRodSlot(client)
-                        + " rodSwap=" + enableRodSwap + " 2ndDrill=" + enableSecondDrill + "(" + secondDrillSlot + ")"
+                        + " miningSlot=" + expectedSlot
+                        + " 2ndDrill=" + enableSecondDrill + "(" + secondDrillSlot + ")"
                         + " ready=" + (!PickaxeCooldownHUD.isOnCooldown()));
-                // Switch to rod or skip
-                if (enableRodSwap) {
-                    int rodSlot = findFishingRodSlot(client);
-                    if (rodSlot != -1) {
-                        setSelectedSlot(client, rodSlot);
-                        sequenceStep = 1;
-                    } else {
-                        sequenceStep = 3; // No rod found, skip to main drill
-                    }
-                } else {
-                    sequenceStep = 3; // Rod swap disabled, skip to main drill
-                }
+                // Steps 1-2 used to swap to a fishing rod and right-click it. That trick no
+                // longer does anything, so the sequence starts at the drill.
+                sequenceStep = 3;
                 sequenceTickCounter = 0;
-                break;
-
-            case 1: // Wait before rod right click
-                if (sequenceTickCounter >= 2) {
-                    sequenceStep = 2;
-                    sequenceTickCounter = 0;
-                }
-                break;
-
-            case 2: // Right click rod
-                if (sequenceTickCounter == 1) debug(client, "  -> right-click ROD | held=" + heldItemName(client));
-                client.options.useKey.setPressed(true);
-                if (sequenceTickCounter >= 2) {
-                    client.options.useKey.setPressed(false);
-                    sequenceStep = 3;
-                    sequenceTickCounter = 0;
-                }
                 break;
 
             case 3: // Switch to main drill

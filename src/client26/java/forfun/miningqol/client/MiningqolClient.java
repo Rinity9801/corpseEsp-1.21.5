@@ -88,7 +88,9 @@ public class MiningqolClient implements ClientModInitializer {
         ClientTickEvents.START_LEVEL_TICK.register(level -> LobbyFinder.onWorldChange());
 
         ClientReceiveMessageEvents.GAME.register((message, overlay) -> {
-            if (overlay) return;
+            if (overlay) {
+                return;   // action bar; nothing here reads it
+            }
             String messageText = message.getString();
 
             Matcher corpseMatcher = CORPSE_LOOT_PATTERN.matcher(messageText);

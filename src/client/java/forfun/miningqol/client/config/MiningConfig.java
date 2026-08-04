@@ -93,7 +93,6 @@ public class MiningConfig {
 
     public boolean autoClickerEnabled = false;
     public int autoClickerMiningSlot = 0;
-    public boolean autoClickerRodSwap = true;
     public boolean autoClickerSecondDrill = false;
     public int autoClickerSecondDrillSlot = 3;
     public boolean autoClickerHudEnabled = true;
@@ -111,7 +110,6 @@ public class MiningConfig {
     // Cold Clicker
     public boolean coldClickerEnabled = false;
     public int coldClickerMiningSlot = 0;
-    public boolean coldClickerRodSwap = true;
     public int coldClickerSecondDrillSlot = 3;
     public boolean coldClickerThirdDrillEnabled = false;
     public int coldClickerThirdDrillSlot = 4;
@@ -348,7 +346,6 @@ public class MiningConfig {
         //? if isCheat {
         // Never restore enabled state for clickers - always start disabled for safety
         AutoClickerManager.setMiningSlot(autoClickerMiningSlot);
-        AutoClickerManager.setEnableRodSwap(autoClickerRodSwap);
         AutoClickerManager.setEnableSecondDrill(autoClickerSecondDrill);
         AutoClickerManager.setSecondDrillSlot(autoClickerSecondDrillSlot);
         AutoClickerManager.setMainDrillDelay(autoClickerMainDrillDelay);
@@ -386,7 +383,6 @@ public class MiningConfig {
 
         //? if isCheat {
         InShaftClickManager.setMiningSlot(coldClickerMiningSlot);
-        InShaftClickManager.setEnableRodSwap(coldClickerRodSwap);
         InShaftClickManager.setSecondDrillSlot(coldClickerSecondDrillSlot);
         InShaftClickManager.setThirdDrillEnabled(coldClickerThirdDrillEnabled);
         InShaftClickManager.setThirdDrillSlot(coldClickerThirdDrillSlot);
@@ -503,7 +499,6 @@ public class MiningConfig {
         //? if isCheat {
         autoClickerEnabled = AutoClickerManager.isEnabled();
         autoClickerMiningSlot = AutoClickerManager.getMiningSlot();
-        autoClickerRodSwap = AutoClickerManager.isRodSwapEnabled();
         autoClickerSecondDrill = AutoClickerManager.isSecondDrillEnabled();
         autoClickerSecondDrillSlot = AutoClickerManager.getSecondDrillSlot();
         autoClickerMainDrillDelay = AutoClickerManager.getMainDrillDelay();
@@ -530,7 +525,6 @@ public class MiningConfig {
         //? if isCheat {
         coldClickerEnabled = InShaftClickManager.isEnabled();
         coldClickerMiningSlot = InShaftClickManager.getMiningSlot();
-        coldClickerRodSwap = InShaftClickManager.isRodSwapEnabled();
         coldClickerSecondDrillSlot = InShaftClickManager.getSecondDrillSlot();
         coldClickerThirdDrillEnabled = InShaftClickManager.isThirdDrillEnabled();
         coldClickerThirdDrillSlot = InShaftClickManager.getThirdDrillSlot();
