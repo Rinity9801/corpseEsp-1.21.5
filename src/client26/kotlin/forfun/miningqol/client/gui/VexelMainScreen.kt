@@ -203,11 +203,12 @@ class VexelMainScreen : VexelScreen("MiningQOL Settings") {
                 .setPositioning(contentPad, Pos.ParentPixels, 24f, Pos.ParentPixels)
                 .childOf(panel)
 
+            // Fill everything between the category title and the right edge.
+            // 24f bold averages ~13.5px per glyph — close enough to hug the title.
+            val searchX = contentPad + category.name.length * 13.5f + 24f
             val search = TextInput(initialValue = searchQuery, placeholder = "Search...", fontSize = 13f)
-                .setSizing(200f, Size.Pixels, 30f, Size.Pixels)
-                .setPositioning(0f, Pos.ParentPixels, 26f, Pos.ParentPixels)
-                .alignRight()
-                .setOffset(-contentPad, 0f)
+                .setSizing(mainWidth - searchX - contentPad, Size.Pixels, 30f, Size.Pixels)
+                .setPositioning(searchX, Pos.ParentPixels, 26f, Pos.ParentPixels)
                 .backgroundColor(SettingsUi.alpha(SettingsUi.TRACK))
                 .borderColor(SettingsUi.CARD_BORDER)
                 .borderRadius(8f)
