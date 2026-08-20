@@ -110,6 +110,9 @@ public class MiningConfig {
     public boolean shaftJoinCdEnabled = true;
     public int shaftJoinCdSeconds = 30;
 
+    /** Whole settings-GUI opacity (0.3..1.0). */
+    public float guiOpacity = 0.8f;
+
     public boolean orderedWaypointsEnabled = true;
     public float orderedWaypointRange = 4.5f;
     public int orderedWaypointNextCount = 2;
@@ -132,6 +135,16 @@ public class MiningConfig {
     public int orderedWaypointBlockOutlineRadius = 3;
     public float[] orderedWaypointBlockOutlineColor = {1f, 1f, 1f};
     public float orderedWaypointBlockOutlineAlpha = 0.8f;
+    /** Outline edge half-thickness in blocks. 1.5 matches how 1.21.11's GL lines looked. */
+    public float orderedWaypointBlockOutlineThickness = 1.5f;
+    /** Tint the outlined blocks as well as edging them. */
+    public boolean orderedWaypointBlockOutlineFill = true;
+    /** Cheat builds: auto right-click when sneaking + aiming at an etherwarp-marked waypoint. */
+    public boolean orderedWaypointEtherwarpClick = true;
+    /** /mqo skip walks past waypoints whose lobby-check block is gone. */
+    public boolean orderedWaypointSkipObstructed = false;
+    /** At or below this many blocks near a waypoint, /mqo skip treats it as mined out. */
+    public int orderedWaypointObstructedThreshold = 5;
 
     public static MiningConfig load() {
         if (!CONFIG_FILE.exists()) {
@@ -188,6 +201,7 @@ public class MiningConfig {
     }
 
     public void applyToGame() {
+        forfun.miningqol.client.gui.SettingsUi.setGuiOpacity(guiOpacity);
         CommissionHUD.setEnabled(commissionHudEnabled);
         CommissionHUD.setPosition(commissionHudX, commissionHudY);
         CommissionHUD.setScale(commissionHudScale);
@@ -275,9 +289,14 @@ public class MiningConfig {
         OrderedWaypointManager.setBlockOutlineRadius(orderedWaypointBlockOutlineRadius);
         OrderedWaypointManager.setBlockOutlineColor(orderedWaypointBlockOutlineColor[0], orderedWaypointBlockOutlineColor[1], orderedWaypointBlockOutlineColor[2]);
         OrderedWaypointManager.setBlockOutlineAlpha(orderedWaypointBlockOutlineAlpha);
+        OrderedWaypointManager.setBlockOutlineThickness(orderedWaypointBlockOutlineThickness);
+        OrderedWaypointManager.setBlockOutlineFill(orderedWaypointBlockOutlineFill);
+        OrderedWaypointManager.setSkipObstructed(orderedWaypointSkipObstructed);
+        OrderedWaypointManager.setObstructedThreshold(orderedWaypointObstructedThreshold);
     }
 
     public void loadFromGame() {
+        guiOpacity = forfun.miningqol.client.gui.SettingsUi.getGuiOpacity();
         commissionHudEnabled = CommissionHUD.isEnabled();
         commissionHudX = CommissionHUD.getX();
         commissionHudY = CommissionHUD.getY();
@@ -354,5 +373,9 @@ public class MiningConfig {
         orderedWaypointBlockOutlineRadius = OrderedWaypointManager.getBlockOutlineRadius();
         orderedWaypointBlockOutlineColor = OrderedWaypointManager.getBlockOutlineColor();
         orderedWaypointBlockOutlineAlpha = OrderedWaypointManager.getBlockOutlineAlpha();
+        orderedWaypointBlockOutlineThickness = OrderedWaypointManager.getBlockOutlineThickness();
+        orderedWaypointBlockOutlineFill = OrderedWaypointManager.isBlockOutlineFill();
+        orderedWaypointSkipObstructed = OrderedWaypointManager.isSkipObstructed();
+        orderedWaypointObstructedThreshold = OrderedWaypointManager.getObstructedThreshold();
     }
 }

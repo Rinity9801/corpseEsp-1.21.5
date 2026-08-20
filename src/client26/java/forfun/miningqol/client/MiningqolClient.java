@@ -82,6 +82,9 @@ public class MiningqolClient implements ClientModInitializer {
                 FiletWarning.tick();
                 AbilitySwitchManager.tick();
                 EfficientMinerOverlay.tick();
+                // Ticked, not driven from the render pass: the HUD stops rendering while any screen
+                // is open, which is exactly when the Royal Pigeon menu needs reading.
+                CommissionHUD.tick();
             }
         });
 
@@ -156,6 +159,13 @@ public class MiningqolClient implements ClientModInitializer {
             dispatcher.register(ClientCommands.literal("commhuddebug")
                 .executes(context -> {
                     CommissionHUD.debugDump();
+                    return 1;
+                }));
+            // Separate command because a command can't be run while the menu is open — this prints
+            // the slots captured on tick the last time the Royal Pigeon was up.
+            dispatcher.register(ClientCommands.literal("commhudslots")
+                .executes(context -> {
+                    CommissionHUD.dumpMenuSlots();
                     return 1;
                 }));
             // Sound scanner: /soundscan to capture what's playing, /soundblock to silence it.
@@ -312,6 +322,16 @@ public class MiningqolClient implements ClientModInitializer {
                         OrderedWaypointManager.toggleEditMode();
                         return 1;
                     }))
+                .then(ClientCommands.literal("ether")
+                    .executes(context -> {
+                        OrderedWaypointManager.listEtherwarps();
+                        return 1;
+                    })
+                    .then(ClientCommands.argument("number", IntegerArgumentType.integer(1))
+                        .executes(context -> {
+                            OrderedWaypointManager.toggleEtherwarp(IntegerArgumentType.getInteger(context, "number"));
+                            return 1;
+                        })))
                 .then(ClientCommands.literal("skip")
                     .executes(context -> {
                         OrderedWaypointManager.skip(1);

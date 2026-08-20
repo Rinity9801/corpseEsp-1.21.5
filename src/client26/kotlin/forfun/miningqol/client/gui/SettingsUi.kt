@@ -1,219 +1,217 @@
 package forfun.miningqol.client.gui
 
-import xyz.meowing.vexel.animations.presets.fadeIn
-import xyz.meowing.vexel.animations.types.EasingType
 import xyz.meowing.vexel.components.base.enums.Pos
 import xyz.meowing.vexel.components.base.enums.Size
 import xyz.meowing.vexel.components.core.Rectangle
 import xyz.meowing.vexel.components.core.Text
-import xyz.meowing.vexel.core.VexelWindow
-import xyz.meowing.vexel.elements.Button
 import xyz.meowing.vexel.elements.Slider
-import xyz.meowing.vexel.elements.Switch
+import xyz.meowing.vexel.elements.TextInput
 
 /**
- * Shared scaffolding for the 26.1.2 settings screens (dark overlay, centered panel,
- * toggle/slider rows) in the same visual style as the 1.21 Vexel screens.
+ * Prisma-style UI kit for the 26.1.2 settings GUI: near-black floating panels,
+ * card-based inline controls that thread a y cursor through a detail wrapper,
+ * and a global GUI transparency applied to every surface color.
  */
 object SettingsUi {
-    const val ROW_WIDTH = 530f
-    const val ROW_HEIGHT = 56f
-    const val ROW_SPACING = 12f
+    // Prisma palette
+    val PANEL_BG = 0xFF0D0D0F.toInt()
+    val PANEL_BORDER = 0xFF2A2A2E.toInt()
+    val CARD_BG = 0xFF161618.toInt()
+    val CARD_BORDER = 0xFF252528.toInt()
+    val CARD_HOVER = 0xFF1E1E20.toInt()
+    val NAV_SELECTED = 0xFF1E1E20.toInt()
+    val NAV_HOVER = 0xFF151517.toInt()
+    val TRACK = 0xFF1A1A1A.toInt()
+    val TEXT_PRIMARY = 0xFFFFFFFF.toInt()
+    val TEXT_SECONDARY = 0xFFBBBBBB.toInt()
+    val TEXT_MUTED = 0xFF888888.toInt()
+    val TEXT_DIM = 0xFF606060.toInt()
 
-    fun overlay(window: VexelWindow): Rectangle =
+    // Category/feature accents
+    val BLUE = 0xFF7AA2F7.toInt()
+    val GREEN = 0xFF9ECE6A.toInt()
+    val CYAN = 0xFF7DCFFF.toInt()
+    val PURPLE = 0xFFBB9AF7.toInt()
+    val PURPLE2 = 0xFF9D7CD8.toInt()
+    val SKY = 0xFF89DDFF.toInt()
+    val YELLOW = 0xFFE0AF68.toInt()
+    val ORANGE = 0xFFFF9E64.toInt()
+    val RED = 0xFFF7768E.toInt()
+    val TEAL = 0xFF73DACA.toInt()
+
+    /** Whole-GUI opacity (0.3..1.0). Applied to every surface color via [alpha]. */
+    @JvmStatic
+    var guiOpacity = 0.8f
+        set(value) {
+            field = value.coerceIn(0.3f, 1.0f)
+        }
+
+    /** Scales a color's alpha channel by the configured GUI opacity. */
+    fun alpha(color: Int): Int {
+        val a = ((color ushr 24) and 0xFF) * guiOpacity
+        return (a.toInt().coerceIn(0, 255) shl 24) or (color and 0xFFFFFF)
+    }
+
+    /** The accent color with its alpha replaced (0f..1f) — for tinted chips and pills. */
+    fun tint(accent: Int, alphaFrac: Float): Int =
+        ((alphaFrac * 255f).toInt().coerceIn(0, 255) shl 24) or (accent and 0xFFFFFF)
+
+    /** An empty card in the detail column — base for custom rows. */
+    fun inlineCard(parent: Rectangle, width: Float, y: Float, height: Float, hover: Boolean = false): Rectangle =
         Rectangle(
-            backgroundColor = 0x80000000.toInt(),
-            borderColor = 0x00000000,
-            borderRadius = 0f,
-            borderThickness = 0f
-        )
-            .setSizing(100f, Size.Percent, 100f, Size.Percent)
-            .setPositioning(0f, Pos.ParentPixels, 0f, Pos.ParentPixels)
-            .childOf(window)
-            .fadeIn(400, EasingType.EASE_OUT)
-
-    fun panel(window: VexelWindow, width: Float, height: Float, title: String, subtitle: String): Rectangle {
-        val panel = Rectangle(
-            backgroundColor = 0xF0121212.toInt(),
-            borderColor = 0xFF2A2A2A.toInt(),
-            borderRadius = 16f,
-            borderThickness = 1f
+            backgroundColor = alpha(CARD_BG),
+            borderColor = CARD_BORDER,
+            borderRadius = 12f,
+            borderThickness = 1f,
+            hoverColor = if (hover) alpha(CARD_HOVER) else null
         )
             .setSizing(width, Size.Pixels, height, Size.Pixels)
-            .childOf(window)
-            .apply {
-                dropShadow = true
-                shadowBlur = 40f
-                shadowSpread = 2f
-                shadowColor = 0xA0000000.toInt()
-            }
+            .setPositioning(0f, Pos.ParentPixels, y, Pos.ParentPixels)
+            .childOf(parent)
 
-        // ScreenCenter recomputes on every layout pass, so the panel stays centered across
-        // window resizes / fullscreen toggles / monitor moves (ScreenPixels bakes the position
-        // at open time and can leave the panel entirely off-screen after a resize).
-        panel.xPositionConstraint = Pos.ScreenCenter
-        panel.yPositionConstraint = Pos.ScreenCenter
-        panel.xConstraint = 0f
-        panel.yConstraint = 0f
-        panel.fadeIn(500, EasingType.EASE_OUT)
-
-        Rectangle(
-            backgroundColor = 0xFF1A1A1A.toInt(),
-            borderColor = 0xFF2A2A2A.toInt(),
-            borderRadius = 16f,
-            borderThickness = 0f
-        )
-            .setSizing(100f, Size.Percent, 80f, Size.Pixels)
-            .setPositioning(0f, Pos.ParentPixels, 0f, Pos.ParentPixels)
-            .childOf(panel)
-            .apply {
-                borderRadiusBottomLeft = 0f
-                borderRadiusBottomRight = 0f
-            }
-
-        Text(title, 0xFFFFFFFF.toInt(), 28f, true)
-            .setPositioning(0f, Pos.ParentCenter, 18f, Pos.ParentPixels)
-            .childOf(panel)
-
-        Text(subtitle, 0xFF888888.toInt(), 13f, false)
-            .setPositioning(0f, Pos.ParentCenter, 50f, Pos.ParentPixels)
-            .childOf(panel)
-
-        return panel
-    }
-
-    /** A labelled on/off row. Returns the y of the next row. */
-    fun toggleRow(
+    /** Prisma-style toggle card: click anywhere, ON/OFF status, accent border + dot when on. */
+    fun inlineToggle(
         parent: Rectangle,
-        panelWidth: Float,
+        width: Float,
         y: Float,
         label: String,
-        description: String,
-        accentColor: Int,
-        initial: Boolean,
-        onChange: (Boolean) -> Unit
+        description: String?,
+        accent: Int,
+        get: () -> Boolean,
+        set: (Boolean) -> Unit
     ): Float {
-        val card = row(parent, panelWidth, y)
+        val enabled = get()
+        val card = inlineCard(parent, width, y, 60f, hover = true)
+        card.borderColor = if (enabled) accent else CARD_BORDER
 
-        Text(label, 0xFFFFFFFF.toInt(), 17f, true)
-            .setPositioning(16f, Pos.ParentPixels, 10f, Pos.ParentPixels)
+        val labelText = Text(label, if (enabled) TEXT_PRIMARY else TEXT_SECONDARY, 16f, true)
+            .setPositioning(18f, Pos.ParentPixels, 12f, Pos.ParentPixels)
             .childOf(card)
-
-        Text(description, 0xFF888888.toInt(), 12f, false)
-            .setPositioning(16f, Pos.ParentPixels, 33f, Pos.ParentPixels)
+        val statusText = Text(if (enabled) "ON" else "OFF", if (enabled) accent else TEXT_DIM, 13f, true)
+            .setPositioning(18f, Pos.ParentPixels, 34f, Pos.ParentPixels)
             .childOf(card)
-
-        val switch = Switch(trackEnabledColor = accentColor)
-            .setSizing(46f, Size.Pixels, 24f, Size.Pixels)
-            .setPositioning(0f, Pos.ParentPixels, 0f, Pos.ParentCenter)
+        if (description != null) {
+            Text(description, TEXT_MUTED, 11f, false)
+                .setPositioning(60f, Pos.ParentPixels, 36f, Pos.ParentPixels)
+                .childOf(card)
+        }
+        val indicator = Rectangle(backgroundColor = accent, borderColor = 0x00000000, borderRadius = 4f)
+            .setSizing(8f, Size.Pixels, 8f, Size.Pixels)
+            .setPositioning(0f, Pos.ParentPixels, 0f, Pos.ParentPixels)
             .alignRight()
-            .setOffset(-16f, 0f)
+            .setOffset(-14f, 14f)
+            .ignoreMouseEvents()
             .childOf(card)
-        switch.setEnabled(initial, animated = false, silent = true)
-        switch.onValueChange { value -> onChange(value as Boolean) }
+        indicator.visible = enabled
 
-        return y + ROW_HEIGHT + ROW_SPACING
+        card.onClick { _ ->
+            val n = !get()
+            set(n)
+            card.borderColor = if (n) accent else CARD_BORDER
+            labelText.textColor = if (n) TEXT_PRIMARY else TEXT_SECONDARY
+            statusText.text = if (n) "ON" else "OFF"
+            statusText.textColor = if (n) accent else TEXT_DIM
+            indicator.visible = n
+            true
+        }
+        return y + 72f
     }
 
-    /** A labelled slider row with a live value readout. Returns the y of the next row. */
-    fun sliderRow(
+    /** Prisma-style slider card with live value readout. */
+    fun inlineSlider(
         parent: Rectangle,
-        panelWidth: Float,
+        width: Float,
         y: Float,
         label: String,
         min: Float,
         max: Float,
         step: Float?,
         initial: Float,
-        accentColor: Int,
+        accent: Int,
         format: (Float) -> String,
         onChange: (Float) -> Unit
     ): Float {
-        val card = row(parent, panelWidth, y)
+        val card = inlineCard(parent, width, y, 75f)
 
-        Text(label, 0xFFFFFFFF.toInt(), 17f, true)
-            .setPositioning(16f, Pos.ParentPixels, 10f, Pos.ParentPixels)
+        Text(label, TEXT_PRIMARY, 15f, true)
+            .setPositioning(18f, Pos.ParentPixels, 12f, Pos.ParentPixels)
             .childOf(card)
-
-        val valueText = Text(format(initial), 0xFF888888.toInt(), 13f, false)
+        val valueText = Text(format(initial), TEXT_SECONDARY, 13f, true)
             .setPositioning(0f, Pos.ParentPixels, 12f, Pos.ParentPixels)
             .alignRight()
-            .setOffset(-16f, 0f)
+            .setOffset(-18f, 0f)
             .childOf(card)
 
         val slider = Slider(
-            value = initial,
-            minValue = min,
-            maxValue = max,
-            step = step,
-            trackFillColor = accentColor,
-            thumbWidth = 14f,
-            thumbHeight = 14f,
-            thumbRadius = 7f
+            value = initial, minValue = min, maxValue = max, step = step,
+            trackColor = alpha(TRACK), trackFillColor = accent, thumbColor = accent,
+            trackHeight = 4f, thumbWidth = 16f, thumbHeight = 16f, thumbRadius = 8f
         )
-            .setSizing(ROW_WIDTH - 32f, Size.Pixels, 14f, Size.Pixels)
-            .setPositioning(16f, Pos.ParentPixels, 34f, Pos.ParentPixels)
+            .setSizing(width - 36f, Size.Pixels, 24f, Size.Pixels)
+            .setPositioning(18f, Pos.ParentPixels, 40f, Pos.ParentPixels)
             .childOf(card)
         slider.onValueChange { value ->
             val v = value as Float
             valueText.text = format(v)
             onChange(v)
         }
-
-        return y + ROW_HEIGHT + ROW_SPACING
+        return y + 87f
     }
 
-    /** A labelled free-text row (e.g. a block id). Returns the y of the next row. */
-    fun textRow(
+    /** A labelled free-text card (e.g. a block id). */
+    fun inlineTextInput(
         parent: Rectangle,
-        panelWidth: Float,
+        width: Float,
         y: Float,
         label: String,
-        description: String,
+        description: String?,
         initial: String,
         onChange: (String) -> Unit
     ): Float {
-        val card = row(parent, panelWidth, y)
+        val card = inlineCard(parent, width, y, 60f)
 
-        Text(label, 0xFFFFFFFF.toInt(), 17f, true)
-            .setPositioning(16f, Pos.ParentPixels, 10f, Pos.ParentPixels)
+        Text(label, TEXT_PRIMARY, 16f, true)
+            .setPositioning(18f, Pos.ParentPixels, 12f, Pos.ParentPixels)
             .childOf(card)
-
-        Text(description, 0xFF888888.toInt(), 12f, false)
-            .setPositioning(16f, Pos.ParentPixels, 33f, Pos.ParentPixels)
-            .childOf(card)
-
-        val input = xyz.meowing.vexel.elements.TextInput(initialValue = initial, fontSize = 12f)
-            .setSizing(200f, Size.Pixels, 30f, Size.Pixels)
+        if (description != null) {
+            Text(description, TEXT_MUTED, 11f, false)
+                .setPositioning(18f, Pos.ParentPixels, 36f, Pos.ParentPixels)
+                .childOf(card)
+        }
+        val input = TextInput(initialValue = initial, fontSize = 13f)
+            .setSizing(220f, Size.Pixels, 32f, Size.Pixels)
             .setPositioning(0f, Pos.ParentPixels, 0f, Pos.ParentCenter)
             .alignRight()
             .setOffset(-16f, 0f)
+            .backgroundColor(alpha(TRACK))
+            .borderColor(CARD_BORDER)
+            .borderRadius(8f)
+            .borderThickness(1f)
             .childOf(card)
         input.onValueChange { value -> onChange(value as String) }
-
-        return y + ROW_HEIGHT + ROW_SPACING
+        return y + 72f
     }
 
-    /** A row that just opens a sub-screen. Returns the y of the next row. */
-    fun linkRow(
+    /** A clickable row that opens something (a mover screen, an external GUI). */
+    fun inlineLink(
         parent: Rectangle,
-        panelWidth: Float,
+        width: Float,
         y: Float,
         label: String,
-        description: String,
+        description: String?,
         onOpen: () -> Unit
     ): Float {
-        val card = row(parent, panelWidth, y)
+        val card = inlineCard(parent, width, y, 60f, hover = true)
 
-        Text(label, 0xFFFFFFFF.toInt(), 17f, true)
-            .setPositioning(16f, Pos.ParentPixels, 10f, Pos.ParentPixels)
+        Text(label, TEXT_PRIMARY, 16f, true)
+            .setPositioning(18f, Pos.ParentPixels, 12f, Pos.ParentPixels)
             .childOf(card)
-
-        Text(description, 0xFF888888.toInt(), 12f, false)
-            .setPositioning(16f, Pos.ParentPixels, 33f, Pos.ParentPixels)
-            .childOf(card)
-
-        Text("›", 0xFF666666.toInt(), 26f, false)
+        if (description != null) {
+            Text(description, TEXT_MUTED, 11f, false)
+                .setPositioning(18f, Pos.ParentPixels, 36f, Pos.ParentPixels)
+                .childOf(card)
+        }
+        Text("›", TEXT_DIM, 24f, false)
             .setPositioning(0f, Pos.ParentPixels, 0f, Pos.ParentCenter)
             .alignRight()
             .setOffset(-18f, 0f)
@@ -223,16 +221,21 @@ object SettingsUi {
             onOpen()
             true
         }
-
-        return y + ROW_HEIGHT + ROW_SPACING
+        return y + 72f
     }
 
-    const val COLOR_ROW_HEIGHT = 96f
+    /** Small section label between control groups. */
+    fun inlineSectionHeader(parent: Rectangle, y: Float, title: String): Float {
+        Text(title.uppercase(), TEXT_MUTED, 11f, true)
+            .setPositioning(4f, Pos.ParentPixels, y + 8f, Pos.ParentPixels)
+            .childOf(parent)
+        return y + 32f
+    }
 
-    /** An RGBA slider group with a live preview swatch. Returns the y of the next row. */
-    fun colorRow(
+    /** An RGBA slider card with a live preview swatch. */
+    fun inlineColor(
         parent: Rectangle,
-        panelWidth: Float,
+        width: Float,
         y: Float,
         title: String,
         getColor: () -> FloatArray,
@@ -240,18 +243,10 @@ object SettingsUi {
         getAlpha: () -> Float,
         setAlpha: (Float) -> Unit
     ): Float {
-        val card = Rectangle(
-            backgroundColor = 0xF01E1E1E.toInt(),
-            borderColor = 0xFF2A2A2A.toInt(),
-            borderRadius = 12f,
-            borderThickness = 1f
-        )
-            .setSizing(ROW_WIDTH, Size.Pixels, COLOR_ROW_HEIGHT, Size.Pixels)
-            .setPositioning((panelWidth - ROW_WIDTH) / 2f, Pos.ParentPixels, y, Pos.ParentPixels)
-            .childOf(parent)
+        val card = inlineCard(parent, width, y, 100f)
 
-        Text(title, 0xFFFFFFFF.toInt(), 16f, true)
-            .setPositioning(16f, Pos.ParentPixels, 12f, Pos.ParentPixels)
+        Text(title, TEXT_PRIMARY, 15f, true)
+            .setPositioning(18f, Pos.ParentPixels, 12f, Pos.ParentPixels)
             .childOf(card)
 
         fun swatchColor(): Int {
@@ -262,32 +257,35 @@ object SettingsUi {
                 (c[2] * 255).toInt().coerceIn(0, 255)
         }
 
-        val swatch = Rectangle(backgroundColor = swatchColor(), borderColor = 0xFF444444.toInt(),
+        val swatch = Rectangle(backgroundColor = swatchColor(), borderColor = CARD_BORDER,
             borderRadius = 6f, borderThickness = 1f)
-            .setSizing(34f, Size.Pixels, 22f, Size.Pixels)
-            .setPositioning(0f, Pos.ParentPixels, 10f, Pos.ParentPixels)
+            .setSizing(36f, Size.Pixels, 22f, Size.Pixels)
+            .setPositioning(0f, Pos.ParentPixels, 12f, Pos.ParentPixels)
             .alignRight()
-            .setOffset(-16f, 0f)
+            .setOffset(-18f, 0f)
             .ignoreMouseEvents()
             .childOf(card)
 
         val channels = listOf("R", "G", "B", "A")
-        val sliderWidth = 92f
+        val gap = 26f
+        val sliderWidth = (width - 36f - 3 * gap) / 4f - 14f
         channels.forEachIndexed { i, label ->
-            val x = 16f + i * (sliderWidth + 34f)
-            Text(label, 0xFF888888.toInt(), 12f, false)
-                .setPositioning(x, Pos.ParentPixels, 52f, Pos.ParentPixels)
+            val x = 18f + i * (sliderWidth + 14f + gap)
+            Text(label, TEXT_MUTED, 12f, false)
+                .setPositioning(x, Pos.ParentPixels, 56f, Pos.ParentPixels)
                 .childOf(card)
 
             val initial = if (i == 3) getAlpha() else getColor()[i]
             val slider = Slider(
                 value = initial, minValue = 0f, maxValue = 1f, step = null,
+                trackColor = alpha(TRACK),
                 trackFillColor = when (i) {
-                    0 -> 0xFFFF6666.toInt(); 1 -> 0xFF66FF66.toInt(); 2 -> 0xFF6699FF.toInt(); else -> 0xFFCCCCCC.toInt()
+                    0 -> RED; 1 -> GREEN; 2 -> BLUE; else -> TEXT_SECONDARY
                 },
-                thumbWidth = 12f, thumbHeight = 12f, thumbRadius = 6f
+                thumbColor = TEXT_PRIMARY,
+                trackHeight = 4f, thumbWidth = 12f, thumbHeight = 12f, thumbRadius = 6f
             )
-                .setSizing(sliderWidth, Size.Pixels, 12f, Size.Pixels)
+                .setSizing(sliderWidth, Size.Pixels, 18f, Size.Pixels)
                 .setPositioning(x + 14f, Pos.ParentPixels, 52f, Pos.ParentPixels)
                 .childOf(card)
             slider.onValueChange { value ->
@@ -304,37 +302,6 @@ object SettingsUi {
                 }
             }
         }
-
-        return y + COLOR_ROW_HEIGHT + ROW_SPACING
+        return y + 112f
     }
-
-    fun backButton(parent: Rectangle, onBack: () -> Unit) {
-        Button("Back", 0xFFFFFFFF.toInt(), fontSize = 15f)
-            .setSizing(140f, Size.Pixels, 42f, Size.Pixels)
-            .setPositioning(0f, Pos.ParentCenter, 0f, Pos.ParentPixels)
-            .alignBottom()
-            .setOffset(0f, -22f)
-            .backgroundColor(0xFF2A2A2A.toInt())
-            .borderColor(0xFF404040.toInt())
-            .borderRadius(8f)
-            .borderThickness(1f)
-            .hoverColors(0xFF353535.toInt(), 0xFFFFFFFF.toInt())
-            .pressedColors(0xFF1A1A1A.toInt(), 0xFFAAAAAA.toInt())
-            .onClick { _ ->
-                onBack()
-                true
-            }
-            .childOf(parent)
-    }
-
-    private fun row(parent: Rectangle, panelWidth: Float, y: Float): Rectangle =
-        Rectangle(
-            backgroundColor = 0xF01E1E1E.toInt(),
-            borderColor = 0xFF2A2A2A.toInt(),
-            borderRadius = 12f,
-            borderThickness = 1f
-        )
-            .setSizing(ROW_WIDTH, Size.Pixels, ROW_HEIGHT, Size.Pixels)
-            .setPositioning((panelWidth - ROW_WIDTH) / 2f, Pos.ParentPixels, y, Pos.ParentPixels)
-            .childOf(parent)
 }

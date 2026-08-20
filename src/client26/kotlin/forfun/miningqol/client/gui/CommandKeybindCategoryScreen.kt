@@ -2,9 +2,6 @@ package forfun.miningqol.client.gui
 
 import com.mojang.blaze3d.platform.InputConstants
 import forfun.miningqol.client.CommandKeybindManager
-import net.minecraft.client.Minecraft
-import net.minecraft.client.gui.screens.Screen
-import net.minecraft.client.input.KeyEvent
 import org.lwjgl.glfw.GLFW
 import xyz.meowing.vexel.components.base.enums.Pos
 import xyz.meowing.vexel.components.base.enums.Size
@@ -21,227 +18,159 @@ private data class KeybindEntry(
 )
 
 /**
- * 26.1.2 command-keybind editor — a card per bind (key box + command field + delete),
- * ported from the 1.21.11 screen and adapted to the newer Vexel API. Key capture goes
- * through Vexel's onKeyType hook.
+ * Command-keybind editor — a card per bind (key box + command field + delete)
+ * in the detail panel. Key capture goes through the host's vanilla key hook so
+ * we get the real GLFW key code that CommandKeybindManager matches against.
+ *
+ * Add/delete rebuild the detail via the host (the wrapper height changes); the
+ * working entry list is kept across those rebuilds so a freshly added, not yet
+ * bound row doesn't vanish. Opening the detail fresh reloads from the manager.
  */
-class CommandKeybindCategoryScreen(private val parent: Screen) : BaseCategoryScreen(parent, "Command Keybinds Settings") {
-    private lateinit var scrollContainer: Rectangle
-    private lateinit var entriesContainer: Rectangle
-    private val entries = mutableListOf<KeybindEntry>()
-    private var capturingEntry: KeybindEntry? = null
+object CommandKeybindContent {
+    private var retained: MutableList<KeybindEntry>? = null
 
-    private val cardHeight = 118f
-    private val cardSpacing = 16f
-    private val listHeight = 420f
+    fun build(host: VexelMainScreen, wrapper: Rectangle, width: Float): Float {
+        val entries = retained ?: CommandKeybindManager.getAllKeybinds()
+            .map { (keyCode, command) -> KeybindEntry(keyCode, command) }
+            .toMutableList()
+        retained = null
 
-    override fun afterInitialization() {
-        SettingsUi.overlay(window)
-        val panel = SettingsUi.panel(window, 900f, 660f, "Command Keybinds", "Bind commands to keys for quick access")
+        var capturingEntry: KeybindEntry? = null
+        val accent = SettingsUi.PURPLE2
 
-        scrollContainer = Rectangle(
-            backgroundColor = 0xFF1A1A1A.toInt(),
-            borderColor = 0xFF2A2A2A.toInt(),
-            borderRadius = 12f,
-            borderThickness = 1f,
-            scrollable = true
-        )
-            .setSizing(800f, Size.Pixels, listHeight, Size.Pixels)
-            .setPositioning(0f, Pos.ParentCenter, 100f, Pos.ParentPixels)
-            .childOf(panel)
-            .padding(18f)
-
-        entriesContainer = Rectangle(backgroundColor = 0x00000000, borderColor = 0x00000000)
-            .setSizing(100f, Size.Percent, 0f, Size.Pixels)
-            .setPositioning(0f, Pos.ParentPixels, 0f, Pos.ParentPixels)
-            .childOf(scrollContainer)
-
-        loadExistingKeybinds()
-
-        Button("+ Add Keybind", 0xFFFFFFFF.toInt(), fontSize = 14f)
-            .setSizing(200f, Size.Pixels, 40f, Size.Pixels)
-            .setPositioning(0f, Pos.ParentCenter, 545f, Pos.ParentPixels)
-            .backgroundColor(0xFF2A5A2A.toInt())
-            .borderColor(0xFF40A040.toInt())
-            .borderRadius(8f)
-            .borderThickness(1f)
-            .hoverColors(0xFF357035.toInt(), 0xFFFFFFFF.toInt())
-            .onClick { _ ->
-                addNewKeybindEntry()
-                true
+        fun saveKeybinds() {
+            CommandKeybindManager.getAllKeybinds().keys.toList().forEach { CommandKeybindManager.removeKeybind(it) }
+            entries.forEach { entry ->
+                if (entry.keyCode != -1 && entry.command.isNotBlank()) {
+                    CommandKeybindManager.registerKeybind(entry.keyCode, entry.command)
+                }
             }
-            .childOf(panel)
-
-        SettingsUi.backButton(panel) {
-            saveKeybinds()
-            saveAndClose()
-        }
-    }
-
-    private fun loadExistingKeybinds() {
-        CommandKeybindManager.getAllKeybinds().forEach { (keyCode, command) ->
-            entries.add(KeybindEntry(keyCode, command))
-        }
-        rebuildCards()
-    }
-
-    private fun addNewKeybindEntry() {
-        entries.add(KeybindEntry(-1, ""))
-        rebuildCards()
-    }
-
-    private fun deleteKeybindEntry(entry: KeybindEntry) {
-        entries.remove(entry)
-        if (capturingEntry === entry) capturingEntry = null
-        saveKeybinds()
-        rebuildCards()
-    }
-
-    private fun rebuildCards() {
-        // Recreate the entries container so cards reposition cleanly.
-        scrollContainer.children.remove(entriesContainer)
-        entriesContainer = Rectangle(backgroundColor = 0x00000000, borderColor = 0x00000000)
-            .setSizing(100f, Size.Percent, 0f, Size.Pixels)
-            .setPositioning(0f, Pos.ParentPixels, 0f, Pos.ParentPixels)
-            .childOf(scrollContainer)
-
-        entries.forEachIndexed { index, entry -> createKeybindCard(entry, index) }
-
-        val total = if (entries.isEmpty()) 0f else entries.size * (cardHeight + cardSpacing) - cardSpacing
-        entriesContainer.height = total.coerceAtLeast(listHeight)
-    }
-
-    private fun createKeybindCard(entry: KeybindEntry, index: Int) {
-        val yPos = index * (cardHeight + cardSpacing)
-
-        val card = Rectangle(
-            backgroundColor = 0xF01E1E1E.toInt(),
-            borderColor = 0xFF2A2A2A.toInt(),
-            borderRadius = 12f,
-            borderThickness = 1f
-        )
-            .setSizing(100f, Size.Percent, cardHeight, Size.Pixels)
-            .setPositioning(0f, Pos.ParentPixels, yPos, Pos.ParentPixels)
-            .childOf(entriesContainer)
-
-        Rectangle(backgroundColor = 0xFFA05BFF.toInt(), borderRadius = 12f)
-            .setSizing(5f, Size.Pixels, 100f, Size.Percent)
-            .setPositioning(0f, Pos.ParentPixels, 0f, Pos.ParentPixels)
-            .ignoreMouseEvents()
-            .childOf(card)
-
-        Text("Key:", 0xFFAAAAAA.toInt(), 13f, false)
-            .setPositioning(30f, Pos.ParentPixels, 22f, Pos.ParentPixels)
-            .childOf(card)
-
-        val keyBox = Rectangle(
-            backgroundColor = 0xFF252525.toInt(),
-            borderColor = 0xFF404040.toInt(),
-            borderRadius = 6f,
-            borderThickness = 1f,
-            hoverColor = 0xFF303030.toInt()
-        )
-            .setSizing(180f, Size.Pixels, 36f, Size.Pixels)
-            .setPositioning(30f, Pos.ParentPixels, 48f, Pos.ParentPixels)
-            .childOf(card)
-
-        val keyText = Text(getKeyDisplayName(entry.keyCode), 0xFFFFFFFF.toInt(), 13f, false)
-            .setPositioning(0f, Pos.ParentCenter, 0f, Pos.ParentCenter)
-            .childOf(keyBox)
-
-        entry.keyText = keyText
-        entry.keyBox = keyBox
-
-        keyBox.onClick { event ->
-            if (capturingEntry === entry) {
-                // Already armed → this click binds the mouse button that was used.
-                val code = GLFW.GLFW_KEY_LAST + event.button + 1
-                entry.keyCode = code
-                keyText.text = getKeyDisplayName(code)
-                keyBox.backgroundColor = 0xFF252525.toInt()
-                keyBox.borderColor = 0xFF404040.toInt()
-                capturingEntry = null
-                saveKeybinds()
-            } else {
-                // Arm: next keyboard key (keyPressed) or click here (mouse button) binds it.
-                capturingEntry = entry
-                keyText.text = "Press a key or click here..."
-                keyBox.backgroundColor = 0xFF3A3A1A.toInt()
-                keyBox.borderColor = 0xFFAAAA40.toInt()
-            }
-            true
         }
 
-        Text("Command:", 0xFFAAAAAA.toInt(), 13f, false)
-            .setPositioning(260f, Pos.ParentPixels, 22f, Pos.ParentPixels)
-            .childOf(card)
-
-        val commandInput = TextInput(initialValue = entry.command, placeholder = "e.g. /warp forge", fontSize = 13f)
-            .setSizing(430f, Size.Pixels, 36f, Size.Pixels)
-            .setPositioning(260f, Pos.ParentPixels, 48f, Pos.ParentPixels)
-            .backgroundColor(0xFF252525.toInt())
-            .borderColor(0xFF404040.toInt())
-            .borderRadius(6f)
-            .borderThickness(1f)
-            .childOf(card)
-        commandInput.onValueChange { value ->
-            entry.command = value as String
-            saveKeybinds()
+        fun refreshKeeping() {
+            retained = entries
+            host.refreshDetail()
         }
 
-        Button("×", 0xFFFF5555.toInt(), fontSize = 20f)
-            .setSizing(40f, Size.Pixels, 40f, Size.Pixels)
-            .setPositioning(0f, Pos.ParentPixels, 0f, Pos.ParentCenter)
-            .alignRight()
-            .setOffset(-40f, 0f)
-            .backgroundColor(0xFF3A2A2A.toInt())
-            .borderColor(0xFF5A4040.toInt())
-            .borderRadius(6f)
-            .borderThickness(1f)
-            .hoverColors(0xFF5A3535.toInt(), 0xFFFFAAAA.toInt())
-            .onClick { _ ->
-                deleteKeybindEntry(entry)
-                true
-            }
-            .childOf(card)
-    }
-
-    private fun saveKeybinds() {
-        CommandKeybindManager.getAllKeybinds().keys.toList().forEach { CommandKeybindManager.removeKeybind(it) }
+        var y = 0f
         entries.forEach { entry ->
-            if (entry.keyCode != -1 && entry.command.isNotBlank()) {
-                CommandKeybindManager.registerKeybind(entry.keyCode, entry.command)
-            }
-        }
-    }
+            val card = SettingsUi.inlineCard(wrapper, width, y, 92f)
 
-    // Capture through the vanilla key hook so we get the real GLFW key code that
-    // CommandKeybindManager matches against (Vexel's onKeyType reports a scancode).
-    override fun keyPressed(input: KeyEvent): Boolean {
-        val code = input.key()
-        val entry = capturingEntry
-        if (entry != null) {
-            if (code != GLFW.GLFW_KEY_ESCAPE) {
-                entry.keyCode = code
-                entry.keyText?.text = getKeyDisplayName(code)
+            Text("Key", SettingsUi.TEXT_MUTED, 12f, false)
+                .setPositioning(18f, Pos.ParentPixels, 14f, Pos.ParentPixels)
+                .childOf(card)
+
+            val keyBox = Rectangle(
+                backgroundColor = SettingsUi.alpha(SettingsUi.TRACK),
+                borderColor = SettingsUi.CARD_BORDER,
+                borderRadius = 8f,
+                borderThickness = 1f,
+                hoverColor = SettingsUi.alpha(SettingsUi.CARD_HOVER)
+            )
+                .setSizing(180f, Size.Pixels, 36f, Size.Pixels)
+                .setPositioning(18f, Pos.ParentPixels, 38f, Pos.ParentPixels)
+                .childOf(card)
+
+            val keyText = Text(getKeyDisplayName(entry.keyCode), SettingsUi.TEXT_PRIMARY, 13f, false)
+                .setPositioning(0f, Pos.ParentCenter, 0f, Pos.ParentCenter)
+                .childOf(keyBox)
+
+            entry.keyText = keyText
+            entry.keyBox = keyBox
+
+            keyBox.onClick { event ->
+                if (capturingEntry === entry) {
+                    // Already armed → this click binds the mouse button that was used.
+                    val code = GLFW.GLFW_KEY_LAST + event.button + 1
+                    entry.keyCode = code
+                    keyText.text = getKeyDisplayName(code)
+                    keyBox.borderColor = SettingsUi.CARD_BORDER
+                    capturingEntry = null
+                    saveKeybinds()
+                } else {
+                    // Arm: next keyboard key or click here (mouse button) binds it.
+                    capturingEntry = entry
+                    keyText.text = "Press a key or click here..."
+                    keyBox.borderColor = SettingsUi.YELLOW
+                }
+                true
+            }
+
+            Text("Command", SettingsUi.TEXT_MUTED, 12f, false)
+                .setPositioning(240f, Pos.ParentPixels, 14f, Pos.ParentPixels)
+                .childOf(card)
+
+            val commandInput = TextInput(initialValue = entry.command, placeholder = "e.g. /warp forge", fontSize = 13f)
+                .setSizing(width - 240f - 90f, Size.Pixels, 36f, Size.Pixels)
+                .setPositioning(240f, Pos.ParentPixels, 38f, Pos.ParentPixels)
+                .backgroundColor(SettingsUi.alpha(SettingsUi.TRACK))
+                .borderColor(SettingsUi.CARD_BORDER)
+                .borderRadius(8f)
+                .borderThickness(1f)
+                .childOf(card)
+            commandInput.onValueChange { value ->
+                entry.command = value as String
                 saveKeybinds()
-            } else {
-                entry.keyText?.text = getKeyDisplayName(entry.keyCode)
             }
-            entry.keyBox?.backgroundColor = 0xFF252525.toInt()
-            entry.keyBox?.borderColor = 0xFF404040.toInt()
-            capturingEntry = null
-            return true
-        }
-        if (code == GLFW.GLFW_KEY_ESCAPE) {
-            saveKeybinds()
-            saveAndClose()
-            return true
-        }
-        return super.keyPressed(input)
-    }
 
-    override fun shouldCloseOnEsc(): Boolean = false
+            Button("×", SettingsUi.RED, fontSize = 20f)
+                .setSizing(40f, Size.Pixels, 40f, Size.Pixels)
+                .setPositioning(0f, Pos.ParentPixels, 0f, Pos.ParentCenter)
+                .alignRight()
+                .setOffset(-18f, 0f)
+                .backgroundColor(SettingsUi.alpha(SettingsUi.TRACK))
+                .borderColor(SettingsUi.tint(SettingsUi.RED, 0.35f))
+                .borderRadius(8f)
+                .borderThickness(1f)
+                .hoverColors(SettingsUi.alpha(SettingsUi.CARD_HOVER), SettingsUi.RED)
+                .onClick { _ ->
+                    entries.remove(entry)
+                    if (capturingEntry === entry) capturingEntry = null
+                    saveKeybinds()
+                    refreshKeeping()
+                    true
+                }
+                .childOf(card)
+
+            y += 104f
+        }
+
+        Button("+ Add Keybind", SettingsUi.TEXT_PRIMARY, fontSize = 14f)
+            .setSizing(200f, Size.Pixels, 40f, Size.Pixels)
+            .setPositioning(0f, Pos.ParentPixels, y + 4f, Pos.ParentPixels)
+            .backgroundColor(SettingsUi.tint(accent, 0.14f))
+            .borderColor(SettingsUi.tint(accent, 0.4f))
+            .borderRadius(10f)
+            .borderThickness(1f)
+            .hoverColors(SettingsUi.tint(accent, 0.24f), SettingsUi.TEXT_PRIMARY)
+            .onClick { _ ->
+                entries.add(KeybindEntry(-1, ""))
+                refreshKeeping()
+                true
+            }
+            .childOf(wrapper)
+        y += 56f
+
+        host.keyHandler = { input ->
+            val code = input.key()
+            val entry = capturingEntry
+            if (entry != null) {
+                if (code != GLFW.GLFW_KEY_ESCAPE) {
+                    entry.keyCode = code
+                    entry.keyText?.text = getKeyDisplayName(code)
+                    saveKeybinds()
+                } else {
+                    entry.keyText?.text = getKeyDisplayName(entry.keyCode)
+                }
+                entry.keyBox?.borderColor = SettingsUi.CARD_BORDER
+                capturingEntry = null
+                true
+            } else {
+                false
+            }
+        }
+        return y
+    }
 
     private fun getKeyDisplayName(keyCode: Int): String {
         if (keyCode == -1) return "Click to bind"

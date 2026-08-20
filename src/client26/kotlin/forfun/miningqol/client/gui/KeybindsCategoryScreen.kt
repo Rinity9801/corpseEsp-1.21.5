@@ -3,8 +3,6 @@ package forfun.miningqol.client.gui
 import com.mojang.blaze3d.platform.InputConstants
 import net.minecraft.client.KeyMapping
 import net.minecraft.client.Minecraft
-import net.minecraft.client.gui.screens.Screen
-import net.minecraft.client.input.KeyEvent
 import net.minecraft.client.resources.language.I18n
 import org.lwjgl.glfw.GLFW
 import xyz.meowing.vexel.components.base.enums.Pos
@@ -19,140 +17,120 @@ import xyz.meowing.vexel.elements.Button
  * listing every mapping whose id starts with "key.miningqol.". Click a key box,
  * then press a key — or click the box again to bind a mouse button; Esc cancels.
  */
-class KeybindsCategoryScreen(parent: Screen) : BaseCategoryScreen(parent, "Keybinds Settings") {
+object KeybindsContent {
     private class Row(
         val mapping: KeyMapping,
         var keyText: Text? = null,
         var keyBox: Rectangle? = null
     )
 
-    private val rows = mutableListOf<Row>()
-    private var capturing: Row? = null
-
-    override fun afterInitialization() {
-        SettingsUi.overlay(window)
-
-        rows.clear()
-        Minecraft.getInstance().options.keyMappings
+    fun build(host: VexelMainScreen, wrapper: Rectangle, width: Float): Float {
+        val rows = Minecraft.getInstance().options.keyMappings
             .filter { it.name.startsWith("key.miningqol.") }
-            .forEach { rows.add(Row(it)) }
+            .map { Row(it) }
 
-        val panelWidth = 600f
-        val panelHeight = 130f + rows.size * (SettingsUi.ROW_HEIGHT + SettingsUi.ROW_SPACING) + 60f
-        val panel = SettingsUi.panel(window, panelWidth, panelHeight,
-            "Keybinds", "Click a key box, then press a key (click the box again for a mouse button) — also in Controls")
+        var capturing: Row? = null
 
-        var y = 110f
+        fun restore(row: Row) {
+            row.keyText?.text = keyLabel(row.mapping)
+            row.keyBox?.backgroundColor = SettingsUi.alpha(SettingsUi.TRACK)
+            row.keyBox?.borderColor = SettingsUi.CARD_BORDER
+        }
+
+        fun applyKey(row: Row, key: InputConstants.Key) {
+            row.mapping.setKey(key)
+            KeyMapping.resetMapping()
+            Minecraft.getInstance().options.save()
+            capturing = null
+            restore(row)
+        }
+
+        var y = 0f
         for (row in rows) {
-            createRow(panel, panelWidth, y, row)
-            y += SettingsUi.ROW_HEIGHT + SettingsUi.ROW_SPACING
-        }
+            val card = SettingsUi.inlineCard(wrapper, width, y, 60f)
 
-        SettingsUi.backButton(panel) { saveAndClose() }
-    }
+            Text(I18n.get(row.mapping.name), SettingsUi.TEXT_PRIMARY, 16f, true)
+                .setPositioning(18f, Pos.ParentPixels, 12f, Pos.ParentPixels)
+                .childOf(card)
 
-    private fun createRow(panel: Rectangle, panelWidth: Float, y: Float, row: Row) {
-        val card = Rectangle(
-            backgroundColor = 0xF01E1E1E.toInt(),
-            borderColor = 0xFF2A2A2A.toInt(),
-            borderRadius = 12f,
-            borderThickness = 1f
-        )
-            .setSizing(SettingsUi.ROW_WIDTH, Size.Pixels, SettingsUi.ROW_HEIGHT, Size.Pixels)
-            .setPositioning((panelWidth - SettingsUi.ROW_WIDTH) / 2f, Pos.ParentPixels, y, Pos.ParentPixels)
-            .childOf(panel)
+            Text("Toggle key", SettingsUi.TEXT_MUTED, 11f, false)
+                .setPositioning(18f, Pos.ParentPixels, 36f, Pos.ParentPixels)
+                .childOf(card)
 
-        Text(I18n.get(row.mapping.name), 0xFFFFFFFF.toInt(), 17f, true)
-            .setPositioning(16f, Pos.ParentPixels, 10f, Pos.ParentPixels)
-            .childOf(card)
+            val keyBox = Rectangle(
+                backgroundColor = SettingsUi.alpha(SettingsUi.TRACK),
+                borderColor = SettingsUi.CARD_BORDER,
+                borderRadius = 8f,
+                borderThickness = 1f,
+                hoverColor = SettingsUi.alpha(SettingsUi.CARD_HOVER)
+            )
+                .setSizing(160f, Size.Pixels, 34f, Size.Pixels)
+                .setPositioning(0f, Pos.ParentPixels, 0f, Pos.ParentCenter)
+                .alignRight()
+                .setOffset(-66f, 0f)
+                .childOf(card)
 
-        Text("Toggle key", 0xFF888888.toInt(), 12f, false)
-            .setPositioning(16f, Pos.ParentPixels, 33f, Pos.ParentPixels)
-            .childOf(card)
+            val keyText = Text(keyLabel(row.mapping), SettingsUi.TEXT_PRIMARY, 13f, false)
+                .setPositioning(0f, Pos.ParentCenter, 0f, Pos.ParentCenter)
+                .childOf(keyBox)
 
-        val keyBox = Rectangle(
-            backgroundColor = 0xFF252525.toInt(),
-            borderColor = 0xFF404040.toInt(),
-            borderRadius = 6f,
-            borderThickness = 1f,
-            hoverColor = 0xFF303030.toInt()
-        )
-            .setSizing(150f, Size.Pixels, 32f, Size.Pixels)
-            .setPositioning(0f, Pos.ParentPixels, 0f, Pos.ParentCenter)
-            .alignRight()
-            .setOffset(-64f, 0f)
-            .childOf(card)
+            row.keyBox = keyBox
+            row.keyText = keyText
 
-        val keyText = Text(keyLabel(row.mapping), 0xFFFFFFFF.toInt(), 13f, false)
-            .setPositioning(0f, Pos.ParentCenter, 0f, Pos.ParentCenter)
-            .childOf(keyBox)
-
-        row.keyBox = keyBox
-        row.keyText = keyText
-
-        keyBox.onClick { event ->
-            if (capturing === row) {
-                // Armed → this click binds the mouse button that was used.
-                applyKey(row, InputConstants.Type.MOUSE.getOrCreate(event.button))
-            } else {
-                capturing?.let { restore(it) } // un-arm any other row
-                capturing = row
-                keyText.text = "Press a key..."
-                keyBox.backgroundColor = 0xFF3A3A1A.toInt()
-                keyBox.borderColor = 0xFFAAAA40.toInt()
-            }
-            true
-        }
-
-        // Unbind
-        Button("×", 0xFFFF5555.toInt(), fontSize = 18f)
-            .setSizing(32f, Size.Pixels, 32f, Size.Pixels)
-            .setPositioning(0f, Pos.ParentPixels, 0f, Pos.ParentCenter)
-            .alignRight()
-            .setOffset(-16f, 0f)
-            .backgroundColor(0xFF3A2A2A.toInt())
-            .borderColor(0xFF5A4040.toInt())
-            .borderRadius(6f)
-            .borderThickness(1f)
-            .hoverColors(0xFF5A3535.toInt(), 0xFFFFAAAA.toInt())
-            .onClick { _ ->
-                if (capturing === row) capturing = null
-                applyKey(row, InputConstants.UNKNOWN)
+            keyBox.onClick { event ->
+                if (capturing === row) {
+                    // Armed → this click binds the mouse button that was used.
+                    applyKey(row, InputConstants.Type.MOUSE.getOrCreate(event.button))
+                } else {
+                    capturing?.let { restore(it) } // un-arm any other row
+                    capturing = row
+                    keyText.text = "Press a key..."
+                    keyBox.borderColor = SettingsUi.YELLOW
+                }
                 true
             }
-            .childOf(card)
-    }
 
-    private fun applyKey(row: Row, key: InputConstants.Key) {
-        row.mapping.setKey(key)
-        KeyMapping.resetMapping()
-        Minecraft.getInstance().options.save()
-        capturing = null
-        restore(row)
-    }
+            // Unbind
+            Button("×", SettingsUi.RED, fontSize = 18f)
+                .setSizing(34f, Size.Pixels, 34f, Size.Pixels)
+                .setPositioning(0f, Pos.ParentPixels, 0f, Pos.ParentCenter)
+                .alignRight()
+                .setOffset(-18f, 0f)
+                .backgroundColor(SettingsUi.alpha(SettingsUi.TRACK))
+                .borderColor(SettingsUi.tint(SettingsUi.RED, 0.35f))
+                .borderRadius(8f)
+                .borderThickness(1f)
+                .hoverColors(SettingsUi.alpha(SettingsUi.CARD_HOVER), SettingsUi.RED)
+                .onClick { _ ->
+                    if (capturing === row) capturing = null
+                    applyKey(row, InputConstants.UNKNOWN)
+                    true
+                }
+                .childOf(card)
 
-    private fun restore(row: Row) {
-        row.keyText?.text = keyLabel(row.mapping)
-        row.keyBox?.backgroundColor = 0xFF252525.toInt()
-        row.keyBox?.borderColor = 0xFF404040.toInt()
+            y += 72f
+        }
+
+        // Capture through the vanilla key hook so we get the real GLFW key code.
+        host.keyHandler = { input ->
+            val row = capturing
+            if (row != null) {
+                if (input.key() != GLFW.GLFW_KEY_ESCAPE) {
+                    applyKey(row, InputConstants.Type.KEYSYM.getOrCreate(input.key()))
+                } else {
+                    capturing = null
+                    restore(row)
+                }
+                true
+            } else {
+                false
+            }
+        }
+        return y
     }
 
     private fun keyLabel(mapping: KeyMapping): String {
         if (mapping.isUnbound) return "None"
         return mapping.translatedKeyMessage.string
-    }
-
-    override fun keyPressed(input: KeyEvent): Boolean {
-        val row = capturing
-        if (row != null) {
-            if (input.key() != GLFW.GLFW_KEY_ESCAPE) {
-                applyKey(row, InputConstants.Type.KEYSYM.getOrCreate(input.key()))
-            } else {
-                capturing = null
-                restore(row)
-            }
-            return true
-        }
-        return super.keyPressed(input)
     }
 }

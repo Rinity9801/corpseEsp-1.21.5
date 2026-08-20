@@ -8,7 +8,6 @@ import net.minecraft.network.chat.Component;
 import net.minecraft.resources.Identifier;
 import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.Blocks;
-import net.minecraft.world.level.block.state.BlockState;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -59,6 +58,35 @@ public class OrderedWaypointManager {
     private static String lobbyCheckBlock = "minecraft:coal_ore";
     private static int lobbyCheckInterval = 10;
     private static int lobbyCheckRadius = 2;
+    /** Whether /mqo skip walks past waypoints that have no looked-for block left near them. */
+    private static boolean skipObstructed = false;
+    /** At or below this many blocks near a waypoint, it counts as mined out. */
+    private static int obstructedThreshold = 5;
+    /**
+     * Last obstruction state actually observed per waypoint position.
+     *
+     * <p>Hypixel's render distance is short enough that most of the route ahead sits in unloaded
+     * chunks, where the block count cannot be taken at all. Without a memory, a skip stopped at the
+     * first waypoint it could not evaluate — so what was seen while passing nearby is recorded here
+     * and reused once the chunk is gone again.
+     *
+     * <p>Keyed by position rather than route index so reordering or re-saving a route cannot
+     * misattribute an entry to a different spot.
+     */
+    private static final java.util.Map<BlockPos, Boolean> obstructionMemory = new java.util.HashMap<>();
+    /** Round-robin cursor for the background sweep. */
+    private static int sweepCursor = 0;
+    /** Waypoints evaluated per tick — a full pass over a 100-point route lands around every 3s. */
+    private static final int SWEEP_PER_TICK = 2;
+    /**
+     * Nothing is remembered, and nothing remembered is trusted, until this time.
+     *
+     * <p>Set on every reset. Arriving in a lobby streams chunks in over a second or two, and a block
+     * count taken mid-stream reads as mined out — which then sticks, so the first few waypoints came
+     * up as already done. The lobby check already waits a second for the same reason.
+     */
+    private static long memoryReadyAt = 0;
+    private static final long MEMORY_SETTLE_MS = 3000;
     private static int waypointsReachedSinceLastCheck = 0;
     private static List<Integer> wrongWaypoints = new ArrayList<>();
 
@@ -67,6 +95,8 @@ public class OrderedWaypointManager {
     private static int blockOutlineRadius = 3;
     private static float[] blockOutlineColor = {1f, 1f, 1f};
     private static float blockOutlineAlpha = 0.8f;
+    private static float blockOutlineThickness = 1.5f;
+    private static boolean blockOutlineFill = true;
 
     // World change / teleport tracking
     private static Object lastWorld = null;
@@ -145,6 +175,12 @@ public class OrderedWaypointManager {
     public static void setLobbyCheckInterval(int interval) { lobbyCheckInterval = interval; }
     public static int getLobbyCheckRadius() { return lobbyCheckRadius; }
     public static void setLobbyCheckRadius(int radius) { lobbyCheckRadius = radius; }
+    public static boolean isSkipObstructed() { return skipObstructed; }
+    public static void setSkipObstructed(boolean value) { skipObstructed = value; }
+    public static int getObstructedThreshold() { return obstructedThreshold; }
+    public static void setObstructedThreshold(int value) {
+        obstructedThreshold = Math.max(0, Math.min(64, value));
+    }
     public static List<Integer> getWrongWaypoints() { return wrongWaypoints; }
 
     // Block outline around waypoint
@@ -156,6 +192,13 @@ public class OrderedWaypointManager {
     public static void setBlockOutlineColor(float r, float g, float b) { blockOutlineColor = new float[]{r, g, b}; }
     public static float getBlockOutlineAlpha() { return blockOutlineAlpha; }
     public static void setBlockOutlineAlpha(float alpha) { blockOutlineAlpha = alpha; }
+    public static boolean isBlockOutlineFill() { return blockOutlineFill; }
+    public static void setBlockOutlineFill(boolean value) { blockOutlineFill = value; }
+    public static float getBlockOutlineThickness() { return blockOutlineThickness; }
+    /** Clamped so an edge can never be thick enough to swallow the block it outlines. */
+    public static void setBlockOutlineThickness(float value) {
+        blockOutlineThickness = Math.max(0.5f, Math.min(9.0f, value));
+    }
 
     // Route methods
     public static List<OrderedWaypoint> getCurrentRoute() {
@@ -223,6 +266,8 @@ public class OrderedWaypointManager {
         if (shouldReset) {
             currentIndex = 0;
             wrongWaypoints.clear();
+            obstructionMemory.clear();
+            memoryReadyAt = System.currentTimeMillis() + MEMORY_SETTLE_MS;
             waypointsReachedSinceLastCheck = 0;
 
             // Rescan for bad waypoints after a short delay (let chunks load)
@@ -241,6 +286,10 @@ public class OrderedWaypointManager {
                 }).start();
             }
         }
+
+        // After the reset handling, so a lobby change clears the memory before anything is written
+        // back into it on the same tick.
+        sweepObstruction(client);
 
         if (!enabled || currentRoute.isEmpty()) return;
 
@@ -275,22 +324,117 @@ public class OrderedWaypointManager {
         }
     }
 
+    /** The configured lobby-check block, or null when it isn't a real block id. */
+    private static Block expectedLobbyBlock() {
+        try {
+            Block block = BuiltInRegistries.BLOCK.getValue(Identifier.parse(lobbyCheckBlock));
+            if (block == null || block == Blocks.AIR) {
+                LOGGER.warn("Invalid lobby check block: " + lobbyCheckBlock);
+                return null;
+            }
+            return block;
+        } catch (Exception e) {
+            LOGGER.warn("Invalid lobby check block: " + lobbyCheckBlock);
+            return null;
+        }
+    }
+
+    /**
+     * How many {@code expected} blocks sit within {@code radius} of {@code pos}, counting no further
+     * than {@code limit}.
+     *
+     * <p>The cap earns its keep: the lobby check only needs to know whether there is at least one,
+     * and the obstruction check only needs to tell "more than the threshold" from "not more" —
+     * neither has to walk the rest of the cube once the answer is settled.
+     */
+    private static int countBlocksNear(Minecraft client, BlockPos pos, Block expected,
+                                       int radius, int limit) {
+        int found = 0;
+        BlockPos.MutableBlockPos cursor = new BlockPos.MutableBlockPos();
+        for (int dx = -radius; dx <= radius; dx++) {
+            for (int dy = -radius; dy <= radius; dy++) {
+                for (int dz = -radius; dz <= radius; dz++) {
+                    cursor.set(pos.getX() + dx, pos.getY() + dy, pos.getZ() + dz);
+                    if (client.level.getBlockState(cursor).getBlock() == expected && ++found >= limit) {
+                        return found;
+                    }
+                }
+            }
+        }
+        return found;
+    }
+
+    /** Whether any {@code expected} block sits within {@code radius} of {@code pos}. */
+    private static boolean hasBlockNear(Minecraft client, BlockPos pos, Block expected, int radius) {
+        return countBlocksNear(client, pos, expected, radius, 1) > 0;
+    }
+
+    /**
+     * Whether a waypoint has too little of the looked-for block left near it to be worth visiting.
+     *
+     * <p>Not simply "none left": a couple of stray blocks is a mined-out spot in practice, so the
+     * test is a count against {@link #obstructedThreshold} rather than mere presence.
+     *
+     * <p>Deliberately a different question from the lobby check, which still asks only whether the
+     * block is present AT ALL. A waypoint with three coal is the right lobby but not worth mining,
+     * so sharing one threshold between the two would break one of them.
+     *
+     * <p>A waypoint in an unloaded chunk counts as NOT obstructed. That is "cannot tell" rather than
+     * "nothing there", and treating it as obstructed would skip straight past waypoints purely
+     * because they are out of render distance.
+     */
+    /**
+     * Records the obstruction state of a couple of currently-loaded waypoints each tick.
+     *
+     * <p>Bounded on purpose: each evaluation is a block scan, so sweeping the whole route every tick
+     * would be far more expensive than the outline ever was. A few per tick keeps the memory fresh
+     * enough while staying flat regardless of route length.
+     */
+    private static void sweepObstruction(Minecraft client) {
+        if (!skipObstructed || currentRoute.isEmpty() || client.level == null) return;
+        if (System.currentTimeMillis() < memoryReadyAt) return;
+        Block expected = expectedLobbyBlock();
+        if (expected == null) return;
+
+        int size = currentRoute.size();
+        for (int i = 0; i < SWEEP_PER_TICK; i++) {
+            sweepCursor = (sweepCursor + 1) % size;
+            BlockPos pos = currentRoute.get(sweepCursor).getPosition();
+            if (!client.level.hasChunk(pos.getX() >> 4, pos.getZ() >> 4)) continue;
+            int count = countBlocksNear(client, pos, expected, lobbyCheckRadius,
+                obstructedThreshold + 1);
+            obstructionMemory.put(pos.immutable(), count <= obstructedThreshold);
+        }
+    }
+
+    public static boolean isObstructed(OrderedWaypoint wp) {
+        Minecraft client = Minecraft.getInstance();
+        if (wp == null || client.level == null) return false;
+        Block expected = expectedLobbyBlock();
+        if (expected == null) return false;
+
+        BlockPos pos = wp.getPosition();
+        if (!client.level.hasChunk(pos.getX() >> 4, pos.getZ() >> 4)) {
+            // Out of range: fall back to whatever was seen last time it was loaded. Still false when
+            // nothing has ever been observed — an unseen waypoint is "cannot tell", not "empty".
+            // Nothing is trusted while the world is still settling, for the same reason nothing is
+            // recorded then.
+            if (System.currentTimeMillis() < memoryReadyAt) return false;
+            return obstructionMemory.getOrDefault(pos, false);
+        }
+        boolean obstructed = countBlocksNear(client, pos, expected, lobbyCheckRadius,
+            obstructedThreshold + 1) <= obstructedThreshold;
+        obstructionMemory.put(pos.immutable(), obstructed);
+        return obstructed;
+    }
+
     public static void checkRouteBlocks() {
         Minecraft client = Minecraft.getInstance();
         if (client.player == null || client.level == null) return;
         if (currentRoute.isEmpty()) return;
 
-        Block expectedBlock;
-        try {
-            expectedBlock = BuiltInRegistries.BLOCK.getValue(Identifier.parse(lobbyCheckBlock));
-        } catch (Exception e) {
-            LOGGER.warn("Invalid lobby check block: " + lobbyCheckBlock);
-            return;
-        }
-        if (expectedBlock == null || expectedBlock == Blocks.AIR) {
-            LOGGER.warn("Invalid lobby check block: " + lobbyCheckBlock);
-            return;
-        }
+        Block expectedBlock = expectedLobbyBlock();
+        if (expectedBlock == null) return;
 
         int radius = lobbyCheckRadius;
 
@@ -305,18 +449,7 @@ public class OrderedWaypointManager {
                 continue;
             }
 
-            boolean foundBlock = false;
-            for (int dx = -radius; dx <= radius && !foundBlock; dx++) {
-                for (int dy = -radius; dy <= radius && !foundBlock; dy++) {
-                    for (int dz = -radius; dz <= radius && !foundBlock; dz++) {
-                        BlockPos checkPos = pos.offset(dx, dy, dz);
-                        BlockState state = client.level.getBlockState(checkPos);
-                        if (state.getBlock() == expectedBlock) {
-                            foundBlock = true;
-                        }
-                    }
-                }
-            }
+            boolean foundBlock = hasBlockNear(client, pos, expectedBlock, radius);
 
             if (!foundBlock) {
                 if (!wrongWaypoints.contains(waypointIndex)) {
@@ -455,7 +588,80 @@ public class OrderedWaypointManager {
         currentIndex = (currentIndex + amount) % currentRoute.size();
         if (currentIndex < 0) currentIndex += currentRoute.size();
 
-        sendMessage("\u00A7aSkipped " + amount + " waypoint(s). Now at \u00A7e#" + (currentIndex + 1));
+        int passed = skipObstructedFrom(amount < 0 ? -1 : 1);
+
+        sendMessage("\u00A7aSkipped " + amount + " waypoint(s). Now at \u00A7e#" + (currentIndex + 1)
+            + (passed > 0 ? " \u00A77(passed " + passed + " with no "
+                + lobbyCheckBlock.replaceFirst("^minecraft:", "") + " left)" : ""));
+    }
+
+    /**
+     * Keeps stepping while the waypoint we landed on is obstructed, so one /mqo skip clears a whole
+     * mined-out run instead of needing one skip per waypoint.
+     *
+     * <p>Continues in the direction the skip was going, so a backwards skip keeps going backwards.
+     *
+     * @return how many obstructed waypoints were stepped over
+     */
+    private static int skipObstructedFrom(int step) {
+        if (!skipObstructed || currentRoute.isEmpty()) return 0;
+
+        int size = currentRoute.size();
+        int start = currentIndex;
+        int passed = 0;
+
+        // Bounded by the route length: with every waypoint obstructed this would otherwise circle
+        // forever, and stepping `size` times just arrives back where it began.
+        for (int i = 0; i < size && isObstructed(currentRoute.get(currentIndex)); i++) {
+            currentIndex = ((currentIndex + step) % size + size) % size;
+            passed++;
+        }
+
+        if (isObstructed(currentRoute.get(currentIndex))) {
+            // Nothing in the route has the block near it. Staying put beats silently dumping you at
+            // an arbitrary index after a full lap.
+            currentIndex = start;
+            sendMessage("\u00A7eEvery waypoint looks mined out \u2014 staying at \u00A7e#" + (start + 1));
+            return 0;
+        }
+        return passed;
+    }
+
+    /** Marks/unmarks waypoint #number as reached by etherwarp (flag travels with the waypoint). */
+    public static void toggleEtherwarp(int number) {
+        if (currentRoute.isEmpty()) {
+            sendMessage("\u00A7cNo route loaded.");
+            return;
+        }
+
+        if (number < 1 || number > currentRoute.size()) {
+            sendMessage("\u00A7cInvalid waypoint number. Must be between 1 and " + currentRoute.size());
+            return;
+        }
+
+        OrderedWaypoint wp = currentRoute.get(number - 1);
+        wp.setEtherwarp(!wp.isEtherwarp());
+        sendMessage(wp.isEtherwarp()
+            ? "\u00A7aWaypoint \u00A7e#" + number + " \u00A7ais now an \u00A7detherwarp\u00A7a waypoint. Re-save the route to keep it."
+            : "\u00A7aWaypoint \u00A7e#" + number + " \u00A7ais no longer an etherwarp waypoint.");
+    }
+
+    public static void listEtherwarps() {
+        if (currentRoute.isEmpty()) {
+            sendMessage("\u00A7cNo route loaded.");
+            return;
+        }
+
+        StringBuilder sb = new StringBuilder();
+        for (OrderedWaypoint wp : currentRoute) {
+            if (wp.isEtherwarp()) {
+                if (sb.length() > 0) sb.append("\u00A7a, ");
+                sb.append("\u00A7e#").append(wp.getIndex());
+            }
+        }
+        sendMessage(sb.length() > 0
+            ? "\u00A7aEtherwarp waypoints: " + sb
+            : "\u00A7aNo etherwarp waypoints. Mark one with \u00A7e/mqo ether <number>");
     }
 
     public static void skipTo(int number) {
@@ -483,7 +689,8 @@ public class OrderedWaypointManager {
         try (PrintWriter writer = new PrintWriter(new FileWriter(routeFile))) {
             for (OrderedWaypoint wp : currentRoute) {
                 BlockPos pos = wp.getPosition();
-                writer.println(pos.getX() + "," + pos.getY() + "," + pos.getZ());
+                writer.println(pos.getX() + "," + pos.getY() + "," + pos.getZ()
+                    + (wp.isEtherwarp() ? ",ether" : ""));
             }
             sendMessage("\u00A7aSaved route as \u00A7e" + name + ".txt \u00A7awith " + currentRoute.size() + " waypoints.");
         } catch (IOException e) {
@@ -504,6 +711,8 @@ public class OrderedWaypointManager {
         }
 
         currentRoute.clear();
+        obstructionMemory.clear();
+        sweepCursor = 0;
         int index = 1;
 
         try {
@@ -517,7 +726,9 @@ public class OrderedWaypointManager {
                     int x = Integer.parseInt(coords[0].trim());
                     int y = Integer.parseInt(coords[1].trim());
                     int z = Integer.parseInt(coords[2].trim());
-                    currentRoute.add(new OrderedWaypoint(new BlockPos(x, y, z), index));
+                    OrderedWaypoint wp = new OrderedWaypoint(new BlockPos(x, y, z), index);
+                    wp.setEtherwarp(isEtherwarpToken(coords));
+                    currentRoute.add(wp);
                     index++;
                 } catch (Exception e) {
                     LOGGER.warn("Failed to parse waypoint line: " + line);
@@ -556,6 +767,8 @@ public class OrderedWaypointManager {
         }
 
         currentRoute.clear();
+        obstructionMemory.clear();
+        sweepCursor = 0;
         String trimmed = clipboardContent.trim();
 
         if (trimmed.startsWith("[") || trimmed.startsWith("{")) {
@@ -598,6 +811,13 @@ public class OrderedWaypointManager {
         } else {
             currentIndex = 0;
         }
+    }
+
+    /** Whether an optional trailing token after x,y,z marks the waypoint as an etherwarp. */
+    private static boolean isEtherwarpToken(String[] coords) {
+        if (coords.length < 4) return false;
+        String token = coords[3].trim().toLowerCase(java.util.Locale.ROOT);
+        return token.equals("ether") || token.equals("etherwarp") || token.equals("ew") || token.equals("e");
     }
 
     private static void parseJsonWaypoints(String content) {
@@ -653,7 +873,9 @@ public class OrderedWaypointManager {
                 y = (int) Double.parseDouble(coords[1].trim());
                 z = (int) Double.parseDouble(coords[2].trim());
 
-                currentRoute.add(new OrderedWaypoint(new BlockPos(x, y, z), index));
+                OrderedWaypoint wp = new OrderedWaypoint(new BlockPos(x, y, z), index);
+                wp.setEtherwarp(isEtherwarpToken(coords));
+                currentRoute.add(wp);
                 index++;
             } catch (Exception e) {
                 LOGGER.warn("Failed to parse waypoint line: " + line);
@@ -663,6 +885,8 @@ public class OrderedWaypointManager {
 
     public static void unload() {
         currentRoute.clear();
+        obstructionMemory.clear();
+        sweepCursor = 0;
         currentIndex = 0;
         editMode = false;
         sendMessage("\u00A7aRoute unloaded.");
@@ -680,7 +904,9 @@ public class OrderedWaypointManager {
         StringBuilder sb = new StringBuilder();
         for (OrderedWaypoint wp : currentRoute) {
             BlockPos pos = wp.getPosition();
-            sb.append(pos.getX()).append(",").append(pos.getY()).append(",").append(pos.getZ()).append("\n");
+            sb.append(pos.getX()).append(",").append(pos.getY()).append(",").append(pos.getZ());
+            if (wp.isEtherwarp()) sb.append(",ether");
+            sb.append("\n");
         }
 
         client.keyboardHandler.setClipboard(sb.toString().trim());
@@ -733,6 +959,10 @@ public class OrderedWaypointManager {
         sendMessage("\u00A76Current route: \u00A7f" + currentRoute.size() + " waypoints");
         sendMessage("\u00A76Current position: \u00A7e#" + (currentIndex + 1));
         sendMessage("\u00A76Enabled: \u00A7f" + enabled);
+        long etherCount = currentRoute.stream().filter(OrderedWaypoint::isEtherwarp).count();
+        if (etherCount > 0) {
+            sendMessage("\u00A76Etherwarp waypoints: \u00A7f" + etherCount + " \u00A77(/mqo ether)");
+        }
     }
 
     public static void toggle() {

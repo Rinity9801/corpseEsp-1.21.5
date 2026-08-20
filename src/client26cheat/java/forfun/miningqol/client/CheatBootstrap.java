@@ -41,6 +41,10 @@ public final class CheatBootstrap {
         forfun.miningqol.client.gui.CheatGui.register();
 
         ClientTickEvents.END_CLIENT_TICK.register(client -> {
+            // Outside the in-world guard so a held right-click is always released,
+            // even if the world unloads mid-press.
+            EtherwarpClickManager.tick();
+
             while (toggleAutoClickerKey.consumeClick()) AutoClickerManager.toggle();
             while (toggleShaftClickerKey.consumeClick()) ShaftClickerManager.toggle();
             while (toggleInShaftClickKey.consumeClick()) InShaftClickManager.toggle();
@@ -102,7 +106,7 @@ public final class CheatBootstrap {
                         CommClaimManager.stop();
                         return 1;
                     })));
-            dispatcher.register(ClientCommands.literal("emptystash")
+            var emptyStash = ClientCommands.literal("emptystash")
                 .executes(context -> {
                     EmptyStashManager.toggle();
                     return 1;
@@ -116,7 +120,24 @@ public final class CheatBootstrap {
                     .executes(context -> {
                         EmptyStashManager.setDebug(!EmptyStashManager.isDebug());
                         return 1;
-                    })));
+                    }));
+            // /emptystash <material> — pick the material and start in one go, rather than setting it
+            // in the GUI first. A literal per material rather than a word argument, so it tab-completes
+            // and an unknown name can't silently fall back to coal.
+            for (EmptyStashManager.Material m : EmptyStashManager.Material.values()) {
+                final EmptyStashManager.Material chosen = m;
+                emptyStash = emptyStash.then(
+                    ClientCommands.literal(chosen.name().toLowerCase(java.util.Locale.ROOT))
+                        .executes(context -> {
+                            EmptyStashManager.setMaterial(chosen);
+                            MiningqolClient.saveConfig();
+                            MqoChat.reply(net.minecraft.network.chat.Component.literal(
+                                "\u00A76[MQO] \u00A7fEmpty Stash set to \u00A7e" + chosen.displayName));
+                            EmptyStashManager.start();
+                            return 1;
+                        }));
+            }
+            dispatcher.register(emptyStash);
             dispatcher.register(ClientCommands.literal("hotmconfig")
                 .executes(context -> {
                     forfun.miningqol.client.hotm.HotmChestScreen.open();
@@ -169,6 +190,7 @@ public final class CheatBootstrap {
             AutoClickerManager.cleanup();
             InShaftClickManager.cleanup();
             ShaftClickerManager.cleanup();
+            EtherwarpClickManager.cleanup();
         };
 
         // Hide the container GUI visuals while a claim is running (if the toggle is on).
@@ -232,6 +254,8 @@ public final class CheatBootstrap {
 
             ShaftJoinCdManager.setEnabled(config.shaftJoinCdEnabled);
             ShaftJoinCdManager.setCooldownSeconds(config.shaftJoinCdSeconds);
+
+            EtherwarpClickManager.setEnabled(config.orderedWaypointEtherwarpClick);
         };
 
         CheatHooks.storeConfig = () -> {
@@ -276,6 +300,8 @@ public final class CheatBootstrap {
 
             config.shaftJoinCdEnabled = ShaftJoinCdManager.isEnabled();
             config.shaftJoinCdSeconds = ShaftJoinCdManager.getCooldownSeconds();
+
+            config.orderedWaypointEtherwarpClick = EtherwarpClickManager.isEnabled();
         };
     }
 }

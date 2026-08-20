@@ -5,10 +5,20 @@ import net.minecraft.core.BlockPos;
 public class OrderedWaypoint {
     private BlockPos position;
     private int index;
+    /** Reached by etherwarping onto it (sneak + right-click with an AOTV/AOTE) rather than walking. */
+    private boolean etherwarp;
 
     public OrderedWaypoint(BlockPos position, int index) {
         this.position = position;
         this.index = index;
+    }
+
+    public boolean isEtherwarp() {
+        return etherwarp;
+    }
+
+    public void setEtherwarp(boolean etherwarp) {
+        this.etherwarp = etherwarp;
     }
 
     public BlockPos getPosition() {

@@ -39,6 +39,13 @@ public class CommissionHUD {
         Pattern.CASE_INSENSITIVE
     );
     private static final Pattern NON_TEXTURE_KEY_CHARS = Pattern.compile("[^a-z0-9]+");
+    /**
+     * The menu names its commission items "Commission #1", "Commission #2"...
+     *
+     * <p>Matched exactly so the rest of the menu is skipped — "Commission Milestones" sits in there
+     * too and would otherwise be read as a commission.
+     */
+    private static final Pattern COMMISSION_ITEM = Pattern.compile("Commission #\\d+");
     private static final Map<String, String> TEXTURE_KEY_OVERRIDES = Map.of(
         "corpse_looter", "corpse_looter_v2",
         "umber_collector", "umber_collector_v2"
@@ -66,6 +73,30 @@ public class CommissionHUD {
     private static long lastDataRefreshAt = 0L;
     private static boolean cachedAllowedLocation = false;
     private static List<CommissionEntry> cachedEntries = List.of();
+    /** Last set of commissions read straight out of the Royal Pigeon menu, and when. */
+    private static List<CommissionEntry> guiEntries = List.of();
+    /** Which menu slots those came from — the exact slots a commission is claimed from. */
+    private static List<Integer> guiSlots = List.of();
+    private static long guiEntriesAt = 0L;
+    /**
+     * Which area the menu's Filter was showing, or null if it could not be read.
+     *
+     * <p>The menu lists whichever area the filter is set to, but this HUD only ever appears in the
+     * Glacite areas. Overriding correct Glacite data with a Dwarven Mines listing would be worse
+     * than the tab-list lag this override exists to fix.
+     */
+    private static String guiFilterArea = null;
+    /** Raw slot contents of the last Commissions menu seen, parsed or not — see refreshGuiEntries. */
+    private static List<String> lastMenuDump = List.of();
+    private static long lastMenuDumpAt = 0L;
+    /**
+     * How long a menu reading outranks the tab list after the menu closes.
+     *
+     * <p>The tab list lags a claim by a few seconds, so without this the HUD drops straight back to
+     * listing a commission that has already been handed in. Kept short on purpose: the snapshot is
+     * frozen, so holding it any longer would stall the progress updates the tab list is good for.
+     */
+    private static final long GUI_OVERRIDE_MS = 10_000L;
 
     public static void register() {
         if (registered) {
@@ -152,7 +183,7 @@ public class CommissionHUD {
         for (String line : tabLines) {
             CommissionEntry parsed = parseCommission(line);
             if (parsed != null) {
-                MqoChat.reply(Component.literal("\u00A78  '" + line + "' \u00A7a-> commission " + parsed.name() + " " + Math.round(parsed.progress() * 100) + "%"));
+                MqoChat.reply(Component.literal("\u00A78  '" + line + "' \u00A7a-> commission " + parsed.name() + " " + Math.round(parsed.progress()) + "%"));
             }
         }
         lastDataRefreshAt = 0; // force a fresh evaluation
@@ -161,6 +192,61 @@ public class CommissionHUD {
             + " \u00A7fallowedLocation=" + cachedAllowedLocation
             + " \u00A7fcommissions=" + cachedEntries.size()
             + " \u00A7fpos=" + hudX + "," + hudY));
+
+        // Which source won matters most when the HUD looks stale right after a claim.
+        long age = System.currentTimeMillis() - guiEntriesAt;
+        if (guiEntriesAt == 0) {
+            MqoChat.reply(Component.literal("\u00A78  menu: \u00A7cnothing parsed \u00A77(open the Royal Pigeon once)"));
+        } else {
+            MqoChat.reply(Component.literal("\u00A78  menu: " + guiEntries.size() + " entries, "
+                + (age / 1000) + "s ago, filter=" + (guiFilterArea == null ? "?" : guiFilterArea)
+                + " \u00A77"
+                + (age < GUI_OVERRIDE_MS ? "\u00A7a(overriding the tab list)" : "\u00A78(expired, using tab)")));
+            for (int i = 0; i < guiEntries.size(); i++) {
+                CommissionEntry entry = guiEntries.get(i);
+                MqoChat.reply(Component.literal("\u00A78    slot "
+                    + (i < guiSlots.size() ? guiSlots.get(i) : -1) + ": " + entry.name() + " "
+                    + Math.round(entry.progress()) + "%"));
+            }
+        }
+    }
+
+    /**
+     * The first non-empty lore line after the one matching {@code anchor}.
+     *
+     * <p>The lore is positional, not labelled: the commission's real name follows the three-line
+     * blurb that ends "rewards.", and its percentage follows a bare "Progress" line. Anchoring on
+     * those and skipping blanks avoids depending on fixed indices, which shift as Hypixel adds or
+     * removes blank separator lines.
+     */
+    private static @Nullable String loreValueAfter(List<String> lore,
+                                                   java.util.function.Predicate<String> anchor) {
+        for (int i = 0; i < lore.size(); i++) {
+            if (!anchor.test(lore.get(i))) {
+                continue;
+            }
+            for (int j = i + 1; j < lore.size(); j++) {
+                if (!lore.get(j).isEmpty()) {
+                    return lore.get(j);
+                }
+            }
+            return null;
+        }
+        return null;
+    }
+
+    /** /commhudslots — the raw menu contents, for when nothing parses out of it. */
+    public static void dumpMenuSlots() {
+        if (lastMenuDump.isEmpty()) {
+            MqoChat.reply(Component.literal("\u00A76[MQO] \u00A77No Commissions menu seen yet \u2014 open the Royal Pigeon, then run this."));
+            return;
+        }
+        MqoChat.reply(Component.literal("\u00A76[MQO] \u00A7fCommissions menu \u00A78("
+            + ((System.currentTimeMillis() - lastMenuDumpAt) / 1000) + "s ago, "
+            + lastMenuDump.size() + " lines)"));
+        for (String line : lastMenuDump) {
+            MqoChat.reply(Component.literal("\u00A78  " + line));
+        }
     }
 
     /** Renders the real panel with sample data at the configured position (move editor). */
@@ -317,6 +403,118 @@ public class CommissionHUD {
         cachedEntries = cachedAllowedLocation ? readCommissionEntries(mc) : List.of();
     }
 
+    /**
+     * Client tick — reads the Royal Pigeon menu.
+     *
+     * <p>Has to be a tick rather than part of the render pass: the HUD deliberately stops drawing
+     * while any screen is open, so anything hung off rendering never runs at the one moment the menu
+     * is actually there to read.
+     */
+    public static void tick() {
+        refreshGuiEntries(Minecraft.getInstance());
+    }
+
+    /**
+     * Reads the commissions out of the Royal Pigeon menu while it is open.
+     *
+     * <p>The menu is correct the instant a commission is claimed; the tab list keeps advertising the
+     * old one for several seconds afterwards, which is what made the HUD look stuck.
+     */
+    private static void refreshGuiEntries(Minecraft mc) {
+        if (mc.screen == null || mc.player == null || mc.player.containerMenu == null) {
+            return;
+        }
+        String title = mc.screen.getTitle() == null ? "" : mc.screen.getTitle().getString();
+        String normalized = title.replaceAll("§.", "").trim().toLowerCase(Locale.ROOT)
+            .replaceFirst("^\\(\\d+/\\d+\\)\\s*", "");
+        if (!normalized.startsWith("commission")) {
+            return;
+        }
+
+        List<CommissionEntry> found = new ArrayList<>();
+        List<Integer> slots = new ArrayList<>();
+        List<String> dump = new ArrayList<>();
+        java.util.Set<String> seen = new java.util.HashSet<>();
+
+        for (net.minecraft.world.inventory.Slot slot : mc.player.containerMenu.slots) {
+            // The menu's own slots only. The bottom 36 belong to your inventory, and a commission
+            // item sitting in there — or any item whose lore happens to parse — is not a commission
+            // you can claim from this screen.
+            if (slot.container == mc.player.getInventory()) {
+                continue;
+            }
+            net.minecraft.world.item.ItemStack stack = slot.getItem();
+            if (stack.isEmpty()) {
+                continue;
+            }
+
+            // getHoverName(), not the CUSTOM_NAME component: that component is only one of the ways
+            // a name can be set (item_name is another), and reading it directly meant every slot was
+            // skipped whenever Hypixel used a different one.
+            String label = stack.getHoverName() == null ? ""
+                : stack.getHoverName().getString().replaceAll("§.", "").trim();
+
+            List<String> loreLines = new ArrayList<>();
+            net.minecraft.world.item.component.ItemLore lore =
+                stack.get(net.minecraft.core.component.DataComponents.LORE);
+            if (lore != null) {
+                for (Component line : lore.lines()) {
+                    loreLines.add(line.getString().replaceAll("§.", "").trim());
+                }
+            }
+
+            // Captured whether or not the parse works — a command can't be run while the menu is
+            // open, so without recording this there is no way to see what the slots actually hold.
+            dump.add("slot " + slot.index + ": '" + label + "'");
+            for (String line : loreLines) {
+                if (!line.isEmpty()) {
+                    dump.add("    | " + line);
+                }
+            }
+
+            // The item is called "Commission #1" — the real name is inside the lore, so the item name
+            // is only useful for telling a commission apart from "Commission Milestones", "Filter"
+            // and the rest of the menu furniture.
+            if ("Filter".equalsIgnoreCase(label)) {
+                // The selected area is the line marked with the arrow.
+                for (String line : loreLines) {
+                    if (line.startsWith("\u25B6")) {
+                        guiFilterArea = line.substring(1).trim();
+                        break;
+                    }
+                }
+                continue;
+            }
+            if (!COMMISSION_ITEM.matcher(label).matches()) {
+                continue;
+            }
+
+            String name = loreValueAfter(loreLines, line -> line.endsWith("rewards."));
+            String progressText = loreValueAfter(loreLines, line -> line.equalsIgnoreCase("Progress"));
+            if (name == null || progressText == null) {
+                continue;
+            }
+
+            // Back through parseCommission so the menu accepts exactly the same commissions the tab
+            // list does — same name hints, same texture check — rather than a second, divergent set.
+            CommissionEntry parsed = parseCommission(name + ": " + progressText);
+            if (parsed != null && seen.add(parsed.name().toLowerCase(Locale.ROOT))) {
+                found.add(parsed);
+                slots.add(slot.index);
+            }
+        }
+
+        if (!dump.isEmpty()) {
+            lastMenuDump = dump;
+            lastMenuDumpAt = System.currentTimeMillis();
+        }
+        if (!found.isEmpty()) {
+            guiEntries = found;
+            guiSlots = slots;
+            guiEntriesAt = System.currentTimeMillis();
+        }
+    }
+
     /** Shared with CommStatsHUD, which shows in the same areas. */
     static boolean isAllowedHudLocation(Minecraft mc) {
         List<String> lines = getSidebarLines(mc);
@@ -350,6 +548,20 @@ public class CommissionHUD {
         }
         for (String line : getSidebarLines(mc)) {
             addParsed(result, seen, line);
+        }
+
+        // A recent menu reading replaces the tab list outright rather than merging with it. Merging
+        // would defeat the point: the commission you just claimed is absent from the menu but still
+        // present in the tab list, so it would simply come back in from there.
+        // Unknown filter still overrides: a parse miss on the Filter item should not silently
+        // disable this, only a filter that is definitely showing the wrong area.
+        boolean filterUsable = guiFilterArea == null
+            || guiFilterArea.toLowerCase(Locale.ROOT).contains("glacite");
+        if (!guiEntries.isEmpty()
+                && filterUsable
+                && System.currentTimeMillis() - guiEntriesAt < GUI_OVERRIDE_MS
+                && guiEntries.size() >= result.size()) {
+            return guiEntries;
         }
         return result;
     }
