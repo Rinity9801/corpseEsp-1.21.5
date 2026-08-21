@@ -1,6 +1,7 @@
 package forfun.miningqol.client;
 
 import com.mojang.blaze3d.vertex.VertexConsumer;
+import forfun.miningqol.client.utils.render.SeeThroughBoxRenderer;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.multiplayer.ClientLevel;
 import net.minecraft.client.renderer.MultiBufferSource;
@@ -29,23 +30,18 @@ import java.util.Set;
 
 /**
  * 26.1.2 port of ShaftESP. Entity scanning (littlefoot nametags + mineshaft mobs)
- * is unchanged; rendering goes through the immediate BufferSource at the tail of
- * LevelRenderer.renderLevel (see LevelRendererMixin) using
- * RenderTypes.textBackgroundSeeThrough() filled boxes — the same low-alpha filled
- * box approach the 1.21.11 branch used.
+ * is unchanged; rendering uses through-wall outlined entity bounding boxes.
  */
 public class ShaftESP {
-    private static final int FULL_BRIGHT = 15728880;
-
     private static boolean isInMines = false;
     private static int locationCheckCooldown = 0;
     private static boolean littlefootEnabled = true;
     private static boolean littlefootTracer = true; // draw a line from the crosshair to each littlefoot
     private static boolean mobsEnabled = false;
     private static boolean externalEsp = false;
+    private static EntityEspMode renderMode = EntityEspMode.BOX;
 
     private static final float[] LITTLEFOOT_COLOR = {0.0f, 1.0f, 0.4f};
-    private static final float LITTLEFOOT_ALPHA = 0.2f;
     private static float[] mobColor = {1.0f, 0.2f, 0.2f};
     private static float mobAlpha = 0.2f;
 
@@ -136,11 +132,12 @@ public class ShaftESP {
         trackedEntities.clear();
 
         if (mobsEnabled) {
-            // Track all living entities except the player
+            // Hypixel humanoid mobs are fake Player entities, so excluding Player wholesale drops
+            // most mineshaft mobs. Keep real tab-listed players out while allowing NPC players.
             List<LivingEntity> entities = level.getEntitiesOfClass(
                 LivingEntity.class,
                 client.player.getBoundingBox().inflate(800),
-                e -> !(e instanceof Player)
+                e -> isTrackableMob(client, e)
             );
 
             for (LivingEntity entity : entities) {
@@ -156,7 +153,7 @@ public class ShaftESP {
                         );
                         boolean hasMobBelow = !level.getEntitiesOfClass(
                             LivingEntity.class, nearbyBox,
-                            e -> !(e instanceof ArmorStand) && !(e instanceof Player)
+                            e -> !(e instanceof ArmorStand) && isTrackableMob(client, e)
                         ).isEmpty();
                         if (hasMobBelow) continue;
                     } else {
@@ -172,6 +169,24 @@ public class ShaftESP {
                 trackedEntities.put(id, true);
             }
         }
+
+        if (renderMode != EntityEspMode.BOX && !(externalEsp && EspHooks.isOverlayConnected())) {
+            for (int id : trackedEntities.keySet()) {
+                Entity entity = level.getEntity(id);
+                if (entity != null) EntityGlowESP.forceVisible(entity);
+            }
+        }
+    }
+
+    private static boolean isTrackableMob(Minecraft client, LivingEntity entity) {
+        if (entity == client.player) return false;
+        if (!(entity instanceof Player player)) return true;
+
+        // Real accounts are version-4 UUIDs with an active tab entry. Hypixel's humanoid mobs are
+        // fake players: normally UUID v2, and sometimes v4 but absent from tab after spawning.
+        return player.getUUID().version() != 4
+            || client.getConnection() == null
+            || client.getConnection().getPlayerInfo(player.getUUID()) == null;
     }
 
     public static void render(CameraRenderState cameraState, Matrix4fc viewMatrix) {
@@ -186,94 +201,65 @@ public class ShaftESP {
         MultiBufferSource.BufferSource buffers = client.renderBuffers().bufferSource();
         Matrix4f pose = new Matrix4f(viewMatrix);
 
-        // Filled see-through boxes with low alpha (same as the 1.21.11 branch).
-        VertexConsumer quads = buffers.getBuffer(RenderTypes.textBackgroundSeeThrough());
+        if (renderMode == EntityEspMode.BOX) {
+            VertexConsumer outlines = buffers.getBuffer(RenderTypes.textBackgroundSeeThrough());
 
-        // A point just in front of the camera — the start of the littlefoot tracer line.
+            for (Map.Entry<Integer, Boolean> entry : trackedEntities.entrySet()) {
+                Entity entity = client.level.getEntity(entry.getKey());
+                if (entity == null) continue;
+
+                boolean littlefoot = entry.getValue();
+                float[] color = littlefoot ? LITTLEFOOT_COLOR : mobColor;
+                float alpha = littlefoot ? 1.0f : mobAlpha;
+                double minX, minY, minZ, maxX, maxY, maxZ;
+
+                if (entity instanceof ArmorStand stand && stand.isMarker()) {
+                    minX = entity.getX() - cam.x - 0.4;
+                    minY = entity.getY() - cam.y - 1.8;
+                    minZ = entity.getZ() - cam.z - 0.4;
+                    maxX = entity.getX() - cam.x + 0.4;
+                    maxY = entity.getY() - cam.y + 0.2;
+                    maxZ = entity.getZ() - cam.z + 0.4;
+                } else {
+                    AABB box = entity.getBoundingBox();
+                    minX = box.minX - cam.x;
+                    minY = box.minY - cam.y;
+                    minZ = box.minZ - cam.z;
+                    maxX = box.maxX - cam.x;
+                    maxY = box.maxY - cam.y;
+                    maxZ = box.maxZ - cam.z;
+                }
+
+                SeeThroughBoxRenderer.outline(outlines, pose,
+                    (float) minX, (float) minY, (float) minZ,
+                    (float) maxX, (float) maxY, (float) maxZ,
+                    color[0], color[1], color[2], alpha);
+            }
+
+            buffers.endBatch();
+        }
+
+        if (!littlefootTracer) return;
+
+        // Render tracers after the quad batch so switching render types cannot flush a box buffer
+        // that the entity loop still holds.
         Vector3f forward = new Vector3f(0, 0, -1);
         cameraState.orientation.transform(forward);
         Vec3 lineStart = cam.add(forward.x, forward.y, forward.z);
-
         for (Map.Entry<Integer, Boolean> entry : trackedEntities.entrySet()) {
+            if (!entry.getValue()) continue;
             Entity entity = client.level.getEntity(entry.getKey());
             if (entity == null) continue;
 
-            boolean littlefoot = entry.getValue();
-            float[] color = littlefoot ? LITTLEFOOT_COLOR : mobColor;
-            float alpha = littlefoot ? LITTLEFOOT_ALPHA : mobAlpha;
-            double minX, minY, minZ, maxX, maxY, maxZ;
-
+            Vec3 target;
             if (entity instanceof ArmorStand stand && stand.isMarker()) {
-                minX = entity.getX() - cam.x - 0.4;
-                minY = entity.getY() - cam.y - 1.8;
-                minZ = entity.getZ() - cam.z - 0.4;
-                maxX = entity.getX() - cam.x + 0.4;
-                maxY = entity.getY() - cam.y + 0.2;
-                maxZ = entity.getZ() - cam.z + 0.4;
+                target = new Vec3(entity.getX(), entity.getY() - 0.8, entity.getZ());
             } else {
-                AABB box = entity.getBoundingBox();
-                minX = box.minX - cam.x;
-                minY = box.minY - cam.y;
-                minZ = box.minZ - cam.z;
-                maxX = box.maxX - cam.x;
-                maxY = box.maxY - cam.y;
-                maxZ = box.maxZ - cam.z;
+                target = entity.getBoundingBox().getCenter();
             }
-
-            box(quads, pose,
-                (float) minX, (float) minY, (float) minZ,
-                (float) maxX, (float) maxY, (float) maxZ,
-                color[0], color[1], color[2], alpha);
-
-            // Tracer line from the crosshair to the littlefoot box centre (like ordered waypoints).
-            if (littlefoot && littlefootTracer) {
-                Vec3 target = new Vec3(
-                    (minX + maxX) / 2 + cam.x,
-                    (minY + maxY) / 2 + cam.y,
-                    (minZ + maxZ) / 2 + cam.z);
-                line(buffers, pose, cam, lineStart, target, color, 1.0f);
-            }
+            line(buffers, pose, cam, lineStart, target, LITTLEFOOT_COLOR, 1.0f);
         }
-
         buffers.endBatch();
-    }
-
-    private static void box(VertexConsumer buffer, Matrix4f pose,
-                            float minX, float minY, float minZ,
-                            float maxX, float maxY, float maxZ,
-                            float red, float green, float blue, float alpha) {
-        int r = (int) (red * 255);
-        int g = (int) (green * 255);
-        int b = (int) (blue * 255);
-        int a = (int) (alpha * 255);
-
-        // Bottom
-        quad(buffer, pose, r, g, b, a,
-            minX, minY, minZ, maxX, minY, minZ, maxX, minY, maxZ, minX, minY, maxZ);
-        // Top
-        quad(buffer, pose, r, g, b, a,
-            minX, maxY, minZ, minX, maxY, maxZ, maxX, maxY, maxZ, maxX, maxY, minZ);
-        // North
-        quad(buffer, pose, r, g, b, a,
-            minX, minY, minZ, minX, maxY, minZ, maxX, maxY, minZ, maxX, minY, minZ);
-        // South
-        quad(buffer, pose, r, g, b, a,
-            minX, minY, maxZ, maxX, minY, maxZ, maxX, maxY, maxZ, minX, maxY, maxZ);
-        // West
-        quad(buffer, pose, r, g, b, a,
-            minX, minY, minZ, minX, minY, maxZ, minX, maxY, maxZ, minX, maxY, minZ);
-        // East
-        quad(buffer, pose, r, g, b, a,
-            maxX, minY, minZ, maxX, maxY, minZ, maxX, maxY, maxZ, maxX, minY, maxZ);
-    }
-
-    private static void quad(VertexConsumer buffer, Matrix4f pose, int r, int g, int b, int a,
-                             float x1, float y1, float z1, float x2, float y2, float z2,
-                             float x3, float y3, float z3, float x4, float y4, float z4) {
-        buffer.addVertex(pose, x1, y1, z1).setColor(r, g, b, a).setLight(FULL_BRIGHT);
-        buffer.addVertex(pose, x2, y2, z2).setColor(r, g, b, a).setLight(FULL_BRIGHT);
-        buffer.addVertex(pose, x3, y3, z3).setColor(r, g, b, a).setLight(FULL_BRIGHT);
-        buffer.addVertex(pose, x4, y4, z4).setColor(r, g, b, a).setLight(FULL_BRIGHT);
     }
 
     private static void line(MultiBufferSource.BufferSource buffers, Matrix4f pose, Vec3 camPos,
@@ -337,6 +323,25 @@ public class ShaftESP {
 
     public static boolean isMobsEnabled() {
         return mobsEnabled;
+    }
+
+    public static EntityEspMode getRenderMode() {
+        return renderMode;
+    }
+
+    public static void setRenderMode(EntityEspMode mode) {
+        renderMode = mode == null ? EntityEspMode.BOX : mode;
+    }
+
+    public static boolean isGlowTarget(Entity entity) {
+        return renderMode != EntityEspMode.BOX
+            && entity != null
+            && !(externalEsp && EspHooks.isOverlayConnected())
+            && trackedEntities.containsKey(entity.getId());
+    }
+
+    public static float[] getEspColor(Entity entity) {
+        return Boolean.TRUE.equals(trackedEntities.get(entity.getId())) ? LITTLEFOOT_COLOR : mobColor;
     }
 
     /**

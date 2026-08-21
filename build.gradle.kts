@@ -117,6 +117,9 @@ dependencies {
 
     // Vexel GUI Library
     if (!is26_1_2) {
+        // Vexel embeds Knit for runtime but its published POM does not expose it to Kotlin's
+        // compile classpath. Match the exact nested version from Vexel 127.
+        add("modCompileOnly", "xyz.meowing:knit-1.21.10-fabric:118")
         add("modImplementation", include(property("vexel_dep").toString())!!)
     } else {
         implementation("xyz.meowing:knit-26.1.2-fabric:26.1.2-local")

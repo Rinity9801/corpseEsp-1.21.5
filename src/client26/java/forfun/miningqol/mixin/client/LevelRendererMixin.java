@@ -1,21 +1,38 @@
 package forfun.miningqol.mixin.client;
 
 import com.mojang.blaze3d.buffers.GpuBufferSlice;
+import com.mojang.blaze3d.pipeline.RenderTarget;
 import com.mojang.blaze3d.resource.GraphicsResourceAllocator;
+import forfun.miningqol.client.EntityGlowESP;
+import forfun.miningqol.client.utils.render.OutlineHaloBlit;
 import forfun.miningqol.client.waypoints.OrderedWaypointRenderer;
 import net.minecraft.client.DeltaTracker;
+import net.minecraft.client.Minecraft;
 import net.minecraft.client.renderer.LevelRenderer;
 import net.minecraft.client.renderer.chunk.ChunkSectionsToRender;
 import net.minecraft.client.renderer.state.level.CameraRenderState;
 import org.joml.Matrix4fc;
 import org.joml.Vector4f;
 import org.spongepowered.asm.mixin.Mixin;
+import org.spongepowered.asm.mixin.Shadow;
 import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 
 @Mixin(LevelRenderer.class)
 public class LevelRendererMixin {
+    @Shadow
+    private RenderTarget entityOutlineTarget;
+
+    @Inject(method = "doEntityOutline", at = @At("HEAD"), cancellable = true)
+    private void miningqol$compositeCustomEspGlow(CallbackInfo ci) {
+        if (!EntityGlowESP.consumeCustomGlowFrame() || entityOutlineTarget == null) return;
+        OutlineHaloBlit.blit(
+            entityOutlineTarget,
+            Minecraft.getInstance().getMainRenderTarget().getColorTextureView());
+        ci.cancel();
+    }
+
     @Inject(method = "renderLevel", at = @At("TAIL"))
     private void miningqol$afterRenderLevel(GraphicsResourceAllocator allocator, DeltaTracker deltaTracker,
                                             boolean renderBlockOutline, CameraRenderState cameraState,

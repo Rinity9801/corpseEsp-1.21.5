@@ -1,10 +1,12 @@
 package forfun.miningqol.client.gui
 
+import forfun.miningqol.client.BlockOverlay
 import forfun.miningqol.client.CommTracker
 import forfun.miningqol.client.CommissionHUD
 import forfun.miningqol.client.CorpseESP
 import forfun.miningqol.client.CritParticleDrop
 import forfun.miningqol.client.EfficientMinerOverlay
+import forfun.miningqol.client.EntityEspMode
 import forfun.miningqol.client.FiletWarning
 import forfun.miningqol.client.MiningqolClient
 import forfun.miningqol.client.MqoChat
@@ -20,6 +22,32 @@ import xyz.meowing.vexel.components.core.Rectangle
  * wrapper from y = 0 and returns the y below its last control.
  */
 object FeatureDetails {
+
+    fun blockOverlay(w: Rectangle, width: Float): Float {
+        val accent = SettingsUi.SKY
+        var y = 0f
+        y = SettingsUi.inlineToggle(w, width, y, "Enabled", "Replace the vanilla targeted-block outline", accent,
+            { BlockOverlay.isEnabled() }) { BlockOverlay.setEnabled(it) }
+        y = SettingsUi.inlineChoice(w, width, y, "Mode", "Click to cycle the overlay style", accent,
+            { BlockOverlay.getMode().displayName }) { BlockOverlay.cycleMode() }
+        y = SettingsUi.inlineRgb(w, width, y, "Outline Color",
+            { BlockOverlay.getOutlineColor() },
+            { r, g, b -> BlockOverlay.setOutlineColor(r, g, b) })
+        y = SettingsUi.inlineColor(w, width, y, "Fill Color",
+            { BlockOverlay.getFillColor() },
+            { r, g, b -> BlockOverlay.setFillColor(r, g, b) },
+            { BlockOverlay.getFillAlpha() },
+            { BlockOverlay.setFillAlpha(it) })
+        y = SettingsUi.inlineSlider(w, width, y, "Line Width", 1f, 10f, 0.1f,
+            BlockOverlay.getLineWidth(), accent, { String.format("%.1f px", it) }) {
+            BlockOverlay.setLineWidth(it)
+        }
+        y = SettingsUi.inlineToggle(w, width, y, "Phase", "Draw the overlay through walls", accent,
+            { BlockOverlay.isPhase() }) { BlockOverlay.setPhase(it) }
+        y = SettingsUi.inlineToggle(w, width, y, "Hide with Etherwarp", "Hide while sneaking with an ethermerged AOTE/AOTV", accent,
+            { BlockOverlay.isHideDuringEtherwarp() }) { BlockOverlay.setHideDuringEtherwarp(it) }
+        return y
+    }
 
     fun commissionHud(host: VexelMainScreen, w: Rectangle, width: Float): Float {
         val accent = SettingsUi.BLUE
@@ -136,6 +164,10 @@ object FeatureDetails {
     fun shaftEsp(w: Rectangle, width: Float): Float {
         val accent = SettingsUi.CYAN
         var y = 0f
+        y = SettingsUi.inlineDropdown(w, width, y, "Render Mode", "Choose boxes, Prisma glow, or Minecraft glow", accent,
+            EntityEspMode.values().map { it.displayName }, ShaftESP.getRenderMode().ordinal) {
+            ShaftESP.setRenderMode(EntityEspMode.values()[it])
+        }
         y = SettingsUi.inlineToggle(w, width, y, "Littlefoot ESP", "Highlight the Littlefoot in mineshafts", accent,
             { ShaftESP.isLittlefootEnabled() }) { ShaftESP.setLittlefootEnabled(it) }
         y = SettingsUi.inlineToggle(w, width, y, "Littlefoot Tracer", "Line from your crosshair to the Littlefoot", accent,
@@ -156,6 +188,10 @@ object FeatureDetails {
     fun corpseEsp(w: Rectangle, width: Float): Float {
         val accent = SettingsUi.YELLOW
         var y = 0f
+        y = SettingsUi.inlineDropdown(w, width, y, "Render Mode", "Choose boxes, Prisma glow, or Minecraft glow", accent,
+            EntityEspMode.values().map { it.displayName }, CorpseESP.getRenderMode().ordinal) {
+            CorpseESP.setRenderMode(EntityEspMode.values()[it])
+        }
         y = SettingsUi.inlineToggle(w, width, y, "Lapis Corpses", "Track Lapis armor corpses", accent,
             { CorpseESP.isLapisEnabled() }) { if (CorpseESP.isLapisEnabled() != it) CorpseESP.toggleLapis() }
         y = SettingsUi.inlineToggle(w, width, y, "Tungsten Corpses", "Track Tungsten armor corpses", accent,

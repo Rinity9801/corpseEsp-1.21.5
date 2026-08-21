@@ -5,6 +5,14 @@
   "compatibilityLevel": "JAVA_25",
   "client": [
     "LevelRendererMixin",
+    "EntityGlowMixin",
+    "EntityRendererMixin",
+    "EntityRenderStateMixin",
+    "SubmitNodeCollectionMixin",
+    "CustomHeadLayerMixin",
+    "RenderTypesMixin",
+    "RenderPipelinesInvoker",
+    "RenderTypeInvoker",
     "ContainerScreenHideMixin",
     "SoundEngineMixin",
     "ParticleEngineMixin"

@@ -4,6 +4,7 @@ import xyz.meowing.vexel.components.base.enums.Pos
 import xyz.meowing.vexel.components.base.enums.Size
 import xyz.meowing.vexel.components.core.Rectangle
 import xyz.meowing.vexel.components.core.Text
+import xyz.meowing.vexel.elements.Dropdown
 import xyz.meowing.vexel.elements.Slider
 import xyz.meowing.vexel.elements.TextInput
 
@@ -26,6 +27,7 @@ object SettingsUi {
     val TEXT_SECONDARY = 0xFFBBBBBB.toInt()
     val TEXT_MUTED = 0xFF888888.toInt()
     val TEXT_DIM = 0xFF606060.toInt()
+    val EDGE_WIDTH = 0.5f
 
     // Category/feature accents
     val BLUE = 0xFF7AA2F7.toInt()
@@ -56,13 +58,20 @@ object SettingsUi {
     fun tint(accent: Int, alphaFrac: Float): Int =
         ((alphaFrac * 255f).toInt().coerceIn(0, 255) shl 24) or (accent and 0xFFFFFF)
 
+    /** Softer opacity-aware color for thin NanoVG control outlines. */
+    fun edge(color: Int, strength: Float = 0.72f): Int {
+        val sourceAlpha = (color ushr 24) and 0xFF
+        val a = (sourceAlpha * guiOpacity * strength).toInt().coerceIn(0, 255)
+        return (a shl 24) or (color and 0xFFFFFF)
+    }
+
     /** An empty card in the detail column — base for custom rows. */
     fun inlineCard(parent: Rectangle, width: Float, y: Float, height: Float, hover: Boolean = false): Rectangle =
         Rectangle(
             backgroundColor = alpha(CARD_BG),
-            borderColor = CARD_BORDER,
+            borderColor = edge(CARD_BORDER),
             borderRadius = 12f,
-            borderThickness = 1f,
+            borderThickness = EDGE_WIDTH,
             hoverColor = if (hover) alpha(CARD_HOVER) else null
         )
             .setSizing(width, Size.Pixels, height, Size.Pixels)
@@ -82,7 +91,7 @@ object SettingsUi {
     ): Float {
         val enabled = get()
         val card = inlineCard(parent, width, y, 60f, hover = true)
-        card.borderColor = if (enabled) accent else CARD_BORDER
+        card.borderColor = if (enabled) edge(accent) else edge(CARD_BORDER)
 
         val labelText = Text(label, if (enabled) TEXT_PRIMARY else TEXT_SECONDARY, 16f, true)
             .setPositioning(18f, Pos.ParentPixels, 12f, Pos.ParentPixels)
@@ -107,7 +116,7 @@ object SettingsUi {
         card.onClick { _ ->
             val n = !get()
             set(n)
-            card.borderColor = if (n) accent else CARD_BORDER
+            card.borderColor = if (n) edge(accent) else edge(CARD_BORDER)
             labelText.textColor = if (n) TEXT_PRIMARY else TEXT_SECONDARY
             statusText.text = if (n) "ON" else "OFF"
             statusText.textColor = if (n) accent else TEXT_DIM
@@ -184,9 +193,9 @@ object SettingsUi {
             .alignRight()
             .setOffset(-16f, 0f)
             .backgroundColor(alpha(TRACK))
-            .borderColor(CARD_BORDER)
+            .borderColor(edge(CARD_BORDER))
             .borderRadius(8f)
-            .borderThickness(1f)
+            .borderThickness(EDGE_WIDTH)
             .childOf(card)
         input.onValueChange { value -> onChange(value as String) }
         return y + 72f
@@ -224,6 +233,88 @@ object SettingsUi {
         return y + 72f
     }
 
+    /** A clickable option row that cycles through a small fixed set of values. */
+    fun inlineChoice(
+        parent: Rectangle,
+        width: Float,
+        y: Float,
+        label: String,
+        description: String?,
+        accent: Int,
+        get: () -> String,
+        next: () -> Unit
+    ): Float {
+        val card = inlineCard(parent, width, y, 60f, hover = true)
+
+        Text(label, TEXT_PRIMARY, 16f, true)
+            .setPositioning(18f, Pos.ParentPixels, 12f, Pos.ParentPixels)
+            .childOf(card)
+        if (description != null) {
+            Text(description, TEXT_MUTED, 11f, false)
+                .setPositioning(18f, Pos.ParentPixels, 36f, Pos.ParentPixels)
+                .childOf(card)
+        }
+        val valueText = Text(get(), accent, 13f, true)
+            .setPositioning(0f, Pos.ParentPixels, 0f, Pos.ParentCenter)
+            .alignRight()
+            .setOffset(-18f, 0f)
+            .childOf(card)
+
+        card.onClick { _ ->
+            next()
+            valueText.text = get()
+            true
+        }
+        return y + 72f
+    }
+
+    /** Popup selector for a small fixed set of values. */
+    fun inlineDropdown(
+        parent: Rectangle,
+        width: Float,
+        y: Float,
+        label: String,
+        description: String?,
+        accent: Int,
+        options: List<String>,
+        selectedIndex: Int,
+        onChange: (Int) -> Unit
+    ): Float {
+        val card = inlineCard(parent, width, y, 60f)
+
+        Text(label, TEXT_PRIMARY, 16f, true)
+            .setPositioning(18f, Pos.ParentPixels, 12f, Pos.ParentPixels)
+            .childOf(card)
+        if (description != null) {
+            Text(description, TEXT_MUTED, 11f, false)
+                .setPositioning(18f, Pos.ParentPixels, 36f, Pos.ParentPixels)
+                .childOf(card)
+        }
+
+        val dropdown = Dropdown(
+            options = options,
+            selectedIndex = selectedIndex.coerceIn(0, options.lastIndex),
+            backgroundColor = alpha(TRACK),
+            iconColor = accent,
+            borderColor = edge(accent, 0.82f),
+            borderRadius = 9f,
+            borderThickness = EDGE_WIDTH,
+            padding = floatArrayOf(10f, 6f, 10f, 6f),
+            hoverColor = alpha(CARD_HOVER),
+            pressedColor = alpha(NAV_SELECTED)
+        )
+            .fontSize(13f)
+            .setSizing(190f, Size.Pixels, 34f, Size.Pixels)
+            .setPositioning(0f, Pos.ParentPixels, 0f, Pos.ParentCenter)
+            .alignRight()
+            .setOffset(-16f, 0f)
+            .childOf(card)
+        val dropdownEdge = edge(accent, 0.82f)
+        dropdown.setBorderGradient(dropdownEdge, dropdownEdge)
+        dropdown.onValueChange { value -> onChange(value as Int) }
+        return y + 72f
+    }
+
     /** Small section label between control groups. */
     fun inlineSectionHeader(parent: Rectangle, y: Float, title: String): Float {
         Text(title.uppercase(), TEXT_MUTED, 11f, true)
@@ -241,7 +332,8 @@ object SettingsUi {
         getColor: () -> FloatArray,
         setColor: (Float, Float, Float) -> Unit,
         getAlpha: () -> Float,
-        setAlpha: (Float) -> Unit
+        setAlpha: (Float) -> Unit,
+        showAlpha: Boolean = true
     ): Float {
         val card = inlineCard(parent, width, y, 100f)
 
@@ -257,8 +349,8 @@ object SettingsUi {
                 (c[2] * 255).toInt().coerceIn(0, 255)
         }
 
-        val swatch = Rectangle(backgroundColor = swatchColor(), borderColor = CARD_BORDER,
-            borderRadius = 6f, borderThickness = 1f)
+        val swatch = Rectangle(backgroundColor = swatchColor(), borderColor = edge(CARD_BORDER),
+            borderRadius = 6f, borderThickness = EDGE_WIDTH)
             .setSizing(36f, Size.Pixels, 22f, Size.Pixels)
             .setPositioning(0f, Pos.ParentPixels, 12f, Pos.ParentPixels)
             .alignRight()
@@ -266,9 +358,9 @@ object SettingsUi {
             .ignoreMouseEvents()
             .childOf(card)
 
-        val channels = listOf("R", "G", "B", "A")
+        val channels = if (showAlpha) listOf("R", "G", "B", "A") else listOf("R", "G", "B")
         val gap = 26f
-        val sliderWidth = (width - 36f - 3 * gap) / 4f - 14f
+        val sliderWidth = (width - 36f - (channels.size - 1) * gap) / channels.size - 14f
         channels.forEachIndexed { i, label ->
             val x = 18f + i * (sliderWidth + 14f + gap)
             Text(label, TEXT_MUTED, 12f, false)
@@ -304,4 +396,13 @@ object SettingsUi {
         }
         return y + 112f
     }
+
+    fun inlineRgb(
+        parent: Rectangle,
+        width: Float,
+        y: Float,
+        title: String,
+        getColor: () -> FloatArray,
+        setColor: (Float, Float, Float) -> Unit
+    ): Float = inlineColor(parent, width, y, title, getColor, setColor, { 1f }, { _ -> }, false)
 }

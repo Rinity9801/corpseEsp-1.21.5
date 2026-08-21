@@ -34,7 +34,7 @@ object KeybindsContent {
         fun restore(row: Row) {
             row.keyText?.text = keyLabel(row.mapping)
             row.keyBox?.backgroundColor = SettingsUi.alpha(SettingsUi.TRACK)
-            row.keyBox?.borderColor = SettingsUi.CARD_BORDER
+            row.keyBox?.borderColor = SettingsUi.edge(SettingsUi.CARD_BORDER)
         }
 
         fun applyKey(row: Row, key: InputConstants.Key) {
@@ -59,9 +59,9 @@ object KeybindsContent {
 
             val keyBox = Rectangle(
                 backgroundColor = SettingsUi.alpha(SettingsUi.TRACK),
-                borderColor = SettingsUi.CARD_BORDER,
-                borderRadius = 8f,
-                borderThickness = 1f,
+                borderColor = SettingsUi.edge(SettingsUi.CARD_BORDER),
+                borderRadius = 9f,
+                borderThickness = SettingsUi.EDGE_WIDTH,
                 hoverColor = SettingsUi.alpha(SettingsUi.CARD_HOVER)
             )
                 .setSizing(160f, Size.Pixels, 34f, Size.Pixels)
@@ -85,7 +85,7 @@ object KeybindsContent {
                     capturing?.let { restore(it) } // un-arm any other row
                     capturing = row
                     keyText.text = "Press a key..."
-                    keyBox.borderColor = SettingsUi.YELLOW
+                    keyBox.borderColor = SettingsUi.edge(SettingsUi.YELLOW)
                 }
                 true
             }
@@ -97,9 +97,9 @@ object KeybindsContent {
                 .alignRight()
                 .setOffset(-18f, 0f)
                 .backgroundColor(SettingsUi.alpha(SettingsUi.TRACK))
-                .borderColor(SettingsUi.tint(SettingsUi.RED, 0.35f))
-                .borderRadius(8f)
-                .borderThickness(1f)
+                .borderColor(SettingsUi.edge(SettingsUi.RED, 0.6f))
+                .borderRadius(9f)
+                .borderThickness(SettingsUi.EDGE_WIDTH)
                 .hoverColors(SettingsUi.alpha(SettingsUi.CARD_HOVER), SettingsUi.RED)
                 .onClick { _ ->
                     if (capturing === row) capturing = null

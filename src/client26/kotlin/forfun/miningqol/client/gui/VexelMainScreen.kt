@@ -1,6 +1,7 @@
 package forfun.miningqol.client.gui
 
 import forfun.miningqol.client.MiningqolClient
+import forfun.miningqol.client.BlockOverlay
 import forfun.miningqol.client.waypoints.OrderedWaypointManager
 import forfun.miningqol.client.CommissionHUD
 import forfun.miningqol.client.PickaxeCooldownHUD
@@ -45,6 +46,9 @@ class VexelMainScreen : VexelScreen("MiningQOL Settings") {
         GuiCategory("General", listOf(
             GuiFeature("Misc", "GUI opacity, chat, sounds, overlays", SettingsUi.ORANGE,
                 detail = { _, w, width -> FeatureDetails.misc(w, width) }),
+            GuiFeature("Block Overlay", "Custom targeted block highlight", SettingsUi.SKY,
+                detail = { _, w, width -> FeatureDetails.blockOverlay(w, width) },
+                status = { BlockOverlay.isEnabled() }),
             GuiFeature("Keybinds", "Rebind the mod's hotkeys", SettingsUi.SKY,
                 detail = { host, w, width -> KeybindsContent.build(host, w, width) }),
             GuiFeature("Command Keybinds", "Bind commands to keys", SettingsUi.PURPLE2,
@@ -95,9 +99,9 @@ class VexelMainScreen : VexelScreen("MiningQOL Settings") {
     private fun buildSidebar(cats: List<GuiCategory>) {
         val sidebar = Rectangle(
             backgroundColor = SettingsUi.alpha(SettingsUi.PANEL_BG),
-            borderColor = SettingsUi.PANEL_BORDER,
+            borderColor = SettingsUi.edge(SettingsUi.PANEL_BORDER),
             borderRadius = 16f,
-            borderThickness = 1f
+            borderThickness = SettingsUi.EDGE_WIDTH
         )
             .setSizing(sidebarWidth, Size.Pixels, panelHeight, Size.Pixels)
             .childOf(window)
@@ -179,9 +183,9 @@ class VexelMainScreen : VexelScreen("MiningQOL Settings") {
     private fun buildMain(category: GuiCategory) {
         val panel = Rectangle(
             backgroundColor = SettingsUi.alpha(SettingsUi.PANEL_BG),
-            borderColor = SettingsUi.PANEL_BORDER,
+            borderColor = SettingsUi.edge(SettingsUi.PANEL_BORDER),
             borderRadius = 16f,
-            borderThickness = 1f
+            borderThickness = SettingsUi.EDGE_WIDTH
         )
             .setSizing(mainWidth, Size.Pixels, panelHeight, Size.Pixels)
             .childOf(window)
@@ -210,9 +214,9 @@ class VexelMainScreen : VexelScreen("MiningQOL Settings") {
                 .setSizing(mainWidth - searchX - contentPad, Size.Pixels, 30f, Size.Pixels)
                 .setPositioning(searchX, Pos.ParentPixels, 26f, Pos.ParentPixels)
                 .backgroundColor(SettingsUi.alpha(SettingsUi.TRACK))
-                .borderColor(SettingsUi.CARD_BORDER)
+                .borderColor(SettingsUi.edge(SettingsUi.CARD_BORDER))
                 .borderRadius(8f)
-                .borderThickness(1f)
+                .borderThickness(SettingsUi.EDGE_WIDTH)
                 .childOf(panel)
             search.onValueChange { value ->
                 searchQuery = value as String
@@ -258,9 +262,9 @@ class VexelMainScreen : VexelScreen("MiningQOL Settings") {
             val row = index / 3
             val card = Rectangle(
                 backgroundColor = SettingsUi.alpha(SettingsUi.CARD_BG),
-                borderColor = SettingsUi.CARD_BORDER,
+                borderColor = SettingsUi.edge(SettingsUi.CARD_BORDER),
                 borderRadius = 12f,
-                borderThickness = 1f,
+                borderThickness = SettingsUi.EDGE_WIDTH,
                 hoverColor = SettingsUi.alpha(SettingsUi.CARD_HOVER)
             )
                 .setSizing(cardWidth, Size.Pixels, cardHeight, Size.Pixels)
@@ -317,9 +321,9 @@ class VexelMainScreen : VexelScreen("MiningQOL Settings") {
     private fun buildDetail(panel: Rectangle, feature: GuiFeature) {
         val back = Rectangle(
             backgroundColor = SettingsUi.alpha(SettingsUi.CARD_BG),
-            borderColor = SettingsUi.CARD_BORDER,
-            borderRadius = 8f,
-            borderThickness = 1f,
+            borderColor = SettingsUi.edge(SettingsUi.CARD_BORDER),
+            borderRadius = 9f,
+            borderThickness = SettingsUi.EDGE_WIDTH,
             hoverColor = SettingsUi.alpha(SettingsUi.CARD_HOVER)
         )
             .setSizing(72f, Size.Pixels, 28f, Size.Pixels)

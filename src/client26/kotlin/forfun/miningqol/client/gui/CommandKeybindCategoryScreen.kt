@@ -62,9 +62,9 @@ object CommandKeybindContent {
 
             val keyBox = Rectangle(
                 backgroundColor = SettingsUi.alpha(SettingsUi.TRACK),
-                borderColor = SettingsUi.CARD_BORDER,
-                borderRadius = 8f,
-                borderThickness = 1f,
+                borderColor = SettingsUi.edge(SettingsUi.CARD_BORDER),
+                borderRadius = 9f,
+                borderThickness = SettingsUi.EDGE_WIDTH,
                 hoverColor = SettingsUi.alpha(SettingsUi.CARD_HOVER)
             )
                 .setSizing(180f, Size.Pixels, 36f, Size.Pixels)
@@ -84,14 +84,14 @@ object CommandKeybindContent {
                     val code = GLFW.GLFW_KEY_LAST + event.button + 1
                     entry.keyCode = code
                     keyText.text = getKeyDisplayName(code)
-                    keyBox.borderColor = SettingsUi.CARD_BORDER
+                    keyBox.borderColor = SettingsUi.edge(SettingsUi.CARD_BORDER)
                     capturingEntry = null
                     saveKeybinds()
                 } else {
                     // Arm: next keyboard key or click here (mouse button) binds it.
                     capturingEntry = entry
                     keyText.text = "Press a key or click here..."
-                    keyBox.borderColor = SettingsUi.YELLOW
+                    keyBox.borderColor = SettingsUi.edge(SettingsUi.YELLOW)
                 }
                 true
             }
@@ -104,9 +104,9 @@ object CommandKeybindContent {
                 .setSizing(width - 240f - 90f, Size.Pixels, 36f, Size.Pixels)
                 .setPositioning(240f, Pos.ParentPixels, 38f, Pos.ParentPixels)
                 .backgroundColor(SettingsUi.alpha(SettingsUi.TRACK))
-                .borderColor(SettingsUi.CARD_BORDER)
-                .borderRadius(8f)
-                .borderThickness(1f)
+                .borderColor(SettingsUi.edge(SettingsUi.CARD_BORDER))
+                .borderRadius(9f)
+                .borderThickness(SettingsUi.EDGE_WIDTH)
                 .childOf(card)
             commandInput.onValueChange { value ->
                 entry.command = value as String
@@ -119,9 +119,9 @@ object CommandKeybindContent {
                 .alignRight()
                 .setOffset(-18f, 0f)
                 .backgroundColor(SettingsUi.alpha(SettingsUi.TRACK))
-                .borderColor(SettingsUi.tint(SettingsUi.RED, 0.35f))
-                .borderRadius(8f)
-                .borderThickness(1f)
+                .borderColor(SettingsUi.edge(SettingsUi.RED, 0.6f))
+                .borderRadius(9f)
+                .borderThickness(SettingsUi.EDGE_WIDTH)
                 .hoverColors(SettingsUi.alpha(SettingsUi.CARD_HOVER), SettingsUi.RED)
                 .onClick { _ ->
                     entries.remove(entry)
@@ -139,9 +139,9 @@ object CommandKeybindContent {
             .setSizing(200f, Size.Pixels, 40f, Size.Pixels)
             .setPositioning(0f, Pos.ParentPixels, y + 4f, Pos.ParentPixels)
             .backgroundColor(SettingsUi.tint(accent, 0.14f))
-            .borderColor(SettingsUi.tint(accent, 0.4f))
+            .borderColor(SettingsUi.edge(accent, 0.65f))
             .borderRadius(10f)
-            .borderThickness(1f)
+            .borderThickness(SettingsUi.EDGE_WIDTH)
             .hoverColors(SettingsUi.tint(accent, 0.24f), SettingsUi.TEXT_PRIMARY)
             .onClick { _ ->
                 entries.add(KeybindEntry(-1, ""))
@@ -162,7 +162,7 @@ object CommandKeybindContent {
                 } else {
                     entry.keyText?.text = getKeyDisplayName(entry.keyCode)
                 }
-                entry.keyBox?.borderColor = SettingsUi.CARD_BORDER
+                entry.keyBox?.borderColor = SettingsUi.edge(SettingsUi.CARD_BORDER)
                 capturingEntry = null
                 true
             } else {

@@ -1,6 +1,7 @@
 package forfun.miningqol.client;
 
 import com.mojang.blaze3d.vertex.VertexConsumer;
+import forfun.miningqol.client.utils.render.SeeThroughBoxRenderer;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.multiplayer.ClientLevel;
 import net.minecraft.client.player.LocalPlayer;
@@ -16,6 +17,7 @@ import net.minecraft.world.entity.EquipmentSlot;
 import net.minecraft.world.entity.decoration.ArmorStand;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.component.CustomData;
+import net.minecraft.world.phys.AABB;
 import net.minecraft.world.phys.EntityHitResult;
 import net.minecraft.world.phys.HitResult;
 import net.minecraft.world.phys.Vec3;
@@ -33,17 +35,9 @@ import java.util.Optional;
 
 /**
  * 26.1.2 port of CorpseESP. Corpse detection (armor-stand helmet Skyblock IDs)
- * is unchanged; rendering goes through the immediate BufferSource at the tail of
- * LevelRenderer.renderLevel (see LevelRendererMixin) using
- * RenderTypes.textBackgroundSeeThrough() — a through-wall highlight box plus a
- * beacon-style pillar, matching the 1.21 Waypoint look.
+ * is unchanged; rendering uses through-wall outlined armor-stand bounding boxes.
  */
 public class CorpseESP {
-    private static final int FULL_BRIGHT = 15728880;
-    private static final float HIGHLIGHT_ALPHA = 0.3f;
-    private static final double BEACON_WIDTH = 0.3;
-    private static final double BEACON_HEIGHT = 20.0;
-
     private static final List<CorpseWaypoint> activeWaypoints = new ArrayList<>();
     private static final List<Vec3> claimedPositions = new ArrayList<>();
     private static boolean isInMines = false;
@@ -54,14 +48,17 @@ public class CorpseESP {
     private static boolean umberEnabled = true;
     private static boolean vanguardEnabled = true;
     private static boolean externalEsp = false;
+    private static EntityEspMode renderMode = EntityEspMode.BOX;
 
     private static class CorpseWaypoint {
         final BlockPos pos;
+        final int entityId;
         final float[] color;
         final String name;
 
-        CorpseWaypoint(BlockPos pos, float[] color, String name) {
+        CorpseWaypoint(BlockPos pos, int entityId, float[] color, String name) {
             this.pos = pos;
+            this.entityId = entityId;
             this.color = color;
             this.name = name;
         }
@@ -207,9 +204,17 @@ public class CorpseESP {
                 BlockPos waypointPos = blockPos.above(2);
                 activeWaypoints.add(new CorpseWaypoint(
                     waypointPos,
+                    armorStand.getId(),
                     corpseType.getColor(),
                     corpseType.getDisplayName()
                 ));
+            }
+        }
+
+        if (renderMode != EntityEspMode.BOX && !(externalEsp && EspHooks.isOverlayConnected())) {
+            for (CorpseWaypoint waypoint : activeWaypoints) {
+                Entity entity = level.getEntity(waypoint.entityId);
+                if (entity != null) EntityGlowESP.forceVisible(entity);
             }
         }
     }
@@ -219,6 +224,7 @@ public class CorpseESP {
         // double up every box. Gated on a live overlay so closing the overlay (or the
         // feed being off) falls back to in-game drawing instead of showing nothing.
         if (externalEsp && EspHooks.isOverlayConnected()) return;
+        if (renderMode != EntityEspMode.BOX) return;
         Minecraft client = Minecraft.getInstance();
         if (client.level == null || activeWaypoints.isEmpty()) return;
 
@@ -226,70 +232,19 @@ public class CorpseESP {
         MultiBufferSource.BufferSource buffers = client.renderBuffers().bufferSource();
         Matrix4f pose = new Matrix4f(viewMatrix);
 
-        VertexConsumer quads = buffers.getBuffer(RenderTypes.textBackgroundSeeThrough());
+        VertexConsumer outlines = buffers.getBuffer(RenderTypes.textBackgroundSeeThrough());
 
         for (CorpseWaypoint waypoint : activeWaypoints) {
-            double minX = waypoint.pos.getX() - cam.x;
-            double minY = waypoint.pos.getY() - cam.y;
-            double minZ = waypoint.pos.getZ() - cam.z;
-            double maxX = minX + 1.0;
-            double maxY = minY + 1.0;
-            double maxZ = minZ + 1.0;
-
-            // Highlight box
-            box(quads, pose,
-                (float) minX, (float) minY, (float) minZ,
-                (float) maxX, (float) maxY, (float) maxZ,
-                waypoint.color[0], waypoint.color[1], waypoint.color[2], HIGHLIGHT_ALPHA);
-
-            // Beacon-style pillar above the waypoint
-            double centerX = minX + 0.5;
-            double centerZ = minZ + 0.5;
-            box(quads, pose,
-                (float) (centerX - BEACON_WIDTH), (float) minY, (float) (centerZ - BEACON_WIDTH),
-                (float) (centerX + BEACON_WIDTH), (float) (minY + BEACON_HEIGHT), (float) (centerZ + BEACON_WIDTH),
-                waypoint.color[0], waypoint.color[1], waypoint.color[2], HIGHLIGHT_ALPHA * 0.6f);
+            Entity entity = client.level.getEntity(waypoint.entityId);
+            if (entity == null) continue;
+            AABB box = entity.getBoundingBox().inflate(0.05);
+            SeeThroughBoxRenderer.outline(outlines, pose,
+                (float) (box.minX - cam.x), (float) (box.minY - cam.y), (float) (box.minZ - cam.z),
+                (float) (box.maxX - cam.x), (float) (box.maxY - cam.y), (float) (box.maxZ - cam.z),
+                waypoint.color[0], waypoint.color[1], waypoint.color[2], 1.0f);
         }
 
         buffers.endBatch();
-    }
-
-    private static void box(VertexConsumer buffer, Matrix4f pose,
-                            float minX, float minY, float minZ,
-                            float maxX, float maxY, float maxZ,
-                            float red, float green, float blue, float alpha) {
-        int r = (int) (red * 255);
-        int g = (int) (green * 255);
-        int b = (int) (blue * 255);
-        int a = (int) (alpha * 255);
-
-        // Bottom
-        quad(buffer, pose, r, g, b, a,
-            minX, minY, minZ, maxX, minY, minZ, maxX, minY, maxZ, minX, minY, maxZ);
-        // Top
-        quad(buffer, pose, r, g, b, a,
-            minX, maxY, minZ, minX, maxY, maxZ, maxX, maxY, maxZ, maxX, maxY, minZ);
-        // North
-        quad(buffer, pose, r, g, b, a,
-            minX, minY, minZ, minX, maxY, minZ, maxX, maxY, minZ, maxX, minY, minZ);
-        // South
-        quad(buffer, pose, r, g, b, a,
-            minX, minY, maxZ, maxX, minY, maxZ, maxX, maxY, maxZ, minX, maxY, maxZ);
-        // West
-        quad(buffer, pose, r, g, b, a,
-            minX, minY, minZ, minX, minY, maxZ, minX, maxY, maxZ, minX, maxY, minZ);
-        // East
-        quad(buffer, pose, r, g, b, a,
-            maxX, minY, minZ, maxX, maxY, minZ, maxX, maxY, maxZ, maxX, minY, maxZ);
-    }
-
-    private static void quad(VertexConsumer buffer, Matrix4f pose, int r, int g, int b, int a,
-                             float x1, float y1, float z1, float x2, float y2, float z2,
-                             float x3, float y3, float z3, float x4, float y4, float z4) {
-        buffer.addVertex(pose, x1, y1, z1).setColor(r, g, b, a).setLight(FULL_BRIGHT);
-        buffer.addVertex(pose, x2, y2, z2).setColor(r, g, b, a).setLight(FULL_BRIGHT);
-        buffer.addVertex(pose, x3, y3, z3).setColor(r, g, b, a).setLight(FULL_BRIGHT);
-        buffer.addVertex(pose, x4, y4, z4).setColor(r, g, b, a).setLight(FULL_BRIGHT);
     }
 
     public static void onCorpseClaimed() {
@@ -344,6 +299,34 @@ public class CorpseESP {
 
     public static boolean isVanguardEnabled() {
         return vanguardEnabled;
+    }
+
+    public static EntityEspMode getRenderMode() {
+        return renderMode;
+    }
+
+    public static void setRenderMode(EntityEspMode mode) {
+        renderMode = mode == null ? EntityEspMode.BOX : mode;
+    }
+
+    public static boolean isGlowTarget(Entity entity) {
+        if (renderMode == EntityEspMode.BOX || entity == null
+            || (externalEsp && EspHooks.isOverlayConnected())) {
+            return false;
+        }
+        return findWaypoint(entity.getId()) != null;
+    }
+
+    public static float[] getEspColor(Entity entity) {
+        CorpseWaypoint waypoint = entity == null ? null : findWaypoint(entity.getId());
+        return waypoint == null ? new float[]{1.0f, 1.0f, 1.0f} : waypoint.color;
+    }
+
+    private static CorpseWaypoint findWaypoint(int entityId) {
+        for (CorpseWaypoint waypoint : activeWaypoints) {
+            if (waypoint.entityId == entityId) return waypoint;
+        }
+        return null;
     }
 
     /**

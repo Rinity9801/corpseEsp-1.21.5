@@ -65,6 +65,7 @@ public class MiningqolClient implements ClientModInitializer {
         }
         config.applyToGame();
         CommissionHUD.register();
+        BlockOverlay.init();
         PickaxeCooldownHUD.register();
         LobbyFinderHUD.register();
         OrderedWaypointManager.init();

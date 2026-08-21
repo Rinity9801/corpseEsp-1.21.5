@@ -2,6 +2,7 @@ package forfun.miningqol.client.config;
 
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
+import forfun.miningqol.client.BlockOverlay;
 import forfun.miningqol.client.ColdTracker;
 import forfun.miningqol.client.CommStatsHUD;
 import forfun.miningqol.client.CommTracker;
@@ -10,6 +11,7 @@ import forfun.miningqol.client.CommissionHUD;
 import forfun.miningqol.client.CorpseESP;
 import forfun.miningqol.client.CritParticleDrop;
 import forfun.miningqol.client.EfficientMinerOverlay;
+import forfun.miningqol.client.EntityEspMode;
 import forfun.miningqol.client.FiletWarning;
 import forfun.miningqol.client.LobbyFinder;
 import forfun.miningqol.client.PickaxeCooldownHUD;
@@ -51,6 +53,17 @@ public class MiningConfig {
     public boolean shaftESPMobsEnabled = false;
     public float[] shaftESPMobColor = {1.0f, 0.2f, 0.2f};
     public float shaftESPMobAlpha = 0.2f;
+    public String shaftESPRenderMode = "BOX";
+    public String corpseESPRenderMode = "BOX";
+
+    public boolean blockOverlayEnabled = false;
+    public String blockOverlayMode = "FILLED_OUTLINE";
+    public float[] blockOverlayFillColor = {0.0f, 134.0f / 255.0f, 1.0f};
+    public float blockOverlayFillAlpha = 50.0f / 255.0f;
+    public float[] blockOverlayOutlineColor = {0.0f, 134.0f / 255.0f, 1.0f};
+    public float blockOverlayLineWidth = 2.5f;
+    public boolean blockOverlayPhase = false;
+    public boolean blockOverlayHideDuringEtherwarp = false;
 
     public boolean pickaxeCooldownEnabled = true;
     public int pickaxeCooldownX = 10;
@@ -181,6 +194,11 @@ public class MiningConfig {
         if (orderedWaypointPreviousColor == null) orderedWaypointPreviousColor = new float[]{85f/255f, 85f/255f, 1f};
         if (orderedWaypointTraceLineColor == null) orderedWaypointTraceLineColor = new float[]{85f/255f, 1f, 85f/255f};
         if (shaftESPMobColor == null) shaftESPMobColor = new float[]{1.0f, 0.2f, 0.2f};
+        if (shaftESPRenderMode == null) shaftESPRenderMode = "BOX";
+        if (corpseESPRenderMode == null) corpseESPRenderMode = "BOX";
+        if (blockOverlayMode == null) blockOverlayMode = "FILLED_OUTLINE";
+        if (blockOverlayFillColor == null) blockOverlayFillColor = new float[]{0.0f, 134.0f / 255.0f, 1.0f};
+        if (blockOverlayOutlineColor == null) blockOverlayOutlineColor = new float[]{0.0f, 134.0f / 255.0f, 1.0f};
         if (orderedWaypointBlockOutlineColor == null) orderedWaypointBlockOutlineColor = new float[]{1f, 1f, 1f};
         if (emptyStashMaterial == null) emptyStashMaterial = "COAL";
         if (orderedWaypointLobbyCheckBlock == null) orderedWaypointLobbyCheckBlock = "minecraft:coal_ore";
@@ -226,6 +244,29 @@ public class MiningConfig {
         ShaftESP.setMobsEnabled(shaftESPMobsEnabled);
         ShaftESP.setMobColor(shaftESPMobColor[0], shaftESPMobColor[1], shaftESPMobColor[2]);
         ShaftESP.setMobAlpha(shaftESPMobAlpha);
+        try {
+            ShaftESP.setRenderMode(EntityEspMode.valueOf(shaftESPRenderMode));
+        } catch (IllegalArgumentException e) {
+            ShaftESP.setRenderMode(EntityEspMode.BOX);
+        }
+        try {
+            CorpseESP.setRenderMode(EntityEspMode.valueOf(corpseESPRenderMode));
+        } catch (IllegalArgumentException e) {
+            CorpseESP.setRenderMode(EntityEspMode.BOX);
+        }
+
+        BlockOverlay.setEnabled(blockOverlayEnabled);
+        try {
+            BlockOverlay.setMode(BlockOverlay.Mode.valueOf(blockOverlayMode));
+        } catch (IllegalArgumentException e) {
+            BlockOverlay.setMode(BlockOverlay.Mode.FILLED_OUTLINE);
+        }
+        BlockOverlay.setFillColor(blockOverlayFillColor[0], blockOverlayFillColor[1], blockOverlayFillColor[2]);
+        BlockOverlay.setFillAlpha(blockOverlayFillAlpha);
+        BlockOverlay.setOutlineColor(blockOverlayOutlineColor[0], blockOverlayOutlineColor[1], blockOverlayOutlineColor[2]);
+        BlockOverlay.setLineWidth(blockOverlayLineWidth);
+        BlockOverlay.setPhase(blockOverlayPhase);
+        BlockOverlay.setHideDuringEtherwarp(blockOverlayHideDuringEtherwarp);
 
         PickaxeCooldownHUD.setEnabled(pickaxeCooldownEnabled);
         PickaxeCooldownHUD.setPosition(pickaxeCooldownX, pickaxeCooldownY);
@@ -319,6 +360,17 @@ public class MiningConfig {
         shaftESPMobsEnabled = ShaftESP.isMobsEnabled();
         shaftESPMobColor = ShaftESP.getMobColor();
         shaftESPMobAlpha = ShaftESP.getMobAlpha();
+        shaftESPRenderMode = ShaftESP.getRenderMode().name();
+        corpseESPRenderMode = CorpseESP.getRenderMode().name();
+
+        blockOverlayEnabled = BlockOverlay.isEnabled();
+        blockOverlayMode = BlockOverlay.getMode().name();
+        blockOverlayFillColor = BlockOverlay.getFillColor();
+        blockOverlayFillAlpha = BlockOverlay.getFillAlpha();
+        blockOverlayOutlineColor = BlockOverlay.getOutlineColor();
+        blockOverlayLineWidth = BlockOverlay.getLineWidth();
+        blockOverlayPhase = BlockOverlay.isPhase();
+        blockOverlayHideDuringEtherwarp = BlockOverlay.isHideDuringEtherwarp();
 
         pickaxeCooldownEnabled = PickaxeCooldownHUD.isEnabled();
         pickaxeCooldownX = PickaxeCooldownHUD.getX();
