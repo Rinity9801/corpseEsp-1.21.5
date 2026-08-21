@@ -9,6 +9,8 @@ import net.fabricmc.loader.api.FabricLoader
 import net.minecraft.client.Minecraft
 import net.minecraft.client.input.KeyEvent
 import org.lwjgl.glfw.GLFW
+import xyz.meowing.knit.api.input.KnitKeyboard
+import xyz.meowing.vexel.components.base.VexelElement
 import xyz.meowing.vexel.components.base.enums.Pos
 import xyz.meowing.vexel.components.base.enums.Size
 import xyz.meowing.vexel.components.core.Rectangle
@@ -38,6 +40,7 @@ class VexelMainScreen : VexelScreen("MiningQOL Settings") {
     private val totalWidth = sidebarWidth + panelGap + mainWidth
     private val contentPad = 24f
     private val contentWidth = mainWidth - 2 * contentPad
+    private val scrollbarGutter = 14f
 
     private var mainPanel: Rectangle? = null
     private var gridContainer: Rectangle? = null
@@ -254,7 +257,8 @@ class VexelMainScreen : VexelScreen("MiningQOL Settings") {
         }
 
         val gap = 14f
-        val cardWidth = (contentWidth - 2 * gap) / 3f
+        val gridContentWidth = contentWidth - scrollbarGutter
+        val cardWidth = (gridContentWidth - 2 * gap) / 3f
         val cardHeight = 96f
 
         features.forEachIndexed { index, feature ->
@@ -361,7 +365,7 @@ class VexelMainScreen : VexelScreen("MiningQOL Settings") {
             .setPositioning(0f, Pos.ParentPixels, 0f, Pos.ParentPixels)
             .childOf(scroll)
 
-        val finalY = feature.detail?.invoke(this, wrapper, contentWidth) ?: 0f
+        val finalY = feature.detail?.invoke(this, wrapper, contentWidth - scrollbarGutter) ?: 0f
         wrapper.setSizing(100f, Size.Percent, finalY + 8f, Size.Pixels)
     }
 
@@ -388,11 +392,37 @@ class VexelMainScreen : VexelScreen("MiningQOL Settings") {
 
     override fun keyPressed(input: KeyEvent): Boolean {
         keyHandler?.let { if (it(input)) return true }
+        focusedTextInput()?.let { textInput ->
+            val shortcutDown = KnitKeyboard.isCtrlKeyPressed || KnitKeyboard.isSuperKeyPressed
+            if (shortcutDown) {
+                when (input.key()) {
+                    GLFW.GLFW_KEY_A -> textInput.selectAll()
+                    GLFW.GLFW_KEY_C -> textInput.copySelection()
+                    GLFW.GLFW_KEY_V -> textInput.paste()
+                    GLFW.GLFW_KEY_X -> textInput.cutSelection()
+                    else -> if (!textInput.keyTyped(input.key(), input.scancode(), '\u0000')) {
+                        return@let
+                    }
+                }
+                return true
+            }
+            if (textInput.keyTyped(input.key(), input.scancode(), '\u0000')) return true
+        }
         if (input.key() == GLFW.GLFW_KEY_ESCAPE && openFeature != null) {
             closeDetail()
             return true
         }
         return super.keyPressed(input)
+    }
+
+    private fun focusedTextInput(): TextInput? = findFocusedTextInput(window.children)
+
+    private fun findFocusedTextInput(elements: List<VexelElement<*>>): TextInput? {
+        for (element in elements.asReversed()) {
+            if (element is TextInput && element.isFocused) return element
+            findFocusedTextInput(element.children)?.let { return it }
+        }
+        return null
     }
 
     override fun onClose() {

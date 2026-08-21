@@ -61,6 +61,7 @@ public class MiningConfig {
     public float[] blockOverlayFillColor = {0.0f, 134.0f / 255.0f, 1.0f};
     public float blockOverlayFillAlpha = 50.0f / 255.0f;
     public float[] blockOverlayOutlineColor = {0.0f, 134.0f / 255.0f, 1.0f};
+    public float blockOverlayOutlineAlpha = 1.0f;
     public float blockOverlayLineWidth = 2.5f;
     public boolean blockOverlayPhase = false;
     public boolean blockOverlayHideDuringEtherwarp = false;
@@ -264,6 +265,7 @@ public class MiningConfig {
         BlockOverlay.setFillColor(blockOverlayFillColor[0], blockOverlayFillColor[1], blockOverlayFillColor[2]);
         BlockOverlay.setFillAlpha(blockOverlayFillAlpha);
         BlockOverlay.setOutlineColor(blockOverlayOutlineColor[0], blockOverlayOutlineColor[1], blockOverlayOutlineColor[2]);
+        BlockOverlay.setOutlineAlpha(blockOverlayOutlineAlpha);
         BlockOverlay.setLineWidth(blockOverlayLineWidth);
         BlockOverlay.setPhase(blockOverlayPhase);
         BlockOverlay.setHideDuringEtherwarp(blockOverlayHideDuringEtherwarp);
@@ -368,6 +370,7 @@ public class MiningConfig {
         blockOverlayFillColor = BlockOverlay.getFillColor();
         blockOverlayFillAlpha = BlockOverlay.getFillAlpha();
         blockOverlayOutlineColor = BlockOverlay.getOutlineColor();
+        blockOverlayOutlineAlpha = BlockOverlay.getOutlineAlpha();
         blockOverlayLineWidth = BlockOverlay.getLineWidth();
         blockOverlayPhase = BlockOverlay.isPhase();
         blockOverlayHideDuringEtherwarp = BlockOverlay.isHideDuringEtherwarp();

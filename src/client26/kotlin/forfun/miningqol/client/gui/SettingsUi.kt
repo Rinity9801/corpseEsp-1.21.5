@@ -4,9 +4,12 @@ import xyz.meowing.vexel.components.base.enums.Pos
 import xyz.meowing.vexel.components.base.enums.Size
 import xyz.meowing.vexel.components.core.Rectangle
 import xyz.meowing.vexel.components.core.Text
+import xyz.meowing.vexel.elements.ColorPicker
 import xyz.meowing.vexel.elements.Dropdown
 import xyz.meowing.vexel.elements.Slider
 import xyz.meowing.vexel.elements.TextInput
+import java.awt.Color
+import kotlin.math.roundToInt
 
 /**
  * Prisma-style UI kit for the 26.1.2 settings GUI: near-black floating panels,
@@ -323,7 +326,46 @@ object SettingsUi {
         return y + 32f
     }
 
-    /** An RGBA slider card with a live preview swatch. */
+    private data class ParsedColor(val red: Int, val green: Int, val blue: Int, val alpha: Int?)
+
+    private fun parseColor(value: String, allowAlpha: Boolean): ParsedColor? {
+        val raw = value.trim()
+        val argb = raw.startsWith("0x", ignoreCase = true)
+        var hex = when {
+            argb -> raw.substring(2)
+            raw.startsWith("#") -> raw.substring(1)
+            else -> raw
+        }
+
+        if (hex.length == 3 || hex.length == 4 && allowAlpha) {
+            hex = buildString(hex.length * 2) {
+                hex.forEach { append(it).append(it) }
+            }
+        }
+        if (hex.length != 6 && (!allowAlpha || hex.length != 8)) return null
+
+        return try {
+            if (hex.length == 8 && argb) {
+                ParsedColor(
+                    hex.substring(2, 4).toInt(16),
+                    hex.substring(4, 6).toInt(16),
+                    hex.substring(6, 8).toInt(16),
+                    hex.substring(0, 2).toInt(16)
+                )
+            } else {
+                ParsedColor(
+                    hex.substring(0, 2).toInt(16),
+                    hex.substring(2, 4).toInt(16),
+                    hex.substring(4, 6).toInt(16),
+                    if (hex.length == 8) hex.substring(6, 8).toInt(16) else null
+                )
+            }
+        } catch (_: NumberFormatException) {
+            null
+        }
+    }
+
+    /** Full color card: popup HSV picker, hex/ARGB input, and separated channel rows. */
     fun inlineColor(
         parent: Rectangle,
         width: Float,
@@ -333,43 +375,152 @@ object SettingsUi {
         setColor: (Float, Float, Float) -> Unit,
         getAlpha: () -> Float,
         setAlpha: (Float) -> Unit,
-        showAlpha: Boolean = true
+        showAlpha: Boolean = true,
+        getHex: (() -> String)? = null,
+        setHex: ((String) -> Boolean)? = null
     ): Float {
-        val card = inlineCard(parent, width, y, 100f)
+        val channels = if (showAlpha) listOf("Red", "Green", "Blue", "Alpha") else listOf("Red", "Green", "Blue")
+        val cardHeight = 54f + channels.size * 34f
+        val card = inlineCard(parent, width, y, cardHeight)
 
         Text(title, TEXT_PRIMARY, 15f, true)
-            .setPositioning(18f, Pos.ParentPixels, 12f, Pos.ParentPixels)
+            .setPositioning(18f, Pos.ParentPixels, 14f, Pos.ParentPixels)
             .childOf(card)
 
-        fun swatchColor(): Int {
+        fun currentColor(): Color {
             val c = getColor()
-            return (0xFF shl 24) or
-                ((c[0] * 255).toInt().coerceIn(0, 255) shl 16) or
-                ((c[1] * 255).toInt().coerceIn(0, 255) shl 8) or
-                (c[2] * 255).toInt().coerceIn(0, 255)
+            return Color(
+                (c[0] * 255f).roundToInt().coerceIn(0, 255),
+                (c[1] * 255f).roundToInt().coerceIn(0, 255),
+                (c[2] * 255f).roundToInt().coerceIn(0, 255),
+                if (showAlpha) (getAlpha() * 255f).roundToInt().coerceIn(0, 255) else 255
+            )
         }
 
-        val swatch = Rectangle(backgroundColor = swatchColor(), borderColor = edge(CARD_BORDER),
-            borderRadius = 6f, borderThickness = EDGE_WIDTH)
-            .setSizing(36f, Size.Pixels, 22f, Size.Pixels)
-            .setPositioning(0f, Pos.ParentPixels, 12f, Pos.ParentPixels)
+        fun formattedColor(): String {
+            val color = currentColor()
+            return if (showAlpha) {
+                String.format("0x%02X%02X%02X%02X", color.alpha, color.red, color.green, color.blue)
+            } else {
+                String.format("#%02X%02X%02X", color.red, color.green, color.blue)
+            }
+        }
+
+        val readHex = getHex ?: ::formattedColor
+        val picker = ColorPicker(
+            initialColor = currentColor(),
+            backgroundColor = alpha(PANEL_BG),
+            borderColor = edge(CARD_BORDER),
+            borderRadius = 7f,
+            borderThickness = EDGE_WIDTH,
+            hoverColor = alpha(CARD_HOVER),
+            pressedColor = alpha(NAV_SELECTED)
+        )
+            .setSizing(42f, Size.Pixels, 28f, Size.Pixels)
+            .setPositioning(0f, Pos.ParentPixels, 9f, Pos.ParentPixels)
             .alignRight()
-            .setOffset(-18f, 0f)
-            .ignoreMouseEvents()
+            .setOffset(-176f, 0f)
             .childOf(card)
 
-        val channels = if (showAlpha) listOf("R", "G", "B", "A") else listOf("R", "G", "B")
-        val gap = 26f
-        val sliderWidth = (width - 36f - (channels.size - 1) * gap) / channels.size - 14f
+        val hexInput = TextInput(
+            initialValue = readHex(),
+            placeholder = if (showAlpha) "0xAARRGGBB" else "#RRGGBB",
+            fontSize = 12f
+        )
+            .setSizing(146f, Size.Pixels, 28f, Size.Pixels)
+            .setPositioning(0f, Pos.ParentPixels, 9f, Pos.ParentPixels)
+            .alignRight()
+            .setOffset(-18f, 0f)
+            .backgroundColor(alpha(TRACK))
+            .borderColor(edge(CARD_BORDER))
+            .borderRadius(7f)
+            .borderThickness(EDGE_WIDTH)
+            .childOf(card)
+
+        var syncing = false
+        val channelInputs = mutableListOf<TextInput>()
+        val channelSliders = mutableListOf<Slider>()
+
+        fun syncControls(updateHex: Boolean = true, skipChannelInput: Int = -1) {
+            syncing = true
+            val color = currentColor()
+            val values = intArrayOf(color.red, color.green, color.blue, color.alpha)
+            picker.setColor(color, silent = true)
+            picker.pickerPanel?.let { panel ->
+                val hsb = Color.RGBtoHSB(color.red, color.green, color.blue, null)
+                panel.currentHue = hsb[0]
+                panel.currentSaturation = hsb[1]
+                panel.currentBrightness = hsb[2]
+                panel.currentAlpha = color.alpha / 255f
+                panel.currentColor = color
+                panel.pickerArea.currentHue = hsb[0]
+                panel.alphaSlider.currentColor = Color(color.red, color.green, color.blue)
+            }
+            channelInputs.forEachIndexed { index, input ->
+                if (index != skipChannelInput) input.value = values[index].toString()
+                input.background.borderColor = edge(CARD_BORDER)
+            }
+            channelSliders.forEachIndexed { index, slider ->
+                slider.setValue(values[index].toFloat(), animated = false, silent = true)
+            }
+            if (updateHex) hexInput.value = readHex()
+            hexInput.background.borderColor = edge(CARD_BORDER)
+            syncing = false
+        }
+
+        picker.onValueChange { value ->
+            if (!syncing) {
+                val color = value as Color
+                setColor(color.red / 255f, color.green / 255f, color.blue / 255f)
+                if (showAlpha) setAlpha(color.alpha / 255f)
+                syncControls()
+            }
+        }
+
+        hexInput.onValueChange { value ->
+            if (!syncing) {
+                val text = value as String
+                val parsed = parseColor(text, showAlpha)
+                val valid = if (getHex != null && setHex != null) {
+                    setHex(text)
+                } else if (parsed != null) {
+                    setColor(parsed.red / 255f, parsed.green / 255f, parsed.blue / 255f)
+                    if (showAlpha && parsed.alpha != null) setAlpha(parsed.alpha / 255f)
+                    true
+                } else {
+                    false
+                }
+                hexInput.background.borderColor = edge(if (valid) CARD_BORDER else RED)
+                if (valid) syncControls(updateHex = false)
+            }
+        }
+
+        val sliderX = 154f
+        val sliderWidth = width - sliderX - 18f
         channels.forEachIndexed { i, label ->
-            val x = 18f + i * (sliderWidth + 14f + gap)
+            val rowY = 52f + i * 34f
             Text(label, TEXT_MUTED, 12f, false)
-                .setPositioning(x, Pos.ParentPixels, 56f, Pos.ParentPixels)
+                .setPositioning(18f, Pos.ParentPixels, rowY + 7f, Pos.ParentPixels)
                 .childOf(card)
 
-            val initial = if (i == 3) getAlpha() else getColor()[i]
+            val initial = if (i == 3) {
+                (getAlpha() * 255f).roundToInt()
+            } else {
+                (getColor()[i] * 255f).roundToInt()
+            }.coerceIn(0, 255)
+
+            val input = TextInput(initialValue = initial.toString(), fontSize = 12f)
+                .setSizing(62f, Size.Pixels, 28f, Size.Pixels)
+                .setPositioning(72f, Pos.ParentPixels, rowY, Pos.ParentPixels)
+                .backgroundColor(alpha(TRACK))
+                .borderColor(edge(CARD_BORDER))
+                .borderRadius(7f)
+                .borderThickness(EDGE_WIDTH)
+                .childOf(card)
+            channelInputs += input
+
             val slider = Slider(
-                value = initial, minValue = 0f, maxValue = 1f, step = null,
+                value = initial.toFloat(), minValue = 0f, maxValue = 255f, step = 1f,
                 trackColor = alpha(TRACK),
                 trackFillColor = when (i) {
                     0 -> RED; 1 -> GREEN; 2 -> BLUE; else -> TEXT_SECONDARY
@@ -377,24 +528,39 @@ object SettingsUi {
                 thumbColor = TEXT_PRIMARY,
                 trackHeight = 4f, thumbWidth = 12f, thumbHeight = 12f, thumbRadius = 6f
             )
-                .setSizing(sliderWidth, Size.Pixels, 18f, Size.Pixels)
-                .setPositioning(x + 14f, Pos.ParentPixels, 52f, Pos.ParentPixels)
+                .setSizing(sliderWidth, Size.Pixels, 22f, Size.Pixels)
+                .setPositioning(sliderX, Pos.ParentPixels, rowY + 3f, Pos.ParentPixels)
                 .childOf(card)
+            channelSliders += slider
+
+            input.onValueChange { value ->
+                if (!syncing) {
+                    val channel = (value as String).trim().toIntOrNull()
+                    val valid = channel != null && channel in 0..255
+                    input.background.borderColor = edge(if (valid) CARD_BORDER else RED)
+                    if (valid) {
+                        val color = currentColor()
+                        val values = intArrayOf(color.red, color.green, color.blue, color.alpha)
+                        values[i] = channel
+                        setColor(values[0] / 255f, values[1] / 255f, values[2] / 255f)
+                        if (i == 3) setAlpha(values[3] / 255f)
+                        syncControls(skipChannelInput = i)
+                    }
+                }
+            }
             slider.onValueChange { value ->
-                val v = value as Float
-                if (i == 3) {
-                    setAlpha(v)
-                } else {
-                    val c = getColor()
-                    val r = if (i == 0) v else c[0]
-                    val g = if (i == 1) v else c[1]
-                    val b = if (i == 2) v else c[2]
-                    setColor(r, g, b)
-                    swatch.backgroundColor = swatchColor()
+                if (!syncing) {
+                    val channel = (value as Float).roundToInt().coerceIn(0, 255)
+                    val color = currentColor()
+                    val values = intArrayOf(color.red, color.green, color.blue, color.alpha)
+                    values[i] = channel
+                    setColor(values[0] / 255f, values[1] / 255f, values[2] / 255f)
+                    if (i == 3) setAlpha(values[3] / 255f)
+                    syncControls()
                 }
             }
         }
-        return y + 112f
+        return y + cardHeight + 12f
     }
 
     fun inlineRgb(
@@ -403,6 +569,9 @@ object SettingsUi {
         y: Float,
         title: String,
         getColor: () -> FloatArray,
-        setColor: (Float, Float, Float) -> Unit
-    ): Float = inlineColor(parent, width, y, title, getColor, setColor, { 1f }, { _ -> }, false)
+        setColor: (Float, Float, Float) -> Unit,
+        getHex: (() -> String)? = null,
+        setHex: ((String) -> Boolean)? = null
+    ): Float = inlineColor(parent, width, y, title, getColor, setColor,
+        { 1f }, { _ -> }, false, getHex, setHex)
 }

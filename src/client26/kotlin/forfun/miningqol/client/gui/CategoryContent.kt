@@ -30,14 +30,20 @@ object FeatureDetails {
             { BlockOverlay.isEnabled() }) { BlockOverlay.setEnabled(it) }
         y = SettingsUi.inlineChoice(w, width, y, "Mode", "Click to cycle the overlay style", accent,
             { BlockOverlay.getMode().displayName }) { BlockOverlay.cycleMode() }
-        y = SettingsUi.inlineRgb(w, width, y, "Outline Color",
+        y = SettingsUi.inlineColor(w, width, y, "Outline Color",
             { BlockOverlay.getOutlineColor() },
-            { r, g, b -> BlockOverlay.setOutlineColor(r, g, b) })
+            { r, g, b -> BlockOverlay.setOutlineColor(r, g, b) },
+            { BlockOverlay.getOutlineAlpha() },
+            { BlockOverlay.setOutlineAlpha(it) },
+            getHex = { BlockOverlay.getOutlineHex() },
+            setHex = { BlockOverlay.setOutlineHex(it) })
         y = SettingsUi.inlineColor(w, width, y, "Fill Color",
             { BlockOverlay.getFillColor() },
             { r, g, b -> BlockOverlay.setFillColor(r, g, b) },
             { BlockOverlay.getFillAlpha() },
-            { BlockOverlay.setFillAlpha(it) })
+            { BlockOverlay.setFillAlpha(it) },
+            getHex = { BlockOverlay.getFillHex() },
+            setHex = { BlockOverlay.setFillHex(it) })
         y = SettingsUi.inlineSlider(w, width, y, "Line Width", 1f, 10f, 0.1f,
             BlockOverlay.getLineWidth(), accent, { String.format("%.1f px", it) }) {
             BlockOverlay.setLineWidth(it)

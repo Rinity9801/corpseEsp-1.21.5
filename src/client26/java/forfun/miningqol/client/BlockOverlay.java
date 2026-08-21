@@ -29,6 +29,7 @@ public final class BlockOverlay {
     private static float[] fillColor = DEFAULT_COLOR.clone();
     private static float fillAlpha = 50.0f / 255.0f;
     private static float[] outlineColor = DEFAULT_COLOR.clone();
+    private static float outlineAlpha = 1.0f;
     private static float lineWidth = 2.5f;
     private static boolean phase;
     private static boolean hideDuringEtherwarp;
@@ -97,7 +98,7 @@ public final class BlockOverlay {
             VertexConsumer lines = context.bufferSource().getBuffer(
                 phase ? BlockOverlayRenderTypes.LINES_PHASE : BlockOverlayRenderTypes.LINES);
             addLineBox(lines, pose, minX, minY, minZ, maxX, maxY, maxZ,
-                outlineColor[0], outlineColor[1], outlineColor[2], 1.0f, lineWidth);
+                outlineColor[0], outlineColor[1], outlineColor[2], outlineAlpha, lineWidth);
         }
 
         matrices.popPose();
@@ -199,10 +200,28 @@ public final class BlockOverlay {
     public static void cycleMode() { mode = Mode.values()[(mode.ordinal() + 1) % Mode.values().length]; }
     public static float[] getFillColor() { return fillColor.clone(); }
     public static void setFillColor(float red, float green, float blue) { fillColor = color(red, green, blue); }
+    public static String getFillHex() { return formatHex(fillColor, fillAlpha); }
+    public static boolean setFillHex(String value) {
+        int[] rgba = parseHex(value, true);
+        if (rgba == null) return false;
+        setFillColor(rgba[0] / 255.0f, rgba[1] / 255.0f, rgba[2] / 255.0f);
+        if (rgba[3] >= 0) setFillAlpha(rgba[3] / 255.0f);
+        return true;
+    }
     public static float getFillAlpha() { return fillAlpha; }
     public static void setFillAlpha(float value) { fillAlpha = clamp(value); }
     public static float[] getOutlineColor() { return outlineColor.clone(); }
     public static void setOutlineColor(float red, float green, float blue) { outlineColor = color(red, green, blue); }
+    public static String getOutlineHex() { return formatHex(outlineColor, outlineAlpha); }
+    public static boolean setOutlineHex(String value) {
+        int[] rgb = parseHex(value, true);
+        if (rgb == null) return false;
+        setOutlineColor(rgb[0] / 255.0f, rgb[1] / 255.0f, rgb[2] / 255.0f);
+        if (rgb[3] >= 0) setOutlineAlpha(rgb[3] / 255.0f);
+        return true;
+    }
+    public static float getOutlineAlpha() { return outlineAlpha; }
+    public static void setOutlineAlpha(float value) { outlineAlpha = clamp(value); }
     public static float getLineWidth() { return lineWidth; }
     public static void setLineWidth(float value) { lineWidth = Math.max(1.0f, Math.min(10.0f, value)); }
     public static boolean isPhase() { return phase; }
@@ -212,6 +231,46 @@ public final class BlockOverlay {
 
     private static float[] color(float red, float green, float blue) {
         return new float[]{clamp(red), clamp(green), clamp(blue)};
+    }
+
+    private static String formatHex(float[] color, Float alpha) {
+        int red = Math.round(clamp(color[0]) * 255.0f);
+        int green = Math.round(clamp(color[1]) * 255.0f);
+        int blue = Math.round(clamp(color[2]) * 255.0f);
+        if (alpha == null) return String.format("#%02X%02X%02X", red, green, blue);
+        return String.format("0x%02X%02X%02X%02X", Math.round(clamp(alpha) * 255.0f), red, green, blue);
+    }
+
+    private static int[] parseHex(String value, boolean allowAlpha) {
+        if (value == null) return null;
+        String hex = value.trim();
+        boolean argb = hex.startsWith("0x") || hex.startsWith("0X");
+        if (hex.startsWith("#")) hex = hex.substring(1);
+        else if (argb) hex = hex.substring(2);
+
+        if (hex.length() == 3 || (allowAlpha && hex.length() == 4)) {
+            StringBuilder expanded = new StringBuilder(hex.length() * 2);
+            for (int i = 0; i < hex.length(); i++) {
+                expanded.append(hex.charAt(i)).append(hex.charAt(i));
+            }
+            hex = expanded.toString();
+        }
+        if (hex.length() != 6 && (!allowAlpha || hex.length() != 8)) return null;
+
+        try {
+            int red = Integer.parseInt(hex.substring(argb && hex.length() == 8 ? 2 : 0,
+                argb && hex.length() == 8 ? 4 : 2), 16);
+            int green = Integer.parseInt(hex.substring(argb && hex.length() == 8 ? 4 : 2,
+                argb && hex.length() == 8 ? 6 : 4), 16);
+            int blue = Integer.parseInt(hex.substring(argb && hex.length() == 8 ? 6 : 4,
+                argb && hex.length() == 8 ? 8 : 6), 16);
+            int alpha = hex.length() == 8
+                ? Integer.parseInt(hex.substring(argb ? 0 : 6, argb ? 2 : 8), 16)
+                : -1;
+            return new int[]{red, green, blue, alpha};
+        } catch (NumberFormatException ignored) {
+            return null;
+        }
     }
 
     private static float clamp(float value) {
