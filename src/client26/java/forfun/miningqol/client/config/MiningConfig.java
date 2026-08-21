@@ -72,6 +72,8 @@ public class MiningConfig {
     public float pickaxeCooldownScale = 1.0f;
     public boolean pickaxeCooldownTitleEnabled = true;
     public int pickaxeCooldownTitleThreshold = 5;
+    public boolean pickaxeCooldownCustomEnabled = false;
+    public int pickaxeCooldownCustomSeconds = 120;
 
     public boolean filetWarningEnabled = false;
     public boolean autoSkipShoLoad = false;
@@ -275,6 +277,8 @@ public class MiningConfig {
         PickaxeCooldownHUD.setScale(pickaxeCooldownScale);
         PickaxeCooldownHUD.setTitleEnabled(pickaxeCooldownTitleEnabled);
         PickaxeCooldownHUD.setTitleThreshold(pickaxeCooldownTitleThreshold);
+        PickaxeCooldownHUD.setCustomCooldownSeconds(pickaxeCooldownCustomSeconds);
+        PickaxeCooldownHUD.setCustomCooldownEnabled(pickaxeCooldownCustomEnabled);
 
         FiletWarning.setEnabled(filetWarningEnabled);
 
@@ -381,6 +385,8 @@ public class MiningConfig {
         pickaxeCooldownScale = PickaxeCooldownHUD.getScale();
         pickaxeCooldownTitleEnabled = PickaxeCooldownHUD.isTitleEnabled();
         pickaxeCooldownTitleThreshold = PickaxeCooldownHUD.getTitleThreshold();
+        pickaxeCooldownCustomEnabled = PickaxeCooldownHUD.isCustomCooldownEnabled();
+        pickaxeCooldownCustomSeconds = PickaxeCooldownHUD.getCustomCooldownSeconds();
 
         filetWarningEnabled = FiletWarning.isEnabled();
         efficientMinerEnabled = EfficientMinerOverlay.isEnabled();

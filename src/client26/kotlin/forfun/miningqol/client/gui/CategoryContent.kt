@@ -217,6 +217,12 @@ object FeatureDetails {
         var y = 0f
         y = SettingsUi.inlineToggle(w, width, y, "Enabled", "Show the cooldown HUD", accent,
             { PickaxeCooldownHUD.isEnabled() }) { PickaxeCooldownHUD.setEnabled(it) }
+        y = SettingsUi.inlineToggle(w, width, y, "Custom Cooldown", "Use a local timer instead of reading the tab list", accent,
+            { PickaxeCooldownHUD.isCustomCooldownEnabled() }) { PickaxeCooldownHUD.setCustomCooldownEnabled(it) }
+        y = SettingsUi.inlineTextInput(w, width, y, "Custom Cooldown Seconds", "Used when Custom Cooldown is enabled",
+            PickaxeCooldownHUD.getCustomCooldownSeconds().toString()) { value ->
+            value.trim().toIntOrNull()?.let { PickaxeCooldownHUD.setCustomCooldownSeconds(it) }
+        }
         y = SettingsUi.inlineSlider(w, width, y, "Scale", 0.5f, 2.0f, 0.05f,
             PickaxeCooldownHUD.getScale(), accent, { String.format("%.2fx", it) }) {
             PickaxeCooldownHUD.setScale(it)

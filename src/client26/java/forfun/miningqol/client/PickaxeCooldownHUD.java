@@ -17,6 +17,8 @@ public class PickaxeCooldownHUD {
     private static final Identifier HUD_ID = Identifier.fromNamespaceAndPath("miningqol", "pickaxe_cooldown_hud");
     private static final Pattern COOLDOWN_PATTERN = Pattern.compile("(.+?):\\s+(\\d+)s");
     private static final Pattern READY_PATTERN = Pattern.compile("(.+?):\\s+(Available|Ready|✔)");
+    private static final Pattern ABILITY_USED_PATTERN =
+        Pattern.compile("You used your (.+?) Pickaxe Ability!");
 
     private static final String[] PICKAXE_ABILITIES = {
         "Pickobulus",
@@ -36,6 +38,8 @@ public class PickaxeCooldownHUD {
     private static int lastKnownCooldownSeconds = 0;
     private static long lastCooldownUpdateTime = 0;
     private static boolean isOnCooldown = false;
+    private static boolean customCooldownEnabled = false;
+    private static int customCooldownSeconds = 120;
 
     private static int hudX = 10;
     private static int hudY = 50;
@@ -61,6 +65,14 @@ public class PickaxeCooldownHUD {
         }
 
         long currentTime = System.currentTimeMillis();
+        if (customCooldownEnabled) {
+            if (isOnCooldown
+                && currentTime - lastCooldownUpdateTime >= lastKnownCooldownSeconds * 1000L) {
+                markReady();
+            }
+            return;
+        }
+
         if (currentTime - lastUpdate < 500) return;
         lastUpdate = currentTime;
 
@@ -94,14 +106,33 @@ public class PickaxeCooldownHUD {
                     Matcher readyMatcher = READY_PATTERN.matcher(cleanLine);
                     if (readyMatcher.find()) {
                         abilityName = readyMatcher.group(1).trim();
-                        currentCooldown = "Ready";
-                        isOnCooldown = false;
-                        lastKnownCooldownSeconds = 0;
+                        markReady();
                         return;
                     }
                 }
             }
         }
+    }
+
+    public static void onGameMessage(String message) {
+        if (!customCooldownEnabled || message == null) return;
+
+        Matcher matcher = ABILITY_USED_PATTERN.matcher(message.trim());
+        if (!matcher.find()) return;
+
+        abilityName = matcher.group(1).trim();
+        lastKnownCooldownSeconds = customCooldownSeconds;
+        lastCooldownUpdateTime = System.currentTimeMillis();
+        currentCooldown = customCooldownSeconds + "s";
+        isOnCooldown = true;
+        lastTitleCooldown = -1;
+    }
+
+    private static void markReady() {
+        currentCooldown = "Ready";
+        isOnCooldown = false;
+        lastKnownCooldownSeconds = 0;
+        lastTitleCooldown = -1;
     }
 
     public static void render(GuiGraphicsExtractor ctx) {
@@ -218,5 +249,24 @@ public class PickaxeCooldownHUD {
 
     public static void setTitleThreshold(int threshold) {
         titleThreshold = threshold;
+    }
+
+    public static boolean isCustomCooldownEnabled() {
+        return customCooldownEnabled;
+    }
+
+    public static void setCustomCooldownEnabled(boolean value) {
+        if (customCooldownEnabled == value) return;
+        customCooldownEnabled = value;
+        lastCooldownUpdateTime = 0;
+        markReady();
+    }
+
+    public static int getCustomCooldownSeconds() {
+        return customCooldownSeconds;
+    }
+
+    public static void setCustomCooldownSeconds(int seconds) {
+        customCooldownSeconds = Math.max(1, Math.min(600, seconds));
     }
 }

@@ -19,6 +19,9 @@ import xyz.meowing.vexel.components.core.Rectangle
 import xyz.meowing.vexel.components.core.Text
 import xyz.meowing.vexel.core.VexelScreen
 import xyz.meowing.vexel.elements.TextInput
+import kotlin.math.floor
+import kotlin.math.round
+import kotlin.math.roundToInt
 
 /**
  * Main settings GUI — prisma-style: a floating sidebar panel (category nav) next
@@ -62,7 +65,12 @@ class VexelMainScreen : VexelScreen("MiningQOL Settings") {
         private fun logicalX(screenX: Float): Float = x + (screenX - x) / scale
         private fun logicalY(screenY: Float): Float = y + (screenY - y) / scale
 
-        override fun onRender(mouseX: Float, mouseY: Float) = Unit
+        override fun onRender(mouseX: Float, mouseY: Float) {
+            val snappedX = round(x)
+            val snappedY = round(y)
+            if (x != snappedX) x = snappedX
+            if (y != snappedY) y = snappedY
+        }
 
         override fun renderChildren(mouseX: Float, mouseY: Float) {
             renderer.push()
@@ -145,7 +153,7 @@ class VexelMainScreen : VexelScreen("MiningQOL Settings") {
         val scale = minOf(
             KnitResolution.windowWidth / 1920f,
             KnitResolution.windowHeight / 1080f
-        ).coerceIn(0.75f, 2.5f)
+        ).roundToInt().coerceIn(1, 3).toFloat()
         val root = ScaledUiRoot(scale, totalWidth, panelHeight).childOf(window)
         buildSidebar(root, cats)
         buildMain(root, cats[selectedCategory])
@@ -303,7 +311,7 @@ class VexelMainScreen : VexelScreen("MiningQOL Settings") {
 
         val gap = 14f
         val gridContentWidth = contentWidth - scrollbarGutter
-        val cardWidth = (gridContentWidth - 2 * gap) / 3f
+        val cardWidth = floor((gridContentWidth - 2 * gap) / 3f)
         val cardHeight = 96f
 
         features.forEachIndexed { index, feature ->

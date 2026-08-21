@@ -96,6 +96,7 @@ public class MiningqolClient implements ClientModInitializer {
                 return;   // action bar; nothing here reads it
             }
             String messageText = message.getString();
+            PickaxeCooldownHUD.onGameMessage(messageText);
 
             Matcher corpseMatcher = CORPSE_LOOT_PATTERN.matcher(messageText);
             if (corpseMatcher.find()) {
