@@ -9,7 +9,9 @@ import net.fabricmc.loader.api.FabricLoader
 import net.minecraft.client.Minecraft
 import net.minecraft.client.input.KeyEvent
 import org.lwjgl.glfw.GLFW
+import xyz.meowing.knit.api.render.KnitResolution
 import xyz.meowing.knit.api.input.KnitKeyboard
+import xyz.meowing.vexel.Vexel.renderer
 import xyz.meowing.vexel.components.base.VexelElement
 import xyz.meowing.vexel.components.base.enums.Pos
 import xyz.meowing.vexel.components.base.enums.Size
@@ -44,6 +46,51 @@ class VexelMainScreen : VexelScreen("MiningQOL Settings") {
 
     private var mainPanel: Rectangle? = null
     private var gridContainer: Rectangle? = null
+
+    private class ScaledUiRoot(
+        private val scale: Float,
+        designWidth: Float,
+        designHeight: Float
+    ) : VexelElement<ScaledUiRoot>() {
+        init {
+            setSizing(designWidth, Size.Pixels, designHeight, Size.Pixels)
+            setPositioning(Pos.ScreenCenter, Pos.ScreenCenter)
+            xConstraint = designWidth * (1f - scale) / 2f
+            yConstraint = designHeight * (1f - scale) / 2f
+        }
+
+        private fun logicalX(screenX: Float): Float = x + (screenX - x) / scale
+        private fun logicalY(screenY: Float): Float = y + (screenY - y) / scale
+
+        override fun onRender(mouseX: Float, mouseY: Float) = Unit
+
+        override fun renderChildren(mouseX: Float, mouseY: Float) {
+            renderer.push()
+            renderer.translate(x, y)
+            renderer.scale(scale, scale)
+            renderer.translate(-x, -y)
+            val logicalMouseX = logicalX(mouseX)
+            val logicalMouseY = logicalY(mouseY)
+            children.forEach { it.render(logicalMouseX, logicalMouseY) }
+            renderer.pop()
+        }
+
+        override fun handleMouseMove(mouseX: Float, mouseY: Float): Boolean =
+            super.handleMouseMove(logicalX(mouseX), logicalY(mouseY))
+
+        override fun handleMouseClick(mouseX: Float, mouseY: Float, button: Int): Boolean =
+            super.handleMouseClick(logicalX(mouseX), logicalY(mouseY), button)
+
+        override fun handleMouseRelease(mouseX: Float, mouseY: Float, button: Int): Boolean =
+            super.handleMouseRelease(logicalX(mouseX), logicalY(mouseY), button)
+
+        override fun handleMouseScroll(
+            mouseX: Float,
+            mouseY: Float,
+            horizontal: Double,
+            vertical: Double
+        ): Boolean = super.handleMouseScroll(logicalX(mouseX), logicalY(mouseY), horizontal, vertical)
+    }
 
     private fun builtInCategories(): List<GuiCategory> = listOf(
         GuiCategory("General", listOf(
@@ -95,11 +142,16 @@ class VexelMainScreen : VexelScreen("MiningQOL Settings") {
     private fun buildUi() {
         val cats = categories()
         if (selectedCategory >= cats.size) selectedCategory = 0
-        buildSidebar(cats)
-        buildMain(cats[selectedCategory])
+        val scale = minOf(
+            KnitResolution.windowWidth / 1920f,
+            KnitResolution.windowHeight / 1080f
+        ).coerceIn(0.75f, 2.5f)
+        val root = ScaledUiRoot(scale, totalWidth, panelHeight).childOf(window)
+        buildSidebar(root, cats)
+        buildMain(root, cats[selectedCategory])
     }
 
-    private fun buildSidebar(cats: List<GuiCategory>) {
+    private fun buildSidebar(root: ScaledUiRoot, cats: List<GuiCategory>) {
         val sidebar = Rectangle(
             backgroundColor = SettingsUi.alpha(SettingsUi.PANEL_BG),
             borderColor = SettingsUi.edge(SettingsUi.PANEL_BORDER),
@@ -107,18 +159,14 @@ class VexelMainScreen : VexelScreen("MiningQOL Settings") {
             borderThickness = SettingsUi.EDGE_WIDTH
         )
             .setSizing(sidebarWidth, Size.Pixels, panelHeight, Size.Pixels)
-            .childOf(window)
+            .setPositioning(0f, Pos.ParentPixels, 0f, Pos.ParentPixels)
+            .childOf(root)
             .apply {
                 dropShadow = true
                 shadowBlur = 40f
                 shadowSpread = 2f
                 shadowColor = 0xB0000000.toInt()
             }
-        sidebar.xPositionConstraint = Pos.ScreenCenter
-        sidebar.yPositionConstraint = Pos.ScreenCenter
-        sidebar.xConstraint = -(totalWidth - sidebarWidth) / 2f
-        sidebar.yConstraint = 0f
-
         Text("MiningQOL", SettingsUi.TEXT_PRIMARY, 20f, true)
             .setPositioning(18f, Pos.ParentPixels, 22f, Pos.ParentPixels)
             .childOf(sidebar)
@@ -183,7 +231,7 @@ class VexelMainScreen : VexelScreen("MiningQOL Settings") {
             .childOf(sidebar)
     }
 
-    private fun buildMain(category: GuiCategory) {
+    private fun buildMain(root: ScaledUiRoot, category: GuiCategory) {
         val panel = Rectangle(
             backgroundColor = SettingsUi.alpha(SettingsUi.PANEL_BG),
             borderColor = SettingsUi.edge(SettingsUi.PANEL_BORDER),
@@ -191,17 +239,14 @@ class VexelMainScreen : VexelScreen("MiningQOL Settings") {
             borderThickness = SettingsUi.EDGE_WIDTH
         )
             .setSizing(mainWidth, Size.Pixels, panelHeight, Size.Pixels)
-            .childOf(window)
+            .setPositioning(sidebarWidth + panelGap, Pos.ParentPixels, 0f, Pos.ParentPixels)
+            .childOf(root)
             .apply {
                 dropShadow = true
                 shadowBlur = 40f
                 shadowSpread = 2f
                 shadowColor = 0xB0000000.toInt()
             }
-        panel.xPositionConstraint = Pos.ScreenCenter
-        panel.yPositionConstraint = Pos.ScreenCenter
-        panel.xConstraint = (totalWidth - mainWidth) / 2f
-        panel.yConstraint = 0f
         mainPanel = panel
 
         val feature = openFeature
