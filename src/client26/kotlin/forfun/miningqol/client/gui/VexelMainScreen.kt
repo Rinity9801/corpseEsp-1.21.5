@@ -19,9 +19,9 @@ import xyz.meowing.vexel.components.core.Rectangle
 import xyz.meowing.vexel.components.core.Text
 import xyz.meowing.vexel.core.VexelScreen
 import xyz.meowing.vexel.elements.TextInput
+import kotlin.math.ceil
 import kotlin.math.floor
 import kotlin.math.round
-import kotlin.math.roundToInt
 
 /**
  * Main settings GUI — prisma-style: a floating sidebar panel (category nav) next
@@ -150,10 +150,16 @@ class VexelMainScreen : VexelScreen("MiningQOL Settings") {
     private fun buildUi() {
         val cats = categories()
         if (selectedCategory >= cats.size) selectedCategory = 0
-        val scale = minOf(
+        val resolutionRatio = minOf(
             KnitResolution.windowWidth / 1920f,
             KnitResolution.windowHeight / 1080f
-        ).roundToInt().coerceIn(1, 3).toFloat()
+        )
+        val desiredScale = ceil(resolutionRatio).toInt().coerceIn(1, 3)
+        val maximumFitScale = floor(minOf(
+            KnitResolution.windowWidth / totalWidth,
+            KnitResolution.windowHeight / panelHeight
+        )).toInt().coerceAtLeast(1)
+        val scale = minOf(desiredScale, maximumFitScale).toFloat()
         val root = ScaledUiRoot(scale, totalWidth, panelHeight).childOf(window)
         buildSidebar(root, cats)
         buildMain(root, cats[selectedCategory])
