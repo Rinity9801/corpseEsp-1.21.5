@@ -290,6 +290,24 @@ class VexelMainScreen : VexelScreen("Sybau Settings") {
         }
 
         // Close button at bottom
+        Button("Move HUDs", 0xFFFFFFFF.toInt(), fontSize = 15f)
+            .setSizing(140f, Size.Pixels, 42f, Size.Pixels)
+            .setPositioning(25f, Pos.ParentPixels, 0f, Pos.ParentPixels)
+            .alignBottom()
+            .setOffset(0f, -25f)
+            .backgroundColor(0xFF2A2A2A.toInt())
+            .borderColor(0xFF4A90E2.toInt())
+            .borderRadius(8f)
+            .borderThickness(1f)
+            .hoverColors(0xFF353535.toInt(), 0xFFFFFFFF.toInt())
+            .pressedColors(0xFF1A1A1A.toInt(), 0xFFAAAAAA.toInt())
+            .onClick { _, _, _ ->
+                MinecraftClient.getInstance().setScreen(HudPositionScreen(this@VexelMainScreen))
+                true
+            }
+            .childOf(mainPanel)
+            .fadeIn(1000, EasingType.EASE_OUT)
+
         Button("Close", 0xFFFFFFFF.toInt(), fontSize = 15f)
             .setSizing(140f, Size.Pixels, 42f, Size.Pixels)
             .setPositioning(0f, Pos.ParentCenter, 0f, Pos.ParentPixels)

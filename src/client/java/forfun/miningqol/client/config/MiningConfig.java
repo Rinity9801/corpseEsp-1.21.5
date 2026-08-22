@@ -127,6 +127,8 @@ public class MiningConfig {
     public boolean autoSkipShoLoad = false;
 
     public boolean rollingMinerCooldownEnabled = false;
+    public int rollingMinerCooldownX = 10;
+    public int rollingMinerCooldownY = 62;
 
     public boolean filetWarningEnabled = false;
 
@@ -404,6 +406,7 @@ public class MiningConfig {
 
         GlassSync.setEnabled(glassSyncEnabled);
 
+        RollingMinerCooldown.setPosition(rollingMinerCooldownX, rollingMinerCooldownY);
         RollingMinerCooldown.setEnabled(rollingMinerCooldownEnabled);
 
         // Ordered Waypoints
@@ -550,6 +553,8 @@ public class MiningConfig {
         glassSyncEnabled = GlassSync.isEnabled();
 
         rollingMinerCooldownEnabled = RollingMinerCooldown.isEnabled();
+        rollingMinerCooldownX = RollingMinerCooldown.getX();
+        rollingMinerCooldownY = RollingMinerCooldown.getY();
 
         // Ordered Waypoints
         orderedWaypointsEnabled = OrderedWaypointManager.isEnabledRaw();

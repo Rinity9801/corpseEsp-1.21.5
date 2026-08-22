@@ -131,31 +131,6 @@ class PickaxeCooldownCategoryScreen(private val parentScreen: Screen) : VexelScr
             400L
         )
 
-        // Position button
-        Button("Set HUD Position", 0xFFFFFFFF.toInt(), fontSize = 16f)
-            .setSizing(480f, Size.Pixels, 50f, Size.Pixels)
-            .setPositioning((mainPanel.width - 480f) / 2f, Pos.ParentPixels, 370f, Pos.ParentPixels)
-            .backgroundColor(0xFF2A2A2A.toInt())
-            .borderColor(0xFF4A90E2.toInt())
-            .borderRadius(12f)
-            .borderThickness(1f)
-            .hoverColors(0xFF353535.toInt(), 0xFFFFFFFF.toInt())
-            .pressedColors(0xFF1A1A1A.toInt(), 0xFFAAAAAA.toInt())
-            .onClick { _, _, _ ->
-                MinecraftClient.getInstance().setScreen(PickaxeCooldownPositionScreen(this@PickaxeCooldownCategoryScreen))
-                true
-            }
-            .childOf(mainPanel)
-            .apply {
-                visible = false
-                Thread {
-                    Thread.sleep(400L)
-                    MinecraftClient.getInstance().execute {
-                        fadeIn(400, EasingType.EASE_OUT)
-                    }
-                }.start()
-            }
-
         // Back button at bottom
         Button("Back", 0xFFFFFFFF.toInt(), fontSize = 15f)
             .setSizing(140f, Size.Pixels, 42f, Size.Pixels)

@@ -58,7 +58,9 @@ public class CommStatsHUD {
             return;
         }
 
-        boolean editor = mc.screen instanceof forfun.miningqol.client.gui.CommStatsHudPositionScreen;
+        boolean editor = mc.screen instanceof forfun.miningqol.client.gui.CommStatsHudPositionScreen
+            || (mc.screen instanceof forfun.miningqol.client.gui.HudPositionScreen
+                && CommTracker.isStatsEnabled());
         if (!editor) {
             if (!CommTracker.isStatsEnabled()) {
                 return;

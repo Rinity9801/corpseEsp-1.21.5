@@ -16,7 +16,7 @@ final class HudDragSnap {
         return Math.round(value / (float) GRID) * GRID;
     }
 
-    private static boolean shiftHeld() {
+    static boolean shiftHeld() {
         var window = Minecraft.getInstance().getWindow();
         return InputConstants.isKeyDown(window, InputConstants.KEY_LSHIFT)
             || InputConstants.isKeyDown(window, InputConstants.KEY_RSHIFT);

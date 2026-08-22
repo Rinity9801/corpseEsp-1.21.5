@@ -79,6 +79,8 @@ public class MiningConfig {
     public boolean filetWarningEnabled = false;
     public boolean autoSkipShoLoad = false;
     public boolean rollingMinerCooldownEnabled = false;
+    public int rollingMinerCooldownX = 10;
+    public int rollingMinerCooldownY = 62;
 
     public boolean efficientMinerEnabled = false;
     public boolean useOldHeatmap = false;
@@ -283,6 +285,7 @@ public class MiningConfig {
         PickaxeCooldownHUD.setCustomCooldownEnabled(pickaxeCooldownCustomEnabled);
 
         FiletWarning.setEnabled(filetWarningEnabled);
+        RollingMinerCooldown.setPosition(rollingMinerCooldownX, rollingMinerCooldownY);
         RollingMinerCooldown.setEnabled(rollingMinerCooldownEnabled);
 
         EfficientMinerOverlay.setEnabled(efficientMinerEnabled);
@@ -393,6 +396,8 @@ public class MiningConfig {
 
         filetWarningEnabled = FiletWarning.isEnabled();
         rollingMinerCooldownEnabled = RollingMinerCooldown.isEnabled();
+        rollingMinerCooldownX = RollingMinerCooldown.getX();
+        rollingMinerCooldownY = RollingMinerCooldown.getY();
         efficientMinerEnabled = EfficientMinerOverlay.isEnabled();
         useOldHeatmap = EfficientMinerOverlay.isUsingOldHeatmap();
 

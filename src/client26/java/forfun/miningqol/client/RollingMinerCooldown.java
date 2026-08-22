@@ -17,6 +17,8 @@ public final class RollingMinerCooldown {
     private static boolean registered;
     private static boolean enabled;
     private static long cooldownEndsAt;
+    private static int hudX = 10;
+    private static int hudY = 62;
 
     private RollingMinerCooldown() {}
 
@@ -63,8 +65,8 @@ public final class RollingMinerCooldown {
         context.text(
             client.font,
             displayText,
-            PickaxeCooldownHUD.getX(),
-            PickaxeCooldownHUD.getY() + 12,
+            hudX,
+            hudY,
             0xFFFFFFFF,
             true
         );
@@ -79,6 +81,27 @@ public final class RollingMinerCooldown {
         if (!enabled) {
             cooldownEndsAt = 0;
         }
+    }
+
+    public static void setPosition(int x, int y) {
+        hudX = x;
+        hudY = y;
+    }
+
+    public static int getX() {
+        return hudX;
+    }
+
+    public static int getY() {
+        return hudY;
+    }
+
+    public static int getWidth() {
+        return 120;
+    }
+
+    public static int getHeight() {
+        return 12;
     }
 
     private static int secondsLeft() {

@@ -120,22 +120,6 @@ class CommissionHudCategoryScreen(private val parentScreen: Screen) : VexelScree
             500L
         )
 
-        Button("Set HUD Position", 0xFFFFFFFF.toInt(), fontSize = 14f)
-            .setSizing(220f, Size.Pixels, 38f, Size.Pixels)
-            .setPositioning(0f, Pos.ParentCenter, startY + 340f, Pos.ParentPixels)
-            .backgroundColor(0xFF2563EB.toInt())
-            .borderColor(0xFF1D4ED8.toInt())
-            .borderRadius(8f)
-            .borderThickness(1f)
-            .hoverColors(0xFF1D4ED8.toInt(), 0xFFFFFFFF.toInt())
-            .pressedColors(0xFF1E40AF.toInt(), 0xFFAAAAAA.toInt())
-            .onClick { _, _, _ ->
-                MinecraftClient.getInstance().setScreen(CommissionHudPositionScreen(this))
-                true
-            }
-            .childOf(mainPanel)
-            .fadeIn(900, EasingType.EASE_OUT)
-
         Button("Back", 0xFFFFFFFF.toInt(), fontSize = 15f)
             .setSizing(140f, Size.Pixels, 42f, Size.Pixels)
             .setPositioning(0f, Pos.ParentCenter, 0f, Pos.ParentPixels)

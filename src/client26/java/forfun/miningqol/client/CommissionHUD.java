@@ -262,7 +262,8 @@ public class CommissionHUD {
             return;
         }
 
-        boolean editor = mc.screen instanceof forfun.miningqol.client.gui.CommissionHudPositionScreen;
+        boolean editor = mc.screen instanceof forfun.miningqol.client.gui.CommissionHudPositionScreen
+            || (mc.screen instanceof forfun.miningqol.client.gui.HudPositionScreen && enabled);
         if (editor) {
             List<CommissionEntry> sample = cachedEntries.isEmpty()
                 ? List.of(new CommissionEntry("Mithril Miner", 62.0), new CommissionEntry("Goblin Slayer", 31.0),

@@ -185,7 +185,7 @@ class VexelMainScreen : VexelScreen("Sybau Settings") {
             .setPositioning(18f, Pos.ParentPixels, 22f, Pos.ParentPixels)
             .childOf(sidebar)
 
-        val version = FabricLoader.getInstance().getModContainer("miningqol")
+        val version = FabricLoader.getInstance().getModContainer("sybau")
             .map { "v" + it.metadata.version.friendlyString + " · 26.1.2" }
             .orElse("dev")
         Text(version, SettingsUi.TEXT_MUTED, 11f, false)
@@ -238,11 +238,26 @@ class VexelMainScreen : VexelScreen("Sybau Settings") {
             y += 40f
         }
 
-        Text("esc to close", SettingsUi.TEXT_DIM, 11f, false)
-            .setPositioning(18f, Pos.ParentPixels, 0f, Pos.ParentPixels)
+        val moveHuds = Rectangle(
+            backgroundColor = SettingsUi.alpha(SettingsUi.CARD_BG),
+            borderColor = 0xFFFFFFFF.toInt(),
+            borderRadius = 9f,
+            borderThickness = SettingsUi.EDGE_WIDTH,
+            hoverColor = SettingsUi.alpha(SettingsUi.CARD_HOVER)
+        )
+            .setSizing(sidebarWidth - 20f, Size.Pixels, 34f, Size.Pixels)
+            .setPositioning(10f, Pos.ParentPixels, 0f, Pos.ParentPixels)
             .alignBottom()
-            .setOffset(0f, -16f)
+            .setOffset(0f, -42f)
             .childOf(sidebar)
+        Text("Move HUDs", SettingsUi.TEXT_SECONDARY, 13f, true)
+            .setPositioning(16f, Pos.ParentPixels, 0f, Pos.ParentCenter)
+            .childOf(moveHuds)
+        moveHuds.onClick { _ ->
+            saveConfig()
+            Minecraft.getInstance().setScreen(HudPositionScreen(this))
+            true
+        }
     }
 
     private fun buildMain(root: ScaledUiRoot, category: GuiCategory) {

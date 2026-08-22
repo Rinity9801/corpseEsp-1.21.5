@@ -229,22 +229,6 @@ class MiningProfitCategoryScreen(private val parentScreen: Screen) : VexelScreen
         )
         yOffset += 75f + spacing
 
-        // Position button
-        Button("Set HUD Position", 0xFFFFFFFF.toInt(), fontSize = 16f)
-            .setSizing(toggleWidth, Size.Pixels, 50f, Size.Pixels)
-            .setPositioning((mainPanel.width - toggleWidth) / 2f, Pos.ParentPixels, yOffset, Pos.ParentPixels)
-            .backgroundColor(0xFF2A2A2A.toInt())
-            .borderColor(0xFF44FF44.toInt())
-            .borderRadius(12f)
-            .borderThickness(1f)
-            .hoverColors(0xFF353535.toInt(), 0xFFFFFFFF.toInt())
-            .pressedColors(0xFF1A1A1A.toInt(), 0xFFAAAAAA.toInt())
-            .onClick { _, _, _ ->
-                MinecraftClient.getInstance().setScreen(ProfitPositionScreen(this@MiningProfitCategoryScreen))
-                true
-            }
-            .childOf(contentPanel)
-            .fadeIn(600, EasingType.EASE_OUT)
     }
 
     private fun buildBlockModeOptions(startY: Float, toggleWidth: Float, toggleHeight: Float, spacing: Float) {
@@ -291,22 +275,6 @@ class MiningProfitCategoryScreen(private val parentScreen: Screen) : VexelScreen
 
         yOffset += 60f
 
-        // Position button
-        Button("Set HUD Position", 0xFFFFFFFF.toInt(), fontSize = 16f)
-            .setSizing(toggleWidth, Size.Pixels, 50f, Size.Pixels)
-            .setPositioning((mainPanel.width - toggleWidth) / 2f, Pos.ParentPixels, yOffset, Pos.ParentPixels)
-            .backgroundColor(0xFF2A2A2A.toInt())
-            .borderColor(0xFF44FF44.toInt())
-            .borderRadius(12f)
-            .borderThickness(1f)
-            .hoverColors(0xFF353535.toInt(), 0xFFFFFFFF.toInt())
-            .pressedColors(0xFF1A1A1A.toInt(), 0xFFAAAAAA.toInt())
-            .onClick { _, _, _ ->
-                MinecraftClient.getInstance().setScreen(ProfitPositionScreen(this@MiningProfitCategoryScreen))
-                true
-            }
-            .childOf(contentPanel)
-            .fadeIn(500, EasingType.EASE_OUT)
     }
 
     private fun createMaterialDropdown(x: Float, y: Float, width: Float, height: Float, parent: Rectangle, animDelay: Long) {

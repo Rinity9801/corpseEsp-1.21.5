@@ -15,7 +15,6 @@ import forfun.miningqol.client.RollingMinerCooldown
 import forfun.miningqol.client.ShaftESP
 import forfun.miningqol.client.SoundBlocker
 import forfun.miningqol.client.waypoints.OrderedWaypointManager
-import net.minecraft.client.Minecraft
 import xyz.meowing.vexel.components.core.Rectangle
 
 /**
@@ -68,12 +67,6 @@ object FeatureDetails {
         y = SettingsUi.inlineSlider(w, width, y, "Scale", 0.5f, 2.0f, 0.05f,
             CommissionHUD.getScale(), accent, { String.format("%.2fx", it) }) {
             CommissionHUD.setScale(it)
-        }
-        y = SettingsUi.inlineLink(w, width, y, "Move HUD", "Drag the panel, scroll to resize") {
-            Minecraft.getInstance().setScreen(CommissionHudPositionScreen(host))
-        }
-        y = SettingsUi.inlineLink(w, width, y, "Move Stats HUD", "The comms-completed panel is placed separately") {
-            Minecraft.getInstance().setScreen(CommStatsHudPositionScreen(host))
         }
         return y
     }
@@ -233,9 +226,6 @@ object FeatureDetails {
         y = SettingsUi.inlineSlider(w, width, y, "Title Threshold", 0f, 30f, 1f,
             PickaxeCooldownHUD.getTitleThreshold().toFloat(), accent, { "${it.toInt()}s left" }) {
             PickaxeCooldownHUD.setTitleThreshold(it.toInt())
-        }
-        y = SettingsUi.inlineLink(w, width, y, "Move HUD", "Drag the cooldown HUD wherever you want it") {
-            Minecraft.getInstance().setScreen(PickaxeCooldownPositionScreen(host))
         }
         return y
     }
