@@ -11,7 +11,7 @@ import java.net.HttpURLConnection;
 import java.net.URI;
 
 /**
- * Talks to the MiningQOL collection backend (a Cloudflare Worker that holds the
+ * Talks to the Sybau collection backend (a Cloudflare Worker that holds the
  * Hypixel API key). Mirrors SkyblockCollectionTracker's TokenManager +
  * HypixelApiFetcher: fetch a signed token, then fetch collection data with it,
  * re-fetching the token automatically on a 401.
@@ -24,7 +24,7 @@ public class CollectionApi {
     public static final String BASE_URL = "https://miningqol-collections.alex-dong9801.workers.dev";
     // ====================================================================================
 
-    private static final String USER_AGENT = "MiningQOL-Mod";
+    private static final String USER_AGENT = "Sybau-Mod";
     private static final int TIMEOUT_MS = 5000;
 
     private static volatile String token = null;

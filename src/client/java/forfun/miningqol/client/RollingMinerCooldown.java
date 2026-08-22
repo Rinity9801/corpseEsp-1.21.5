@@ -1,0 +1,87 @@
+package forfun.miningqol.client;
+
+import net.fabricmc.fabric.api.client.rendering.v1.hud.HudElementRegistry;
+import net.fabricmc.fabric.api.client.rendering.v1.hud.VanillaHudElements;
+import net.minecraft.client.MinecraftClient;
+import net.minecraft.client.gui.DrawContext;
+import net.minecraft.util.Identifier;
+
+import java.util.Locale;
+
+public final class RollingMinerCooldown {
+    private static final Identifier HUD_ID =
+        Identifier.of("miningqol", "rolling_miner_cooldown_hud");
+    private static final String TRIGGER_MESSAGE = "rolling miner granted you double drops!";
+    private static final long COOLDOWN_MILLIS = 20_000L;
+
+    private static boolean enabled;
+    private static boolean registered;
+    private static long cooldownEndsAt;
+
+    private RollingMinerCooldown() {}
+
+    public static void register() {
+        if (registered) return;
+        registered = true;
+        HudElementRegistry.attachElementBefore(
+            VanillaHudElements.SLEEP,
+            HUD_ID,
+            (context, tickCounter) -> render(context)
+        );
+    }
+
+    public static void onGameMessage(String message) {
+        if (enabled && message.toLowerCase(Locale.ROOT).contains(TRIGGER_MESSAGE)) {
+            cooldownEndsAt = System.currentTimeMillis() + COOLDOWN_MILLIS;
+        }
+    }
+
+    public static void tick(MinecraftClient client) {
+        if (!enabled || cooldownEndsAt == 0) {
+            return;
+        }
+        if (client.player == null) {
+            cooldownEndsAt = 0;
+            return;
+        }
+        if (System.currentTimeMillis() >= cooldownEndsAt) {
+            cooldownEndsAt = 0;
+        }
+    }
+
+    public static void render(DrawContext context) {
+        if (!enabled) return;
+
+        MinecraftClient client = MinecraftClient.getInstance();
+        if (client.player == null) return;
+
+        int secondsLeft = secondsLeft();
+        String displayText = secondsLeft > 0
+            ? "§6Rolling Miner: §c" + secondsLeft + "s"
+            : "§aRolling Miner: §2✔ Ready";
+
+        context.drawTextWithShadow(
+            client.textRenderer,
+            displayText,
+            PickaxeCooldownHUD.getX(),
+            PickaxeCooldownHUD.getY() + 12,
+            0xFFFFFFFF
+        );
+    }
+
+    public static boolean isEnabled() {
+        return enabled;
+    }
+
+    public static void setEnabled(boolean value) {
+        enabled = value;
+        if (!enabled) {
+            cooldownEndsAt = 0;
+        }
+    }
+
+    private static int secondsLeft() {
+        long remaining = cooldownEndsAt - System.currentTimeMillis();
+        return remaining > 0 ? (int) Math.ceil(remaining / 1000.0) : 0;
+    }
+}

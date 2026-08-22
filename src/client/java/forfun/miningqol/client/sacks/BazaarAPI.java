@@ -50,7 +50,7 @@ public class BazaarAPI {
                 connection.setRequestMethod("GET");
                 connection.setConnectTimeout(10000);
                 connection.setReadTimeout(10000);
-                connection.setRequestProperty("User-Agent", "MiningQOL-Mod");
+                connection.setRequestProperty("User-Agent", "Sybau-Mod");
 
                 int responseCode = connection.getResponseCode();
                 if (responseCode != 200) {

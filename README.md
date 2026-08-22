@@ -1,4 +1,4 @@
-# MiningQOL
+# Sybau
 
 A modern Minecraft Fabric mod for 1.21.10 that provides quality-of-life improvements for mining in Hypixel Skyblock.
 
@@ -107,8 +107,8 @@ Contributions are welcome! Please feel free to submit pull requests or open issu
 ## Building from Source
 
 ```bash
-git clone https://github.com/Rinity9801/MiningQOL.git
-cd MiningQOL
+git clone https://github.com/Rinity9801/Sybau.git
+cd Sybau
 ./gradlew build
 ```
 

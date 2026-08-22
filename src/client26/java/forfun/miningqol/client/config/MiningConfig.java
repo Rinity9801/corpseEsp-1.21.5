@@ -15,6 +15,7 @@ import forfun.miningqol.client.EntityEspMode;
 import forfun.miningqol.client.FiletWarning;
 import forfun.miningqol.client.LobbyFinder;
 import forfun.miningqol.client.PickaxeCooldownHUD;
+import forfun.miningqol.client.RollingMinerCooldown;
 import forfun.miningqol.client.MqoChat;
 import forfun.miningqol.client.ShaftESP;
 import forfun.miningqol.client.SoundBlocker;
@@ -77,6 +78,7 @@ public class MiningConfig {
 
     public boolean filetWarningEnabled = false;
     public boolean autoSkipShoLoad = false;
+    public boolean rollingMinerCooldownEnabled = false;
 
     public boolean efficientMinerEnabled = false;
     public boolean useOldHeatmap = false;
@@ -281,6 +283,7 @@ public class MiningConfig {
         PickaxeCooldownHUD.setCustomCooldownEnabled(pickaxeCooldownCustomEnabled);
 
         FiletWarning.setEnabled(filetWarningEnabled);
+        RollingMinerCooldown.setEnabled(rollingMinerCooldownEnabled);
 
         EfficientMinerOverlay.setEnabled(efficientMinerEnabled);
         EfficientMinerOverlay.setUseOldHeatmap(useOldHeatmap);
@@ -389,6 +392,7 @@ public class MiningConfig {
         pickaxeCooldownCustomSeconds = PickaxeCooldownHUD.getCustomCooldownSeconds();
 
         filetWarningEnabled = FiletWarning.isEnabled();
+        rollingMinerCooldownEnabled = RollingMinerCooldown.isEnabled();
         efficientMinerEnabled = EfficientMinerOverlay.isEnabled();
         useOldHeatmap = EfficientMinerOverlay.isUsingOldHeatmap();
 

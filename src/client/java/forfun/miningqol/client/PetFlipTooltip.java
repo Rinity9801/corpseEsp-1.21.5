@@ -151,7 +151,7 @@ public class PetFlipTooltip {
             try {
                 HttpURLConnection conn = (HttpURLConnection) URI.create(API_URL).toURL().openConnection();
                 conn.setRequestMethod("GET");
-                conn.setRequestProperty("User-Agent", "MiningQOL-Mod");
+                conn.setRequestProperty("User-Agent", "Sybau-Mod");
                 conn.setConnectTimeout(TIMEOUT_MS);
                 conn.setReadTimeout(TIMEOUT_MS);
                 if (conn.getResponseCode() != 200) {
@@ -185,7 +185,7 @@ public class PetFlipTooltip {
             } finally {
                 fetching.set(false);
             }
-        }, "MiningQOL-PetFlip");
+        }, "Sybau-PetFlip");
         t.setDaemon(true);
         t.start();
     }

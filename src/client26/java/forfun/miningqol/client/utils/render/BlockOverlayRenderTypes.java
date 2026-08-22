@@ -11,7 +11,7 @@ import net.minecraft.resources.Identifier;
 
 import java.util.Optional;
 
-/** Render layers used by MiningQOL's targeted block overlay. */
+/** Render layers used by Sybau's targeted block overlay. */
 public final class BlockOverlayRenderTypes {
     private static final RenderPipeline FILLED_PIPELINE = registerFilled("block_overlay_filled", false);
     private static final RenderPipeline FILLED_PHASE_PIPELINE = registerFilled("block_overlay_filled_phase", true);

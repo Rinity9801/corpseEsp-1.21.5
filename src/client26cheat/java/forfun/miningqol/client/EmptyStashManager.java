@@ -27,7 +27,8 @@ public class EmptyStashManager {
         COAL("Coal", "coal", "Enchanted Coal", "coal", 0xFF3A3A3A),
         REDSTONE("Redstone", "redstone dust", "Enchanted Redstone Dust", "redstone", 0xFFCC2222),
         LAPIS("Lapis", "lapis lazuli", "Enchanted Lapis Lazuli", "lapis lazuli", 0xFF2255CC),
-        HARDSTONE("Hardstone", "hard stone", "Enchanted Hard Stone", "hard stone", 0xFFB8B8B8);
+        HARDSTONE("Hardstone", "hard stone", "Enchanted Hard Stone", "hard stone", 0xFFB8B8B8),
+        GLACITE("Glacite", "glacite", "Enchanted Glacite", "glacite", 0xFF89D9E8);
 
         public final String displayName;
         public final String recipeArg;

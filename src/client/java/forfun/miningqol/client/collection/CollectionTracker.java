@@ -151,7 +151,7 @@ public class CollectionTracker {
         msg("§7Rate starts after the first change; auto-stops if your collection stops rising.");
 
         scheduler = Executors.newSingleThreadScheduledExecutor(r -> {
-            Thread t = new Thread(r, "MiningQOL-CollectionPoll");
+            Thread t = new Thread(r, "Sybau-CollectionPoll");
             t.setDaemon(true);
             return t;
         });
@@ -273,7 +273,7 @@ public class CollectionTracker {
                     msg("§cParse error: " + e.getMessage());
                 }
             });
-        }, "MiningQOL-CollectionDump").start();
+        }, "Sybau-CollectionDump").start();
     }
 
     private static void msg(String s) {

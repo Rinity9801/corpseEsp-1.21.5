@@ -29,7 +29,7 @@ import kotlin.math.round
  * for an inline detail panel. Cheat-only categories are contributed through
  * ExtraCategories (registered by CheatGui, which only exists in the -cheat tree).
  */
-class VexelMainScreen : VexelScreen("MiningQOL Settings") {
+class VexelMainScreen : VexelScreen("Sybau Settings") {
 
     /** Set by feature detail builders that need raw key input (keybind capture). */
     var keyHandler: ((KeyEvent) -> Boolean)? = null
@@ -181,7 +181,7 @@ class VexelMainScreen : VexelScreen("MiningQOL Settings") {
                 shadowSpread = 2f
                 shadowColor = 0xB0000000.toInt()
             }
-        Text("MiningQOL", SettingsUi.TEXT_PRIMARY, 20f, true)
+        Text("Sybau", SettingsUi.TEXT_PRIMARY, 20f, true)
             .setPositioning(18f, Pos.ParentPixels, 22f, Pos.ParentPixels)
             .childOf(sidebar)
 

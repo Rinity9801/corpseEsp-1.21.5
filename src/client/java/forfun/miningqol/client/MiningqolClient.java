@@ -59,10 +59,13 @@ public class MiningqolClient implements ClientModInitializer {
 
     @Override
     public void onInitializeClient() {
-        LOGGER.info("[MiningqolClient] Initializing MiningQOL Mod");
+        LOGGER.info("[MiningqolClient] Initializing Sybau Mod");
 
         config = MiningConfig.load();
         config.applyToGame();
+
+        PickaxeCooldownHUD.register();
+        RollingMinerCooldown.register();
 
         OrderedWaypointManager.init();
         //? if isCheat {
@@ -603,6 +606,7 @@ public class MiningqolClient implements ClientModInitializer {
                 }
             }
 
+            RollingMinerCooldown.tick(client);
             if (client.world != null && client.player != null) {
                 CorpseESP.tick();
                 ShaftESP.tick();
@@ -646,6 +650,7 @@ public class MiningqolClient implements ClientModInitializer {
         ClientReceiveMessageEvents.GAME.register((message, overlay) -> {
             if (overlay) return;
             String messageText = message.getString();
+            RollingMinerCooldown.onGameMessage(messageText);
 
             Matcher corpseMatcher = CORPSE_LOOT_PATTERN.matcher(messageText);
             if (corpseMatcher.find()) {
@@ -702,7 +707,6 @@ public class MiningqolClient implements ClientModInitializer {
             MinecraftClient client = MinecraftClient.getInstance();
             ProfitTrackerHUD.render(context);
             CollectionTracker.render(context);
-            PickaxeCooldownHUD.render(context);
             CommissionHUD.render(context);
             //? if isCheat {
             AutoClickerHUD.render(context, client);
@@ -723,7 +727,7 @@ public class MiningqolClient implements ClientModInitializer {
             config.save();
         });
 
-        LOGGER.info("[MiningqolClient] MiningQOL Mod initialized");
+        LOGGER.info("[MiningqolClient] Sybau Mod initialized");
     }
 
     public static MiningConfig getConfig() {

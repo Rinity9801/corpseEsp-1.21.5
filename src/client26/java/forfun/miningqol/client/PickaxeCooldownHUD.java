@@ -1,6 +1,7 @@
 package forfun.miningqol.client;
 
 import net.fabricmc.fabric.api.client.rendering.v1.hud.HudElementRegistry;
+import net.fabricmc.fabric.api.client.rendering.v1.hud.VanillaHudElements;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.Font;
 import net.minecraft.client.gui.GuiGraphicsExtractor;
@@ -55,7 +56,11 @@ public class PickaxeCooldownHUD {
             return;
         }
         registered = true;
-        HudElementRegistry.addLast(HUD_ID, (context, tickCounter) -> render(context));
+        HudElementRegistry.attachElementBefore(
+            VanillaHudElements.SLEEP,
+            HUD_ID,
+            (context, tickCounter) -> render(context)
+        );
     }
 
     public static void tick() {

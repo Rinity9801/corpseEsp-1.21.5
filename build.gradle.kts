@@ -31,7 +31,7 @@ loom {
     splitEnvironmentSourceSets()
 
     mods {
-        create("miningqol") {
+        create("sybau") {
             sourceSet(sourceSets["main"])
             sourceSet(sourceSets["client"])
         }
@@ -40,6 +40,11 @@ loom {
 
 sourceSets {
     main {
+        if (is26_1_2) {
+            // 26.x client sources are canonical at the root; use the same canonical
+            // metadata instead of stale Stonecutter-generated version resources.
+            resources.setSrcDirs(listOf(rootProject.file("src/main/resources")))
+        }
         kotlin {
             srcDir("src/main/kotlin")
         }
@@ -136,24 +141,30 @@ stonecutter {
     constants["isCheat"] = fullVersion.endsWith("-cheat")
 }
 
+val targetJavaVersion = if (is26_1_2) 25 else 21
+
 tasks.processResources {
     inputs.property("version", project.version)
     inputs.property("minecraft_version", (findProperty("minecraft_version") ?: mc).toString())
     inputs.property("loader_version", (findProperty("loader_version") ?: "").toString())
     inputs.property("fabric_kotlin_version", (findProperty("fabric_kotlin_version") ?: "").toString())
+    inputs.property("fabric_dependency", if (is26_1_2) "fabric-api" else "fabric")
+    inputs.property("java_version", targetJavaVersion)
     filteringCharset = "UTF-8"
 
     filesMatching("fabric.mod.json") {
         expand(
             "version" to project.version,
             "minecraft_version" to (findProperty("minecraft_version") ?: mc).toString(),
+            "minecraft_dependency" to if (is26_1_2) "~${(findProperty("minecraft_version") ?: mc)}" else (findProperty("minecraft_version") ?: mc).toString(),
             "loader_version" to (findProperty("loader_version") ?: "").toString(),
-            "fabric_kotlin_version" to (findProperty("fabric_kotlin_version") ?: "").toString()
+            "fabric_kotlin_version" to (findProperty("fabric_kotlin_version") ?: "").toString(),
+            "fabric_dependency" to if (is26_1_2) "fabric-api" else "fabric",
+            "java_version" to targetJavaVersion
         )
     }
 }
 
-val targetJavaVersion = if (is26_1_2) 25 else 21
 if (is26_1_2) {
     val sync26ClientSources = tasks.register<Sync>("sync26ClientSources") {
         dependsOn("stonecutterGenerateClient")

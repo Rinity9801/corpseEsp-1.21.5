@@ -24,7 +24,7 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 public class MiningqolClient implements ClientModInitializer {
-    private static final Logger LOGGER = LoggerFactory.getLogger("MiningQOL");
+    private static final Logger LOGGER = LoggerFactory.getLogger("Sybau");
     private static final Pattern CORPSE_LOOT_PATTERN = Pattern.compile("\\s(.+) CORPSE LOOT!\\s");
 
     private static MiningConfig config;
@@ -47,32 +47,34 @@ public class MiningqolClient implements ClientModInitializer {
         // CheatBootstrap, which only exists in the -cheat variant's source tree.
         try {
             Class.forName("forfun.miningqol.client.CheatBootstrap").getMethod("init").invoke(null);
-            LOGGER.info("[MiningQOL] Cheat features enabled");
+            LOGGER.info("[Sybau] Cheat features enabled");
         } catch (ClassNotFoundException e) {
             // legit build — no cheat features
         } catch (Exception e) {
-            LOGGER.error("[MiningQOL] Failed to init cheat features", e);
+            LOGGER.error("[Sybau] Failed to init cheat features", e);
         }
 
         // Local-only external ESP feed (local/esp/). Absent from every released build.
         try {
             Class.forName("forfun.miningqol.client.EspBootstrap").getMethod("init").invoke(null);
-            LOGGER.info("[MiningQOL] External ESP feed enabled (local build)");
+            LOGGER.info("[Sybau] External ESP feed enabled (local build)");
         } catch (ClassNotFoundException e) {
             // released build — no external ESP
         } catch (Exception e) {
-            LOGGER.error("[MiningQOL] Failed to init external ESP feed", e);
+            LOGGER.error("[Sybau] Failed to init external ESP feed", e);
         }
         config.applyToGame();
         CommissionHUD.register();
         BlockOverlay.init();
         PickaxeCooldownHUD.register();
+        RollingMinerCooldown.register();
         LobbyFinderHUD.register();
         OrderedWaypointManager.init();
 
         ClientTickEvents.END_CLIENT_TICK.register(client -> {
             OrderedWaypointManager.tick();
             while (abilitySwitchKey.consumeClick()) AbilitySwitchManager.toggle();
+            RollingMinerCooldown.tick(client);
             if (client.level != null && client.player != null) {
                 CorpseESP.tick();
                 ShaftESP.tick();
@@ -96,6 +98,7 @@ public class MiningqolClient implements ClientModInitializer {
                 return;   // action bar; nothing here reads it
             }
             String messageText = message.getString();
+            RollingMinerCooldown.onGameMessage(messageText);
             PickaxeCooldownHUD.onGameMessage(messageText);
 
             Matcher corpseMatcher = CORPSE_LOOT_PATTERN.matcher(messageText);
@@ -126,7 +129,7 @@ public class MiningqolClient implements ClientModInitializer {
                         } catch (InterruptedException e) {
                             LOGGER.error("Failed to auto-skip sho load", e);
                         }
-                    }, "MiningQOL-ShoSkip").start();
+                    }, "Sybau-ShoSkip").start();
                 }
             }
         });

@@ -39,7 +39,7 @@ public final class OutlineHaloBlit {
         RenderSystem.assertOnRenderThread();
         CommandEncoder encoder = RenderSystem.getDevice().createCommandEncoder();
         try (RenderPass pass = encoder.createRenderPass(
-            () -> "MiningQOL outline halo blit", target, OptionalInt.empty())) {
+            () -> "Sybau outline halo blit", target, OptionalInt.empty())) {
             pass.setPipeline(OUTLINE_HALO_BLIT);
             RenderSystem.bindDefaultUniforms(pass);
             pass.bindTexture(

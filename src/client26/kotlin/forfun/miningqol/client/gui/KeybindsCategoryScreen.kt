@@ -13,7 +13,7 @@ import xyz.meowing.vexel.elements.Button
 
 /**
  * Rebind the mod's hotkeys without leaving the mod GUI. Edits the same vanilla
- * KeyMappings shown under Controls -> MiningQOL (changes save to options.txt),
+ * KeyMappings shown under Controls -> Sybau (changes save to options.txt),
  * listing every mapping whose id starts with "key.miningqol.". Click a key box,
  * then press a key — or click the box again to bind a mouse button; Esc cancels.
  */

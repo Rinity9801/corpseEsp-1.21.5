@@ -12,7 +12,7 @@ import xyz.meowing.vexel.components.base.Pos
 import xyz.meowing.vexel.components.base.Size
 import xyz.meowing.vexel.animations.*
 
-class VexelMainScreen : VexelScreen("MiningQOL Settings") {
+class VexelMainScreen : VexelScreen("Sybau Settings") {
     private lateinit var overlay: Rectangle
     private lateinit var mainPanel: Rectangle
     private lateinit var searchInput: TextInput
@@ -82,7 +82,7 @@ class VexelMainScreen : VexelScreen("MiningQOL Settings") {
             .fadeIn(600, EasingType.EASE_OUT)
 
         // Title
-        Text("MiningQOL", 0xFFFFFFFF.toInt(), 38f, true)
+        Text("Sybau", 0xFFFFFFFF.toInt(), 38f, true)
             .setPositioning(0f, Pos.ParentCenter, 18f, Pos.ParentPixels)
             .childOf(mainPanel)
             .fadeIn(700, EasingType.EASE_OUT)

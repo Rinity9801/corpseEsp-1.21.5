@@ -11,6 +11,7 @@ import forfun.miningqol.client.FiletWarning
 import forfun.miningqol.client.MiningqolClient
 import forfun.miningqol.client.MqoChat
 import forfun.miningqol.client.PickaxeCooldownHUD
+import forfun.miningqol.client.RollingMinerCooldown
 import forfun.miningqol.client.ShaftESP
 import forfun.miningqol.client.SoundBlocker
 import forfun.miningqol.client.waypoints.OrderedWaypointManager
@@ -256,6 +257,8 @@ object FeatureDetails {
             { MiningqolClient.getConfig()?.autoSkipShoLoad ?: false }) { MiningqolClient.getConfig()?.autoSkipShoLoad = it }
         y = SettingsUi.inlineToggle(w, width, y, "Filet O' Fortune Warning", "Warn when your Filet O' Fortune cake expires", accent,
             { FiletWarning.isEnabled() }) { FiletWarning.setEnabled(it) }
+        y = SettingsUi.inlineToggle(w, width, y, "Rolling Miner Cooldown", "Show a 20-second HUD timer after double drops", accent,
+            { RollingMinerCooldown.isEnabled() }) { RollingMinerCooldown.setEnabled(it) }
         y = SettingsUi.inlineToggle(w, width, y, "Efficient Miner Overlay", "Heatmap the best clay / red sandstone (Glacite)", accent,
             { EfficientMinerOverlay.isEnabled() }) { EfficientMinerOverlay.setEnabled(it) }
         y = SettingsUi.inlineToggle(w, width, y, "Old Heatmap Colors", "Use the legacy 8-colour heatmap palette", accent,

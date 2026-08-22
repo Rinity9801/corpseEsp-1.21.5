@@ -1,11 +1,14 @@
 package forfun.miningqol.client;
 
 import forfun.miningqol.client.config.MiningConfig;
+import net.fabricmc.fabric.api.client.rendering.v1.hud.HudElementRegistry;
+import net.fabricmc.fabric.api.client.rendering.v1.hud.VanillaHudElements;
 import net.minecraft.client.MinecraftClient;
 import net.minecraft.client.font.TextRenderer;
 import net.minecraft.client.gui.DrawContext;
 import net.minecraft.client.network.PlayerListEntry;
 import net.minecraft.text.Text;
+import net.minecraft.util.Identifier;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -14,6 +17,7 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 public class PickaxeCooldownHUD {
+    private static final Identifier HUD_ID = Identifier.of("miningqol", "pickaxe_cooldown_hud");
     private static final Logger LOGGER = LoggerFactory.getLogger("PickaxeCooldownHUD");
     private static final Pattern COOLDOWN_PATTERN = Pattern.compile("(.+?):\\s+(\\d+)s");
     private static final Pattern READY_PATTERN = Pattern.compile("(.+?):\\s+(Available|Ready|✔)");
@@ -35,6 +39,17 @@ public class PickaxeCooldownHUD {
     private static int titleThreshold = 5;
     private static long lastTitleSetTime = 0;
     private static int lastTitleCooldown = -1;
+    private static boolean registered = false;
+
+    public static void register() {
+        if (registered) return;
+        registered = true;
+        HudElementRegistry.attachElementBefore(
+            VanillaHudElements.SLEEP,
+            HUD_ID,
+            (context, tickCounter) -> render(context)
+        );
+    }
 
     public static void tick() {
         MinecraftClient client = MinecraftClient.getInstance();

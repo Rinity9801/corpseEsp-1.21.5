@@ -188,7 +188,8 @@ object CheatGui {
             EmptyStashManager.Material.COAL to "/assets/minecraft/textures/item/coal.png",
             EmptyStashManager.Material.REDSTONE to "/assets/minecraft/textures/item/redstone.png",
             EmptyStashManager.Material.LAPIS to "/assets/minecraft/textures/item/lapis_lazuli.png",
-            EmptyStashManager.Material.HARDSTONE to "/assets/minecraft/textures/block/stone.png"
+            EmptyStashManager.Material.HARDSTONE to "/assets/minecraft/textures/block/stone.png",
+            EmptyStashManager.Material.GLACITE to "/assets/minecraft/textures/block/packed_ice.png"
         )
         val icons = materials.associateWith { m ->
             xyz.meowing.vexel.components.core.SvgImage(iconPaths[m] ?: "", 22f, 22f)

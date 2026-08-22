@@ -4,6 +4,7 @@ import forfun.miningqol.client.FiletWarning
 import forfun.miningqol.client.GlassSync
 import forfun.miningqol.client.MiningqolClient
 import forfun.miningqol.client.PetFlipTooltip
+import forfun.miningqol.client.RollingMinerCooldown
 import net.minecraft.client.MinecraftClient
 import net.minecraft.client.gui.screen.Screen
 import net.minecraft.client.input.KeyInput
@@ -110,12 +111,16 @@ class MiscCategoryScreen(private val parentScreen: Screen) : VexelScreen("Misc S
                            MiningqolClient.getConfig().petFlipTooltipEnabled = !MiningqolClient.getConfig().petFlipTooltipEnabled
                            PetFlipTooltip.setEnabled(MiningqolClient.getConfig().petFlipTooltipEnabled)
                        },
-                       0xFFFF88DD.toInt())
+                       0xFFFF88DD.toInt()),
+            Triple("Rolling Miner Cooldown", "Shows a 20-second HUD timer after double drops", 0xFFFFCC66.toInt()) to
+                Triple({ RollingMinerCooldown.isEnabled() },
+                       { RollingMinerCooldown.setEnabled(!RollingMinerCooldown.isEnabled()) },
+                       0xFFFFCC66.toInt())
         )
 
-        val startY = 120f
-        val toggleHeight = 70f
-        val toggleSpacing = 15f
+        val startY = 105f
+        val toggleHeight = 62f
+        val toggleSpacing = 8f
         val toggleWidth = 530f
 
         toggles.forEachIndexed { index, (info, actions) ->

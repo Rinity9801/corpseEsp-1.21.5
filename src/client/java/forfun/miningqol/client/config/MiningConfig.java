@@ -23,6 +23,7 @@ import forfun.miningqol.client.ShaftESP;
 import forfun.miningqol.client.NameHider;
 import forfun.miningqol.client.PetFlipTooltip;
 import forfun.miningqol.client.PickaxeCooldownHUD;
+import forfun.miningqol.client.RollingMinerCooldown;
 import forfun.miningqol.client.profit.BazaarPriceManager;
 import forfun.miningqol.client.profit.BlockTracker;
 import forfun.miningqol.client.profit.GemstoneTracker;
@@ -124,6 +125,8 @@ public class MiningConfig {
     public boolean shaftClickerShowToggleMessage = true;
 
     public boolean autoSkipShoLoad = false;
+
+    public boolean rollingMinerCooldownEnabled = false;
 
     public boolean filetWarningEnabled = false;
 
@@ -401,6 +404,8 @@ public class MiningConfig {
 
         GlassSync.setEnabled(glassSyncEnabled);
 
+        RollingMinerCooldown.setEnabled(rollingMinerCooldownEnabled);
+
         // Ordered Waypoints
         OrderedWaypointManager.setEnabled(orderedWaypointsEnabled);
         OrderedWaypointManager.setWaypointRange(orderedWaypointRange);
@@ -543,6 +548,8 @@ public class MiningConfig {
         petFlipTooltipEnabled = PetFlipTooltip.isEnabled();
 
         glassSyncEnabled = GlassSync.isEnabled();
+
+        rollingMinerCooldownEnabled = RollingMinerCooldown.isEnabled();
 
         // Ordered Waypoints
         orderedWaypointsEnabled = OrderedWaypointManager.isEnabledRaw();
