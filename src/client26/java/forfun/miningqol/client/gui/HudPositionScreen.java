@@ -3,6 +3,7 @@ package forfun.miningqol.client.gui;
 import forfun.miningqol.client.CommStatsHUD;
 import forfun.miningqol.client.CommTracker;
 import forfun.miningqol.client.CommissionHUD;
+import forfun.miningqol.client.ForgeDisplay;
 import forfun.miningqol.client.MiningqolClient;
 import forfun.miningqol.client.PickaxeCooldownHUD;
 import forfun.miningqol.client.RollingMinerCooldown;
@@ -22,6 +23,7 @@ public class HudPositionScreen extends Screen {
     private enum Target {
         PICKAXE,
         ROLLING,
+        FORGE,
         COMMISSIONS,
         COMMISSION_STATS
     }
@@ -57,6 +59,15 @@ public class HudPositionScreen extends Screen {
                 0xFFFFFFFF, true);
             ctx.outline(RollingMinerCooldown.getX() - 2, RollingMinerCooldown.getY() - 2,
                 targetWidth(Target.ROLLING) + 4, targetHeight(Target.ROLLING) + 4, 0xFF7FDB8A);
+        }
+        if (isVisible(Target.FORGE)) {
+            int lineY = ForgeDisplay.getY();
+            for (Component line : ForgeDisplay.getPreviewLines()) {
+                ctx.text(font, line, ForgeDisplay.getX(), lineY, 0xFFFFFFFF, true);
+                lineY += 10;
+            }
+            ctx.outline(ForgeDisplay.getX() - 2, ForgeDisplay.getY() - 2,
+                targetWidth(Target.FORGE) + 4, targetHeight(Target.FORGE) + 4, 0xFFDBB37F);
         }
         if (!hasVisibleHud()) {
             ctx.centeredText(font, Component.literal("No movable HUDs are enabled."),
@@ -185,6 +196,7 @@ public class HudPositionScreen extends Screen {
         switch (target) {
             case PICKAXE -> PickaxeCooldownHUD.setScale(PickaxeCooldownHUD.getScale() + amount);
             case ROLLING -> { }
+            case FORGE -> { }
             case COMMISSIONS -> CommissionHUD.setScale(CommissionHUD.getScale() + amount);
             case COMMISSION_STATS -> CommStatsHUD.setScale(CommStatsHUD.getScale() + amount);
         }
@@ -211,6 +223,7 @@ public class HudPositionScreen extends Screen {
 
     private boolean hasVisibleHud() {
         return isVisible(Target.PICKAXE)
+            || isVisible(Target.FORGE)
             || isVisible(Target.ROLLING)
             || isVisible(Target.COMMISSIONS)
             || isVisible(Target.COMMISSION_STATS);
@@ -220,13 +233,14 @@ public class HudPositionScreen extends Screen {
         return switch (target) {
             case PICKAXE -> PickaxeCooldownHUD.isEnabled();
             case ROLLING -> RollingMinerCooldown.isEnabled();
+            case FORGE -> ForgeDisplay.isEnabled();
             case COMMISSIONS -> CommissionHUD.isEnabled();
             case COMMISSION_STATS -> CommTracker.isStatsEnabled();
         };
     }
 
     private Target targetAt(double mouseX, double mouseY) {
-        Target[] hitOrder = {Target.COMMISSION_STATS, Target.COMMISSIONS, Target.ROLLING, Target.PICKAXE};
+        Target[] hitOrder = {Target.COMMISSION_STATS, Target.COMMISSIONS, Target.FORGE, Target.ROLLING, Target.PICKAXE};
         for (Target target : hitOrder) {
             if (isVisible(target) && contains(mouseX, mouseY, targetX(target), targetY(target),
                 targetWidth(target), targetHeight(target))) {
@@ -240,6 +254,7 @@ public class HudPositionScreen extends Screen {
         return switch (target) {
             case PICKAXE -> PickaxeCooldownHUD.getX();
             case ROLLING -> RollingMinerCooldown.getX();
+            case FORGE -> ForgeDisplay.getX();
             case COMMISSIONS -> CommissionHUD.getX();
             case COMMISSION_STATS -> CommStatsHUD.getX();
         };
@@ -249,6 +264,7 @@ public class HudPositionScreen extends Screen {
         return switch (target) {
             case PICKAXE -> PickaxeCooldownHUD.getY();
             case ROLLING -> RollingMinerCooldown.getY();
+            case FORGE -> ForgeDisplay.getY();
             case COMMISSIONS -> CommissionHUD.getY();
             case COMMISSION_STATS -> CommStatsHUD.getY();
         };
@@ -258,6 +274,7 @@ public class HudPositionScreen extends Screen {
         return switch (target) {
             case PICKAXE -> Math.max(120, PickaxeCooldownHUD.getWidth());
             case ROLLING -> RollingMinerCooldown.getWidth();
+            case FORGE -> ForgeDisplay.getWidth();
             case COMMISSIONS -> Math.max(120, CommissionHUD.getWidth());
             case COMMISSION_STATS -> Math.max(60, CommStatsHUD.getWidth());
         };
@@ -267,6 +284,7 @@ public class HudPositionScreen extends Screen {
         return switch (target) {
             case PICKAXE -> 12;
             case ROLLING -> RollingMinerCooldown.getHeight();
+            case FORGE -> ForgeDisplay.getHeight();
             case COMMISSIONS -> Math.max(60, CommissionHUD.getHeight());
             case COMMISSION_STATS -> Math.max(14, CommStatsHUD.getHeight());
         };
@@ -276,6 +294,7 @@ public class HudPositionScreen extends Screen {
         switch (target) {
             case PICKAXE -> PickaxeCooldownHUD.setPosition(x, y);
             case ROLLING -> RollingMinerCooldown.setPosition(x, y);
+            case FORGE -> ForgeDisplay.setPosition(x, y);
             case COMMISSIONS -> CommissionHUD.setPosition(x, y);
             case COMMISSION_STATS -> CommStatsHUD.setPosition(x, y);
         }

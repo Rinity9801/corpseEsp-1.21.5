@@ -68,6 +68,7 @@ public class MiningqolClient implements ClientModInitializer {
         BlockOverlay.init();
         PickaxeCooldownHUD.register();
         RollingMinerCooldown.register();
+        ForgeDisplay.register();
         LobbyFinderHUD.register();
         OrderedWaypointManager.init();
 
@@ -85,6 +86,8 @@ public class MiningqolClient implements ClientModInitializer {
                 FiletWarning.tick();
                 AbilitySwitchManager.tick();
                 EfficientMinerOverlay.tick();
+                forfun.miningqol.client.party.MineshaftAutoParty.tick();
+                ForgeDisplay.tick();
                 // Ticked, not driven from the render pass: the HUD stops rendering while any screen
                 // is open, which is exactly when the Royal Pigeon menu needs reading.
                 CommissionHUD.tick();
@@ -100,6 +103,8 @@ public class MiningqolClient implements ClientModInitializer {
             String messageText = message.getString();
             RollingMinerCooldown.onGameMessage(messageText);
             PickaxeCooldownHUD.onGameMessage(messageText);
+            forfun.miningqol.client.party.MineshaftAutoParty.onGameMessage(messageText);
+            forfun.miningqol.client.party.PartyAutoAccept.onGameMessage(messageText);
 
             Matcher corpseMatcher = CORPSE_LOOT_PATTERN.matcher(messageText);
             if (corpseMatcher.find()) {
@@ -259,7 +264,13 @@ public class MiningqolClient implements ClientModInitializer {
                     CorpseESP.getCorpseInfo();
                     return 1;
                 }));
-            dispatcher.register(ClientCommands.literal("getcold")
+            dispatcher.register(ClientCommands.literal("shaftid")
+            .executes(context -> {
+                forfun.miningqol.client.party.MineshaftAutoParty.dumpDetection();
+                return 1;
+            }));
+
+        dispatcher.register(ClientCommands.literal("getcold")
                 .executes(context -> {
                     net.minecraft.client.Minecraft client = net.minecraft.client.Minecraft.getInstance();
                     if (client.player != null) {

@@ -14,7 +14,10 @@ import forfun.miningqol.client.EfficientMinerOverlay;
 import forfun.miningqol.client.EntityEspMode;
 import forfun.miningqol.client.FiletWarning;
 import forfun.miningqol.client.LobbyFinder;
+import forfun.miningqol.client.ForgeDisplay;
 import forfun.miningqol.client.PickaxeCooldownHUD;
+import forfun.miningqol.client.party.MineshaftAutoParty;
+import forfun.miningqol.client.party.PartyAutoAccept;
 import forfun.miningqol.client.RollingMinerCooldown;
 import forfun.miningqol.client.MqoChat;
 import forfun.miningqol.client.ShaftESP;
@@ -99,6 +102,28 @@ public class MiningConfig {
 
     public java.util.List<String> lobbyFinderBlocks = new java.util.ArrayList<>();
     public java.util.Map<String, String> commandKeybinds = new java.util.HashMap<>();
+
+    public boolean forgeDisplayEnabled = false;
+    public boolean forgeDisplayShowEmpty = false;
+    public boolean forgeDisplaySortByTime = true;
+    public int forgeDisplayX = 10;
+    public int forgeDisplayY = 90;
+    public float[] forgeTitleColor = {1.0f, 170.0f / 255.0f, 0.0f};
+    public float[] forgeItemColor = {1.0f, 1.0f, 1.0f};
+    public float[] forgeTimeColor = {170.0f / 255.0f, 170.0f / 255.0f, 170.0f / 255.0f};
+    public float[] forgeReadyColor = {85.0f / 255.0f, 1.0f, 85.0f / 255.0f};
+
+    public boolean autoPartyEnabled = false;
+    public boolean autoPartyDisbandAfterWarp = true;
+    public int autoPartyDisbandSeconds = 10;
+    public boolean autoPartyAcceptEnabled = false;
+    public java.util.List<String> autoPartyAcceptList = new java.util.ArrayList<>();
+    /** Players who want any shaft where the ESP spots a Littlefoot. */
+    public java.util.List<String> autoPartyLittlefootMob = new java.util.ArrayList<>();
+    /** Player name -> the ShaftType names they are signed up for. */
+    public java.util.Map<String, java.util.List<String>> autoPartySignups = new java.util.LinkedHashMap<>();
+    /** Player name -> "CORPSE:COUNT" picks, e.g. "LAPIS:3". */
+    public java.util.Map<String, java.util.List<String>> autoPartyCorpseSignups = new java.util.LinkedHashMap<>();
 
     public boolean chatLogsEnabled = true;
     public boolean critParticleDrop = false;
@@ -233,6 +258,14 @@ public class MiningConfig {
         if (orderedWaypointLobbyCheckBlock == null) orderedWaypointLobbyCheckBlock = "minecraft:coal_ore";
         if (lobbyFinderBlocks == null) lobbyFinderBlocks = new java.util.ArrayList<>();
         if (commandKeybinds == null) commandKeybinds = new java.util.HashMap<>();
+        if (forgeTitleColor == null || forgeTitleColor.length < 3) forgeTitleColor = new float[]{1.0f, 170.0f / 255.0f, 0.0f};
+        if (forgeItemColor == null || forgeItemColor.length < 3) forgeItemColor = new float[]{1.0f, 1.0f, 1.0f};
+        if (forgeTimeColor == null || forgeTimeColor.length < 3) forgeTimeColor = new float[]{170.0f / 255.0f, 170.0f / 255.0f, 170.0f / 255.0f};
+        if (forgeReadyColor == null || forgeReadyColor.length < 3) forgeReadyColor = new float[]{85.0f / 255.0f, 1.0f, 85.0f / 255.0f};
+        if (autoPartySignups == null) autoPartySignups = new java.util.LinkedHashMap<>();
+        if (autoPartyCorpseSignups == null) autoPartyCorpseSignups = new java.util.LinkedHashMap<>();
+        if (autoPartyAcceptList == null) autoPartyAcceptList = new java.util.ArrayList<>();
+        if (autoPartyLittlefootMob == null) autoPartyLittlefootMob = new java.util.ArrayList<>();
         if (soundBlockRules == null) soundBlockRules = new java.util.ArrayList<>();
     }
 
@@ -324,6 +357,23 @@ public class MiningConfig {
 
         EfficientMinerOverlay.setEnabled(efficientMinerEnabled);
         EfficientMinerOverlay.setUseOldHeatmap(useOldHeatmap);
+
+        ForgeDisplay.setEnabled(forgeDisplayEnabled);
+        ForgeDisplay.setShowEmpty(forgeDisplayShowEmpty);
+        ForgeDisplay.setSortByTime(forgeDisplaySortByTime);
+        ForgeDisplay.setPosition(forgeDisplayX, forgeDisplayY);
+        ForgeDisplay.setTitleColor(forgeTitleColor[0], forgeTitleColor[1], forgeTitleColor[2]);
+        ForgeDisplay.setItemColor(forgeItemColor[0], forgeItemColor[1], forgeItemColor[2]);
+        ForgeDisplay.setTimeColor(forgeTimeColor[0], forgeTimeColor[1], forgeTimeColor[2]);
+        ForgeDisplay.setReadyColor(forgeReadyColor[0], forgeReadyColor[1], forgeReadyColor[2]);
+
+        MineshaftAutoParty.setDisbandAfterWarp(autoPartyDisbandAfterWarp);
+        MineshaftAutoParty.setDisbandSeconds(autoPartyDisbandSeconds);
+        PartyAutoAccept.setNames(autoPartyAcceptList);
+        PartyAutoAccept.setEnabled(autoPartyAcceptEnabled);
+        MineshaftAutoParty.importSignups(autoPartySignups, autoPartyCorpseSignups, autoPartyLittlefootMob);
+        // Last: setEnabled(false) aborts any in-flight party, so it must see the final state.
+        MineshaftAutoParty.setEnabled(autoPartyEnabled);
 
         CommandKeybindManager.clearAll();
         for (java.util.Map.Entry<String, String> entry : commandKeybinds.entrySet()) {
@@ -446,6 +496,25 @@ public class MiningConfig {
         rollingReadyValueColor = RollingMinerCooldown.getReadyValueColor();
         efficientMinerEnabled = EfficientMinerOverlay.isEnabled();
         useOldHeatmap = EfficientMinerOverlay.isUsingOldHeatmap();
+
+        forgeDisplayEnabled = ForgeDisplay.isEnabled();
+        forgeDisplayShowEmpty = ForgeDisplay.isShowEmpty();
+        forgeDisplaySortByTime = ForgeDisplay.isSortByTime();
+        forgeDisplayX = ForgeDisplay.getX();
+        forgeDisplayY = ForgeDisplay.getY();
+        forgeTitleColor = ForgeDisplay.getTitleColor();
+        forgeItemColor = ForgeDisplay.getItemColor();
+        forgeTimeColor = ForgeDisplay.getTimeColor();
+        forgeReadyColor = ForgeDisplay.getReadyColor();
+
+        autoPartyEnabled = MineshaftAutoParty.isEnabled();
+        autoPartyDisbandAfterWarp = MineshaftAutoParty.isDisbandAfterWarp();
+        autoPartyDisbandSeconds = MineshaftAutoParty.getDisbandSeconds();
+        autoPartyAcceptEnabled = PartyAutoAccept.isEnabled();
+        autoPartyAcceptList = PartyAutoAccept.names();
+        autoPartySignups = MineshaftAutoParty.exportSignups();
+        autoPartyCorpseSignups = MineshaftAutoParty.exportCorpseSignups();
+        autoPartyLittlefootMob = MineshaftAutoParty.exportMobSignups();
 
         commandKeybinds.clear();
         for (java.util.Map.Entry<Integer, String> entry : CommandKeybindManager.getAllKeybinds().entrySet()) {

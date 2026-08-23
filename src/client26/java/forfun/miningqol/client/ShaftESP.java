@@ -301,6 +301,16 @@ public class ShaftESP {
         isInMines = false;
     }
 
+    /**
+     * Whether the ESP is currently tracking a Littlefoot. Backs the auto-party's
+     * Littlefoot sign-up, which wants the mob itself rather than the shaft id.
+     *
+     * <p>Only populated while Littlefoot ESP is on and you are in a mineshaft.
+     */
+    public static boolean hasLittlefoot() {
+        return littlefootEnabled && !littlefootEntityIds.isEmpty();
+    }
+
     public static boolean isLittlefootTracer() {
         return littlefootTracer;
     }

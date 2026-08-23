@@ -11,6 +11,11 @@ import forfun.miningqol.client.FiletWarning
 import forfun.miningqol.client.MiningqolClient
 import forfun.miningqol.client.MqoChat
 import forfun.miningqol.client.PickaxeCooldownHUD
+import forfun.miningqol.client.ForgeDisplay
+import forfun.miningqol.client.gui.HudPositionScreen
+import forfun.miningqol.client.party.MineshaftAutoParty
+import forfun.miningqol.client.party.PartyAutoAccept
+import net.minecraft.client.Minecraft
 import forfun.miningqol.client.RollingMinerCooldown
 import forfun.miningqol.client.ShaftESP
 import forfun.miningqol.client.SoundBlocker
@@ -300,6 +305,82 @@ object FeatureDetails {
         y = SettingsUi.inlineSlider(w, width, y, "Title Threshold", 0f, 30f, 1f,
             PickaxeCooldownHUD.getTitleThreshold().toFloat(), accent, { "${it.toInt()}s left" }) {
             PickaxeCooldownHUD.setTitleThreshold(it.toInt())
+        }
+        return y
+    }
+
+    private fun forgePreviewRows(): List<HudRow> = listOf(
+        HudRow("HEADER", listOf(HudSegment("Forges:", SettingsUi.rgbOf(ForgeDisplay.getTitleColor())))),
+        HudRow("RUNNING", listOf(
+            HudSegment("1) ", SettingsUi.rgbOf(ForgeDisplay.getTimeColor())),
+            HudSegment("Refined Tungsten", SettingsUi.rgbOf(ForgeDisplay.getItemColor())),
+            HudSegment(": 59m", SettingsUi.rgbOf(ForgeDisplay.getTimeColor()))
+        )),
+        HudRow("READY", listOf(
+            HudSegment("2) ", SettingsUi.rgbOf(ForgeDisplay.getTimeColor())),
+            HudSegment("Refined Diamond", SettingsUi.rgbOf(ForgeDisplay.getReadyColor())),
+            HudSegment(": Ready!", SettingsUi.rgbOf(ForgeDisplay.getReadyColor()))
+        ))
+    )
+
+    fun forgeDisplay(host: VexelMainScreen, w: Rectangle, width: Float): Float {
+        val accent = SettingsUi.ORANGE
+        var y = 0f
+        y = SettingsUi.inlineToggle(w, width, y, "Enabled", "Show forge slots read off the tab list", accent,
+            { ForgeDisplay.isEnabled() }) { ForgeDisplay.setEnabled(it) }
+        y = SettingsUi.inlineToggle(w, width, y, "Sort By Time Left",
+            "Soonest first; off keeps the slot order", accent,
+            { ForgeDisplay.isSortByTime() }) { ForgeDisplay.setSortByTime(it) }
+        y = SettingsUi.inlineToggle(w, width, y, "Show Empty Slots", "List slots with nothing forging", accent,
+            { ForgeDisplay.isShowEmpty() }) { ForgeDisplay.setShowEmpty(it) }
+        y = SettingsUi.inlineLink(w, width, y, "Move HUD", "Position it with the other HUDs") {
+            val here = Minecraft.getInstance().screen
+            Minecraft.getInstance().schedule { Minecraft.getInstance().setScreen(HudPositionScreen(here)) }
+        }
+        y = SettingsUi.inlineRgb(w, width, y, "Header Color",
+            getColor = { ForgeDisplay.getTitleColor() },
+            setColor = { r, g, b -> ForgeDisplay.setTitleColor(r, g, b) },
+            previewRowCount = 3, preview = ::forgePreviewRows)
+        y = SettingsUi.inlineRgb(w, width, y, "Item Color",
+            getColor = { ForgeDisplay.getItemColor() },
+            setColor = { r, g, b -> ForgeDisplay.setItemColor(r, g, b) },
+            previewRowCount = 3, preview = ::forgePreviewRows)
+        y = SettingsUi.inlineRgb(w, width, y, "Time Color",
+            getColor = { ForgeDisplay.getTimeColor() },
+            setColor = { r, g, b -> ForgeDisplay.setTimeColor(r, g, b) },
+            previewRowCount = 3, preview = ::forgePreviewRows)
+        y = SettingsUi.inlineRgb(w, width, y, "Ready Color",
+            getColor = { ForgeDisplay.getReadyColor() },
+            setColor = { r, g, b -> ForgeDisplay.setReadyColor(r, g, b) },
+            previewRowCount = 3, preview = ::forgePreviewRows)
+        return y
+    }
+
+    fun mineshaftAutoParty(host: VexelMainScreen, w: Rectangle, width: Float): Float {
+        val accent = SettingsUi.PURPLE2
+        var y = 0f
+        y = SettingsUi.inlineToggle(w, width, y, "Enabled",
+            "Party and warp signed-up players when their shaft spawns", accent,
+            { MineshaftAutoParty.isEnabled() }) { MineshaftAutoParty.setEnabled(it) }
+        y = SettingsUi.inlineToggle(w, width, y, "Disband After Warp",
+            "Disband 2s after warping so the next shaft starts from a clean party", accent,
+            { MineshaftAutoParty.isDisbandAfterWarp() }) { MineshaftAutoParty.setDisbandAfterWarp(it) }
+        y = SettingsUi.inlineSlider(w, width, y, "Disband Timeout",
+            MineshaftAutoParty.MIN_DISBAND_SECONDS.toFloat(),
+            MineshaftAutoParty.MAX_DISBAND_SECONDS.toFloat(), 1f,
+            MineshaftAutoParty.getDisbandSeconds().toFloat(), accent, { "${it.toInt()}s" }) {
+            MineshaftAutoParty.setDisbandSeconds(it.toInt())
+        }
+        y = SettingsUi.inlineToggle(w, width, y, "Auto Accept Invites",
+            "Accept party invites from the auto-accept list", accent,
+            { PartyAutoAccept.isEnabled() }) { PartyAutoAccept.setEnabled(it) }
+        y = SettingsUi.inlineLink(w, width, y, "Edit Sign-ups",
+            "${MineshaftAutoParty.players().size} players, ${MineshaftAutoParty.activeSignupCount()} with shafts picked") {
+            // Scheduled: we are mid click-dispatch, and the settings screen is still open.
+            val here = Minecraft.getInstance().screen
+            Minecraft.getInstance().schedule {
+                Minecraft.getInstance().setScreen(MineshaftAutoPartyScreen(here))
+            }
         }
         return y
     }

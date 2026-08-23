@@ -4,12 +4,13 @@ import forfun.miningqol.client.MiningqolClient
 import forfun.miningqol.client.BlockOverlay
 import forfun.miningqol.client.waypoints.OrderedWaypointManager
 import forfun.miningqol.client.CommissionHUD
+import forfun.miningqol.client.ForgeDisplay
 import forfun.miningqol.client.PickaxeCooldownHUD
+import forfun.miningqol.client.party.MineshaftAutoParty
 import net.fabricmc.loader.api.FabricLoader
 import net.minecraft.client.Minecraft
 import net.minecraft.client.input.KeyEvent
 import org.lwjgl.glfw.GLFW
-import xyz.meowing.knit.api.render.KnitResolution
 import xyz.meowing.knit.api.input.KnitKeyboard
 import xyz.meowing.vexel.Vexel.renderer
 import xyz.meowing.vexel.components.base.VexelElement
@@ -19,9 +20,7 @@ import xyz.meowing.vexel.components.core.Rectangle
 import xyz.meowing.vexel.components.core.Text
 import xyz.meowing.vexel.core.VexelScreen
 import xyz.meowing.vexel.elements.TextInput
-import kotlin.math.ceil
 import kotlin.math.floor
-import kotlin.math.round
 
 /**
  * Main settings GUI — prisma-style: a floating sidebar panel (category nav) next
@@ -50,56 +49,6 @@ class VexelMainScreen : VexelScreen("Sybau Settings") {
     private var mainPanel: Rectangle? = null
     private var gridContainer: Rectangle? = null
 
-    private class ScaledUiRoot(
-        private val scale: Float,
-        designWidth: Float,
-        designHeight: Float
-    ) : VexelElement<ScaledUiRoot>() {
-        init {
-            setSizing(designWidth, Size.Pixels, designHeight, Size.Pixels)
-            setPositioning(Pos.ScreenCenter, Pos.ScreenCenter)
-            xConstraint = designWidth * (1f - scale) / 2f
-            yConstraint = designHeight * (1f - scale) / 2f
-        }
-
-        private fun logicalX(screenX: Float): Float = x + (screenX - x) / scale
-        private fun logicalY(screenY: Float): Float = y + (screenY - y) / scale
-
-        override fun onRender(mouseX: Float, mouseY: Float) {
-            val snappedX = round(x)
-            val snappedY = round(y)
-            if (x != snappedX) x = snappedX
-            if (y != snappedY) y = snappedY
-        }
-
-        override fun renderChildren(mouseX: Float, mouseY: Float) {
-            renderer.push()
-            renderer.translate(x, y)
-            renderer.scale(scale, scale)
-            renderer.translate(-x, -y)
-            val logicalMouseX = logicalX(mouseX)
-            val logicalMouseY = logicalY(mouseY)
-            children.forEach { it.render(logicalMouseX, logicalMouseY) }
-            renderer.pop()
-        }
-
-        override fun handleMouseMove(mouseX: Float, mouseY: Float): Boolean =
-            super.handleMouseMove(logicalX(mouseX), logicalY(mouseY))
-
-        override fun handleMouseClick(mouseX: Float, mouseY: Float, button: Int): Boolean =
-            super.handleMouseClick(logicalX(mouseX), logicalY(mouseY), button)
-
-        override fun handleMouseRelease(mouseX: Float, mouseY: Float, button: Int): Boolean =
-            super.handleMouseRelease(logicalX(mouseX), logicalY(mouseY), button)
-
-        override fun handleMouseScroll(
-            mouseX: Float,
-            mouseY: Float,
-            horizontal: Double,
-            vertical: Double
-        ): Boolean = super.handleMouseScroll(logicalX(mouseX), logicalY(mouseY), horizontal, vertical)
-    }
-
     private fun builtInCategories(): List<GuiCategory> = listOf(
         GuiCategory("General", listOf(
             GuiFeature("Misc", "GUI opacity, chat, sounds, overlays", SettingsUi.ORANGE,
@@ -110,7 +59,10 @@ class VexelMainScreen : VexelScreen("Sybau Settings") {
             GuiFeature("Keybinds", "Rebind the mod's hotkeys", SettingsUi.SKY,
                 detail = { host, w, width -> KeybindsContent.build(host, w, width) }),
             GuiFeature("Command Keybinds", "Bind commands to keys", SettingsUi.PURPLE2,
-                detail = { host, w, width -> CommandKeybindContent.build(host, w, width) })
+                detail = { host, w, width -> CommandKeybindContent.build(host, w, width) }),
+            GuiFeature("Mineshaft Auto Party", "Warp players into the shafts they want", SettingsUi.PURPLE2,
+                detail = { host, w, width -> FeatureDetails.mineshaftAutoParty(host, w, width) },
+                status = { MineshaftAutoParty.isEnabled() })
         )),
         GuiCategory("HUDs", listOf(
             GuiFeature("Commission HUD", "On-screen commission tracker", SettingsUi.BLUE,
@@ -118,7 +70,10 @@ class VexelMainScreen : VexelScreen("Sybau Settings") {
                 status = { CommissionHUD.isEnabled() }),
             GuiFeature("Pickaxe Cooldown", "Ability cooldown HUD + ready alert", SettingsUi.PURPLE,
                 detail = { host, w, width -> FeatureDetails.pickaxeCooldown(host, w, width) },
-                status = { PickaxeCooldownHUD.isEnabled() })
+                status = { PickaxeCooldownHUD.isEnabled() }),
+            GuiFeature("Forge Display", "Forge slots and times from the tab list", SettingsUi.ORANGE,
+                detail = { host, w, width -> FeatureDetails.forgeDisplay(host, w, width) },
+                status = { ForgeDisplay.isEnabled() })
         )),
         GuiCategory("Waypoints", listOf(
             GuiFeature("Ordered Waypoints", "Guided mining routes (/mqo)", SettingsUi.GREEN,
@@ -150,17 +105,8 @@ class VexelMainScreen : VexelScreen("Sybau Settings") {
     private fun buildUi() {
         val cats = categories()
         if (selectedCategory >= cats.size) selectedCategory = 0
-        val resolutionRatio = minOf(
-            KnitResolution.windowWidth / 1920f,
-            KnitResolution.windowHeight / 1080f
-        )
-        val desiredScale = ceil(resolutionRatio).toInt().coerceIn(1, 3)
-        val maximumFitScale = floor(minOf(
-            KnitResolution.windowWidth / totalWidth,
-            KnitResolution.windowHeight / panelHeight
-        )).toInt().coerceAtLeast(1)
-        val scale = minOf(desiredScale, maximumFitScale).toFloat()
-        val root = ScaledUiRoot(scale, totalWidth, panelHeight).childOf(window)
+        val root = ScaledUiRoot(uiScaleFor(totalWidth, panelHeight), totalWidth, panelHeight)
+            .childOf(window)
         buildSidebar(root, cats)
         buildMain(root, cats[selectedCategory])
     }
