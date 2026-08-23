@@ -16,7 +16,6 @@ import org.lwjgl.glfw.GLFW;
  * real cooldown is active. Mirrors {@link CommissionHudPositionScreen}.
  */
 public class PickaxeCooldownPositionScreen extends Screen {
-    private static final String PREVIEW = "§6Pickobulus: §c30s";
     private final Screen parent;
     private boolean dragging = false;
     private double grabDx = 0;
@@ -43,7 +42,7 @@ public class PickaxeCooldownPositionScreen extends Screen {
 
         // HUD preview + outline
         ctx.outline(x - 2, y - 2, w + 4, h + 4, 0xFF7FA8DB);
-        ctx.text(font, PREVIEW, x, y, 0xFFFFFFFF, true);
+        ctx.text(font, PickaxeCooldownHUD.getPreviewText(), x, y, 0xFFFFFFFF, true);
 
         // Done button
         int bw = 84, bh = 20;

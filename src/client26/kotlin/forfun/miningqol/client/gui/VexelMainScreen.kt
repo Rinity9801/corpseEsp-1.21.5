@@ -246,9 +246,8 @@ class VexelMainScreen : VexelScreen("Sybau Settings") {
             hoverColor = SettingsUi.alpha(SettingsUi.CARD_HOVER)
         )
             .setSizing(sidebarWidth - 20f, Size.Pixels, 34f, Size.Pixels)
-            .setPositioning(10f, Pos.ParentPixels, 0f, Pos.ParentPixels)
+            .setPositioning(10f, Pos.ParentPixels, -42f, Pos.ParentPixels)
             .alignBottom()
-            .setOffset(0f, -42f)
             .childOf(sidebar)
         Text("Move HUDs", SettingsUi.TEXT_SECONDARY, 13f, true)
             .setPositioning(16f, Pos.ParentPixels, 0f, Pos.ParentCenter)
@@ -372,9 +371,8 @@ class VexelMainScreen : VexelScreen("Sybau Settings") {
             }
             if (feature.open != null) {
                 Text("↗", SettingsUi.TEXT_DIM, 14f, false)
-                    .setPositioning(0f, Pos.ParentPixels, 12f, Pos.ParentPixels)
+                    .setPositioning(-14f, Pos.ParentPixels, 12f, Pos.ParentPixels)
                     .alignRight()
-                    .setOffset(-14f, 0f)
                     .childOf(card)
             }
 
@@ -456,6 +454,7 @@ class VexelMainScreen : VexelScreen("Sybau Settings") {
 
     private fun scheduleRebuild() {
         keyHandler = null
+        ColorEditor.forget()
         // Deferred a tick: KnitScreen won't re-run afterInitialization on setScreen(this),
         // and tearing the element tree down inside a click dispatch is unsafe.
         Minecraft.getInstance().schedule(Runnable {
@@ -465,6 +464,7 @@ class VexelMainScreen : VexelScreen("Sybau Settings") {
     }
 
     override fun keyPressed(input: KeyEvent): Boolean {
+        if (input.key() == GLFW.GLFW_KEY_ESCAPE && ColorEditor.close()) return true
         keyHandler?.let { if (it(input)) return true }
         focusedTextInput()?.let { textInput ->
             val shortcutDown = KnitKeyboard.isCtrlKeyPressed || KnitKeyboard.isSuperKeyPressed
@@ -501,6 +501,7 @@ class VexelMainScreen : VexelScreen("Sybau Settings") {
 
     override fun onClose() {
         keyHandler = null
+        ColorEditor.forget()
         saveConfig()
         super.onClose()
     }

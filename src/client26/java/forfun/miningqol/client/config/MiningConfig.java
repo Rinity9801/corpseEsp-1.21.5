@@ -75,12 +75,24 @@ public class MiningConfig {
     public int pickaxeCooldownTitleThreshold = 5;
     public boolean pickaxeCooldownCustomEnabled = false;
     public int pickaxeCooldownCustomSeconds = 120;
+    public float[] pickaxeCooldownLabelColor = {1.0f, 170.0f / 255.0f, 0.0f};
+    public float[] pickaxeCooldownValueColor = {1.0f, 85.0f / 255.0f, 85.0f / 255.0f};
+    public float[] pickaxeReadyLabelColor = {85.0f / 255.0f, 1.0f, 85.0f / 255.0f};
+    public float[] pickaxeReadyValueColor = {0.0f, 170.0f / 255.0f, 0.0f};
+    public boolean pickaxeCooldownOnly = false;
+    public boolean pickaxeActiveTimerEnabled = true;
+    public float[] pickaxeActiveLabelColor = {85.0f / 255.0f, 1.0f, 1.0f};
+    public float[] pickaxeActiveValueColor = {85.0f / 255.0f, 1.0f, 85.0f / 255.0f};
 
     public boolean filetWarningEnabled = false;
     public boolean autoSkipShoLoad = false;
     public boolean rollingMinerCooldownEnabled = false;
     public int rollingMinerCooldownX = 10;
     public int rollingMinerCooldownY = 62;
+    public float[] rollingCooldownLabelColor = {1.0f, 170.0f / 255.0f, 0.0f};
+    public float[] rollingCooldownValueColor = {1.0f, 85.0f / 255.0f, 85.0f / 255.0f};
+    public float[] rollingReadyLabelColor = {85.0f / 255.0f, 1.0f, 85.0f / 255.0f};
+    public float[] rollingReadyValueColor = {0.0f, 170.0f / 255.0f, 0.0f};
 
     public boolean efficientMinerEnabled = false;
     public boolean useOldHeatmap = false;
@@ -206,6 +218,16 @@ public class MiningConfig {
         if (blockOverlayMode == null) blockOverlayMode = "FILLED_OUTLINE";
         if (blockOverlayFillColor == null) blockOverlayFillColor = new float[]{0.0f, 134.0f / 255.0f, 1.0f};
         if (blockOverlayOutlineColor == null) blockOverlayOutlineColor = new float[]{0.0f, 134.0f / 255.0f, 1.0f};
+        if (pickaxeCooldownLabelColor == null || pickaxeCooldownLabelColor.length < 3) pickaxeCooldownLabelColor = new float[]{1.0f, 170.0f / 255.0f, 0.0f};
+        if (pickaxeCooldownValueColor == null || pickaxeCooldownValueColor.length < 3) pickaxeCooldownValueColor = new float[]{1.0f, 85.0f / 255.0f, 85.0f / 255.0f};
+        if (pickaxeReadyLabelColor == null || pickaxeReadyLabelColor.length < 3) pickaxeReadyLabelColor = new float[]{85.0f / 255.0f, 1.0f, 85.0f / 255.0f};
+        if (pickaxeReadyValueColor == null || pickaxeReadyValueColor.length < 3) pickaxeReadyValueColor = new float[]{0.0f, 170.0f / 255.0f, 0.0f};
+        if (pickaxeActiveLabelColor == null || pickaxeActiveLabelColor.length < 3) pickaxeActiveLabelColor = new float[]{85.0f / 255.0f, 1.0f, 1.0f};
+        if (pickaxeActiveValueColor == null || pickaxeActiveValueColor.length < 3) pickaxeActiveValueColor = new float[]{85.0f / 255.0f, 1.0f, 85.0f / 255.0f};
+        if (rollingCooldownLabelColor == null || rollingCooldownLabelColor.length < 3) rollingCooldownLabelColor = new float[]{1.0f, 170.0f / 255.0f, 0.0f};
+        if (rollingCooldownValueColor == null || rollingCooldownValueColor.length < 3) rollingCooldownValueColor = new float[]{1.0f, 85.0f / 255.0f, 85.0f / 255.0f};
+        if (rollingReadyLabelColor == null || rollingReadyLabelColor.length < 3) rollingReadyLabelColor = new float[]{85.0f / 255.0f, 1.0f, 85.0f / 255.0f};
+        if (rollingReadyValueColor == null || rollingReadyValueColor.length < 3) rollingReadyValueColor = new float[]{0.0f, 170.0f / 255.0f, 0.0f};
         if (orderedWaypointBlockOutlineColor == null) orderedWaypointBlockOutlineColor = new float[]{1f, 1f, 1f};
         if (emptyStashMaterial == null) emptyStashMaterial = "COAL";
         if (orderedWaypointLobbyCheckBlock == null) orderedWaypointLobbyCheckBlock = "minecraft:coal_ore";
@@ -283,10 +305,22 @@ public class MiningConfig {
         PickaxeCooldownHUD.setTitleThreshold(pickaxeCooldownTitleThreshold);
         PickaxeCooldownHUD.setCustomCooldownSeconds(pickaxeCooldownCustomSeconds);
         PickaxeCooldownHUD.setCustomCooldownEnabled(pickaxeCooldownCustomEnabled);
+        PickaxeCooldownHUD.setCooldownLabelColor(pickaxeCooldownLabelColor[0], pickaxeCooldownLabelColor[1], pickaxeCooldownLabelColor[2]);
+        PickaxeCooldownHUD.setCooldownValueColor(pickaxeCooldownValueColor[0], pickaxeCooldownValueColor[1], pickaxeCooldownValueColor[2]);
+        PickaxeCooldownHUD.setReadyLabelColor(pickaxeReadyLabelColor[0], pickaxeReadyLabelColor[1], pickaxeReadyLabelColor[2]);
+        PickaxeCooldownHUD.setReadyValueColor(pickaxeReadyValueColor[0], pickaxeReadyValueColor[1], pickaxeReadyValueColor[2]);
+        PickaxeCooldownHUD.setCooldownOnly(pickaxeCooldownOnly);
+        PickaxeCooldownHUD.setActiveTimerEnabled(pickaxeActiveTimerEnabled);
+        PickaxeCooldownHUD.setActiveLabelColor(pickaxeActiveLabelColor[0], pickaxeActiveLabelColor[1], pickaxeActiveLabelColor[2]);
+        PickaxeCooldownHUD.setActiveValueColor(pickaxeActiveValueColor[0], pickaxeActiveValueColor[1], pickaxeActiveValueColor[2]);
 
         FiletWarning.setEnabled(filetWarningEnabled);
         RollingMinerCooldown.setPosition(rollingMinerCooldownX, rollingMinerCooldownY);
         RollingMinerCooldown.setEnabled(rollingMinerCooldownEnabled);
+        RollingMinerCooldown.setCooldownLabelColor(rollingCooldownLabelColor[0], rollingCooldownLabelColor[1], rollingCooldownLabelColor[2]);
+        RollingMinerCooldown.setCooldownValueColor(rollingCooldownValueColor[0], rollingCooldownValueColor[1], rollingCooldownValueColor[2]);
+        RollingMinerCooldown.setReadyLabelColor(rollingReadyLabelColor[0], rollingReadyLabelColor[1], rollingReadyLabelColor[2]);
+        RollingMinerCooldown.setReadyValueColor(rollingReadyValueColor[0], rollingReadyValueColor[1], rollingReadyValueColor[2]);
 
         EfficientMinerOverlay.setEnabled(efficientMinerEnabled);
         EfficientMinerOverlay.setUseOldHeatmap(useOldHeatmap);
@@ -393,11 +427,23 @@ public class MiningConfig {
         pickaxeCooldownTitleThreshold = PickaxeCooldownHUD.getTitleThreshold();
         pickaxeCooldownCustomEnabled = PickaxeCooldownHUD.isCustomCooldownEnabled();
         pickaxeCooldownCustomSeconds = PickaxeCooldownHUD.getCustomCooldownSeconds();
+        pickaxeCooldownLabelColor = PickaxeCooldownHUD.getCooldownLabelColor();
+        pickaxeCooldownValueColor = PickaxeCooldownHUD.getCooldownValueColor();
+        pickaxeReadyLabelColor = PickaxeCooldownHUD.getReadyLabelColor();
+        pickaxeReadyValueColor = PickaxeCooldownHUD.getReadyValueColor();
+        pickaxeCooldownOnly = PickaxeCooldownHUD.isCooldownOnly();
+        pickaxeActiveTimerEnabled = PickaxeCooldownHUD.isActiveTimerEnabled();
+        pickaxeActiveLabelColor = PickaxeCooldownHUD.getActiveLabelColor();
+        pickaxeActiveValueColor = PickaxeCooldownHUD.getActiveValueColor();
 
         filetWarningEnabled = FiletWarning.isEnabled();
         rollingMinerCooldownEnabled = RollingMinerCooldown.isEnabled();
         rollingMinerCooldownX = RollingMinerCooldown.getX();
         rollingMinerCooldownY = RollingMinerCooldown.getY();
+        rollingCooldownLabelColor = RollingMinerCooldown.getCooldownLabelColor();
+        rollingCooldownValueColor = RollingMinerCooldown.getCooldownValueColor();
+        rollingReadyLabelColor = RollingMinerCooldown.getReadyLabelColor();
+        rollingReadyValueColor = RollingMinerCooldown.getReadyValueColor();
         efficientMinerEnabled = EfficientMinerOverlay.isEnabled();
         useOldHeatmap = EfficientMinerOverlay.isUsingOldHeatmap();
 

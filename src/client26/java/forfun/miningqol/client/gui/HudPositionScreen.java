@@ -18,8 +18,6 @@ import org.lwjgl.glfw.GLFW;
 public class HudPositionScreen extends Screen {
     private static final int GUIDE_DISTANCE = 5;
     private static final int HUD_GAP = 4;
-    private static final String PICKAXE_PREVIEW = "\u00A76Pickobulus: \u00A7c30s";
-    private static final String ROLLING_PREVIEW = "\u00A7aRolling Miner: \u00A72\u2714 Ready";
 
     private enum Target {
         PICKAXE,
@@ -49,13 +47,13 @@ public class HudPositionScreen extends Screen {
             ctx.guiWidth() / 2, 26, 0xFF9EA4B3);
 
         if (isVisible(Target.PICKAXE)) {
-            ctx.text(font, PICKAXE_PREVIEW, PickaxeCooldownHUD.getX(), PickaxeCooldownHUD.getY(),
+            ctx.text(font, PickaxeCooldownHUD.getPreviewText(), PickaxeCooldownHUD.getX(), PickaxeCooldownHUD.getY(),
                 0xFFFFFFFF, true);
             ctx.outline(PickaxeCooldownHUD.getX() - 2, PickaxeCooldownHUD.getY() - 2,
                 targetWidth(Target.PICKAXE) + 4, targetHeight(Target.PICKAXE) + 4, 0xFF7FA8DB);
         }
         if (isVisible(Target.ROLLING)) {
-            ctx.text(font, ROLLING_PREVIEW, RollingMinerCooldown.getX(), RollingMinerCooldown.getY(),
+            ctx.text(font, RollingMinerCooldown.getPreviewText(), RollingMinerCooldown.getX(), RollingMinerCooldown.getY(),
                 0xFFFFFFFF, true);
             ctx.outline(RollingMinerCooldown.getX() - 2, RollingMinerCooldown.getY() - 2,
                 targetWidth(Target.ROLLING) + 4, targetHeight(Target.ROLLING) + 4, 0xFF7FDB8A);

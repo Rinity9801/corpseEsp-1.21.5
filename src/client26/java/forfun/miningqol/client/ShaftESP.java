@@ -164,7 +164,12 @@ public class ShaftESP {
 
                 trackedEntities.put(entity.getId(), littlefootEntityIds.contains(entity.getId()));
             }
-        } else if (littlefootEnabled) {
+        }
+
+        // Not an else: the mob pass filters invisible nametag stands down to ones carrying a health
+        // marker, which the Littlefoot nametag has none of — so with Mob ESP on it would otherwise
+        // be dropped entirely, taking its box and tracer with it.
+        if (littlefootEnabled) {
             for (int id : littlefootEntityIds) {
                 trackedEntities.put(id, true);
             }
@@ -201,9 +206,12 @@ public class ShaftESP {
         MultiBufferSource.BufferSource buffers = client.renderBuffers().bufferSource();
         Matrix4f pose = new Matrix4f(viewMatrix);
 
-        if (renderMode == EntityEspMode.BOX) {
-            VertexConsumer outlines = buffers.getBuffer(RenderTypes.textBackgroundSeeThrough());
+        // One buffer acquisition, one endBatch at the very end — the same shape
+        // OrderedWaypointRenderer uses, whose tracer works. Ending the batch between the
+        // boxes and the tracer is what stopped the tracer from drawing.
+        VertexConsumer quads = buffers.getBuffer(RenderTypes.textBackgroundSeeThrough());
 
+        if (renderMode == EntityEspMode.BOX) {
             for (Map.Entry<Integer, Boolean> entry : trackedEntities.entrySet()) {
                 Entity entity = client.level.getEntity(entry.getKey());
                 if (entity == null) continue;
@@ -230,35 +238,32 @@ public class ShaftESP {
                     maxZ = box.maxZ - cam.z;
                 }
 
-                SeeThroughBoxRenderer.outline(outlines, pose,
+                SeeThroughBoxRenderer.outline(quads, pose,
                     (float) minX, (float) minY, (float) minZ,
                     (float) maxX, (float) maxY, (float) maxZ,
                     color[0], color[1], color[2], alpha);
             }
-
-            buffers.endBatch();
         }
 
-        if (!littlefootTracer) return;
+        if (littlefootTracer) {
+            Vector3f forward = new Vector3f(0, 0, -1);
+            cameraState.orientation.transform(forward);
+            Vec3 lineStart = cam.add(forward.x, forward.y, forward.z);
+            for (Map.Entry<Integer, Boolean> entry : trackedEntities.entrySet()) {
+                if (!entry.getValue()) continue;
+                Entity entity = client.level.getEntity(entry.getKey());
+                if (entity == null) continue;
 
-        // Render tracers after the quad batch so switching render types cannot flush a box buffer
-        // that the entity loop still holds.
-        Vector3f forward = new Vector3f(0, 0, -1);
-        cameraState.orientation.transform(forward);
-        Vec3 lineStart = cam.add(forward.x, forward.y, forward.z);
-        for (Map.Entry<Integer, Boolean> entry : trackedEntities.entrySet()) {
-            if (!entry.getValue()) continue;
-            Entity entity = client.level.getEntity(entry.getKey());
-            if (entity == null) continue;
-
-            Vec3 target;
-            if (entity instanceof ArmorStand stand && stand.isMarker()) {
-                target = new Vec3(entity.getX(), entity.getY() - 0.8, entity.getZ());
-            } else {
-                target = entity.getBoundingBox().getCenter();
+                Vec3 target;
+                if (entity instanceof ArmorStand stand && stand.isMarker()) {
+                    target = new Vec3(entity.getX(), entity.getY() - 0.8, entity.getZ());
+                } else {
+                    target = entity.getBoundingBox().getCenter();
+                }
+                line(buffers, pose, cam, lineStart, target, LITTLEFOOT_COLOR, 1.0f);
             }
-            line(buffers, pose, cam, lineStart, target, LITTLEFOOT_COLOR, 1.0f);
         }
+
         buffers.endBatch();
     }
 

@@ -8,9 +8,13 @@ import net.minecraft.client.gui.GuiGraphicsExtractor;
 import net.minecraft.client.multiplayer.ClientPacketListener;
 import net.minecraft.client.multiplayer.PlayerInfo;
 import net.minecraft.network.chat.Component;
+import net.minecraft.network.chat.MutableComponent;
+import net.minecraft.network.chat.Style;
 import net.minecraft.resources.Identifier;
 
 import java.util.Collection;
+import java.util.LinkedHashMap;
+import java.util.Map;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -26,8 +30,21 @@ public class PickaxeCooldownHUD {
         "Mining Speed Boost",
         "Maniac Miner",
         "Sheer Force",
-        "Vein Seeker"
+        "Vein Seeker",
+        "Tunnel Vision",
+        "Gemstone Fusion"
     };
+
+    /** How long each ability stays active after it is used, in seconds. */
+    private static final Map<String, Integer> ABILITY_DURATIONS = new LinkedHashMap<>();
+
+    static {
+        ABILITY_DURATIONS.put("Mining Speed Boost", 20);
+        ABILITY_DURATIONS.put("Maniac Miner", 35);
+        ABILITY_DURATIONS.put("Tunnel Vision", 30);
+        ABILITY_DURATIONS.put("Gemstone Fusion", 30);
+        ABILITY_DURATIONS.put("Sheer Force", 30);
+    }
 
     private static boolean registered = false;
     private static boolean enabled = true;
@@ -45,6 +62,17 @@ public class PickaxeCooldownHUD {
     private static int hudX = 10;
     private static int hudY = 50;
     private static float scale = 1.0f;
+    private static final float[] cooldownLabelColor = {1.0f, 170.0f / 255.0f, 0.0f};
+    private static final float[] cooldownValueColor = {1.0f, 85.0f / 255.0f, 85.0f / 255.0f};
+    private static final float[] readyLabelColor = {85.0f / 255.0f, 1.0f, 85.0f / 255.0f};
+    private static final float[] readyValueColor = {0.0f, 170.0f / 255.0f, 0.0f};
+    private static final float[] activeLabelColor = {85.0f / 255.0f, 1.0f, 1.0f};
+    private static final float[] activeValueColor = {85.0f / 255.0f, 1.0f, 85.0f / 255.0f};
+
+    private static boolean cooldownOnly = false;
+    private static boolean activeTimerEnabled = true;
+    private static String activeAbility = "";
+    private static long activeUntil = 0;
 
     private static boolean titleEnabled = true;
     private static int titleThreshold = 5;
@@ -120,12 +148,22 @@ public class PickaxeCooldownHUD {
     }
 
     public static void onGameMessage(String message) {
-        if (!customCooldownEnabled || message == null) return;
+        if (message == null) return;
 
         Matcher matcher = ABILITY_USED_PATTERN.matcher(message.trim());
         if (!matcher.find()) return;
 
-        abilityName = matcher.group(1).trim();
+        String used = matcher.group(1).trim();
+
+        Integer duration = ABILITY_DURATIONS.get(used);
+        if (activeTimerEnabled && duration != null) {
+            activeAbility = used;
+            activeUntil = System.currentTimeMillis() + duration * 1000L;
+        }
+
+        if (!customCooldownEnabled) return;
+
+        abilityName = used;
         lastKnownCooldownSeconds = customCooldownSeconds;
         lastCooldownUpdateTime = System.currentTimeMillis();
         currentCooldown = customCooldownSeconds + "s";
@@ -148,6 +186,22 @@ public class PickaxeCooldownHUD {
 
         Font font = client.font;
 
+        if (activeTimerEnabled) {
+            long remainingActiveMs = activeUntil - System.currentTimeMillis();
+            if (remainingActiveMs > 0) {
+                int remaining = (int) Math.ceil(remainingActiveMs / 1000.0);
+                ctx.text(
+                    font,
+                    formatText(activeAbility, remaining + "s", activeLabelColor, activeValueColor, false),
+                    hudX,
+                    hudY,
+                    0xFFFFFFFF,
+                    true
+                );
+                return;
+            }
+        }
+
         String displayCooldown = currentCooldown;
         int interpolatedCooldown;
 
@@ -165,7 +219,13 @@ public class PickaxeCooldownHUD {
                     if (lastTitleCooldown != interpolatedCooldown || currentTime - lastTitleSetTime > 500) {
                         client.gui.setTimes(0, 15, 3);
                         client.gui.setTitle(Component.literal(""));
-                        client.gui.setSubtitle(Component.literal("§6" + abilityName + ": §c§l" + interpolatedCooldown + "s"));
+                        client.gui.setSubtitle(formatText(
+                            abilityName,
+                            interpolatedCooldown + "s",
+                            cooldownLabelColor,
+                            cooldownValueColor,
+                            true
+                        ));
                         lastTitleSetTime = currentTime;
                         lastTitleCooldown = interpolatedCooldown;
                     }
@@ -178,11 +238,21 @@ public class PickaxeCooldownHUD {
             }
         }
 
-        String displayText = displayCooldown.equals("Ready")
-            ? "§a" + abilityName + ": §2✔ Ready"
-            : "§6" + abilityName + ": §c" + displayCooldown;
-
-        ctx.text(font, displayText, hudX, hudY, 0xFFFFFFFF, true);
+        boolean ready = displayCooldown.equals("Ready");
+        ctx.text(
+            font,
+            formatText(
+                abilityName,
+                ready ? "✔ Ready" : displayCooldown,
+                ready ? readyLabelColor : cooldownLabelColor,
+                ready ? readyValueColor : cooldownValueColor,
+                false
+            ),
+            hudX,
+            hudY,
+            0xFFFFFFFF,
+            true
+        );
     }
 
     public static double getCurrentCooldown() {
@@ -273,5 +343,117 @@ public class PickaxeCooldownHUD {
 
     public static void setCustomCooldownSeconds(int seconds) {
         customCooldownSeconds = Math.max(1, Math.min(600, seconds));
+    }
+
+    public static boolean isCooldownOnly() {
+        return cooldownOnly;
+    }
+
+    public static void setCooldownOnly(boolean value) {
+        cooldownOnly = value;
+    }
+
+    public static boolean isActiveTimerEnabled() {
+        return activeTimerEnabled;
+    }
+
+    public static void setActiveTimerEnabled(boolean value) {
+        activeTimerEnabled = value;
+        if (!value) {
+            activeUntil = 0;
+        }
+    }
+
+    /** Seconds left on the current ability duration, or 0 when nothing is active. */
+    public static int getActiveSecondsRemaining() {
+        if (!activeTimerEnabled) return 0;
+        long remaining = activeUntil - System.currentTimeMillis();
+        return remaining > 0 ? (int) Math.ceil(remaining / 1000.0) : 0;
+    }
+
+    public static boolean isAbilityActive() {
+        return getActiveSecondsRemaining() > 0;
+    }
+
+    public static float[] getActiveLabelColor() {
+        return activeLabelColor.clone();
+    }
+
+    public static void setActiveLabelColor(float red, float green, float blue) {
+        setColor(activeLabelColor, red, green, blue);
+    }
+
+    public static float[] getActiveValueColor() {
+        return activeValueColor.clone();
+    }
+
+    public static void setActiveValueColor(float red, float green, float blue) {
+        setColor(activeValueColor, red, green, blue);
+    }
+
+    public static float[] getCooldownLabelColor() {
+        return cooldownLabelColor.clone();
+    }
+
+    public static void setCooldownLabelColor(float red, float green, float blue) {
+        setColor(cooldownLabelColor, red, green, blue);
+    }
+
+    public static float[] getCooldownValueColor() {
+        return cooldownValueColor.clone();
+    }
+
+    public static void setCooldownValueColor(float red, float green, float blue) {
+        setColor(cooldownValueColor, red, green, blue);
+    }
+
+    public static float[] getReadyLabelColor() {
+        return readyLabelColor.clone();
+    }
+
+    public static void setReadyLabelColor(float red, float green, float blue) {
+        setColor(readyLabelColor, red, green, blue);
+    }
+
+    public static float[] getReadyValueColor() {
+        return readyValueColor.clone();
+    }
+
+    public static void setReadyValueColor(float red, float green, float blue) {
+        setColor(readyValueColor, red, green, blue);
+    }
+
+    public static Component getPreviewText() {
+        return formatText("Pickobulus", "30s", cooldownLabelColor, cooldownValueColor, false);
+    }
+
+    private static Component formatText(String label, String value, float[] labelColor, float[] valueColor,
+                                        boolean boldValue) {
+        MutableComponent valueText = Component.literal(value).setStyle(
+            Style.EMPTY.withColor(toRgb(valueColor)).withBold(boldValue)
+        );
+        if (cooldownOnly) {
+            return valueText;
+        }
+        return Component.literal(label + ": ")
+            .setStyle(Style.EMPTY.withColor(toRgb(labelColor)))
+            .append(valueText);
+    }
+
+    private static int toRgb(float[] color) {
+        int red = Math.round(color[0] * 255.0f);
+        int green = Math.round(color[1] * 255.0f);
+        int blue = Math.round(color[2] * 255.0f);
+        return (red << 16) | (green << 8) | blue;
+    }
+
+    private static void setColor(float[] color, float red, float green, float blue) {
+        color[0] = clampColor(red);
+        color[1] = clampColor(green);
+        color[2] = clampColor(blue);
+    }
+
+    private static float clampColor(float value) {
+        return Math.max(0.0f, Math.min(1.0f, value));
     }
 }

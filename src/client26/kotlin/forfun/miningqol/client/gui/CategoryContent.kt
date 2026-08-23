@@ -34,16 +34,12 @@ object FeatureDetails {
             { BlockOverlay.getOutlineColor() },
             { r, g, b -> BlockOverlay.setOutlineColor(r, g, b) },
             { BlockOverlay.getOutlineAlpha() },
-            { BlockOverlay.setOutlineAlpha(it) },
-            getHex = { BlockOverlay.getOutlineHex() },
-            setHex = { BlockOverlay.setOutlineHex(it) })
+            { BlockOverlay.setOutlineAlpha(it) })
         y = SettingsUi.inlineColor(w, width, y, "Fill Color",
             { BlockOverlay.getFillColor() },
             { r, g, b -> BlockOverlay.setFillColor(r, g, b) },
             { BlockOverlay.getFillAlpha() },
-            { BlockOverlay.setFillAlpha(it) },
-            getHex = { BlockOverlay.getFillHex() },
-            setHex = { BlockOverlay.setFillHex(it) })
+            { BlockOverlay.setFillAlpha(it) })
         y = SettingsUi.inlineSlider(w, width, y, "Line Width", 1f, 10f, 0.1f,
             BlockOverlay.getLineWidth(), accent, { String.format("%.1f px", it) }) {
             BlockOverlay.setLineWidth(it)
@@ -62,6 +58,15 @@ object FeatureDetails {
             { CommissionHUD.isEnabled() }) { CommissionHUD.setEnabled(it) }
         y = SettingsUi.inlineToggle(w, width, y, "Background", "Dark backdrop behind the HUD", accent,
             { CommissionHUD.isBackgroundEnabled() }) { CommissionHUD.setBackgroundEnabled(it) }
+        y = SettingsUi.inlineDropdown(
+            w, width, y, "Layout", "Arrange commissions in a 2x2 grid or one stacked column", accent,
+            listOf("2x2 Grid", "Stacked Column"),
+            if (CommissionHUD.getLayoutMode() == CommissionHUD.LayoutMode.COLUMN) 1 else 0
+        ) { index ->
+            CommissionHUD.setLayoutMode(
+                if (index == 1) CommissionHUD.LayoutMode.COLUMN else CommissionHUD.LayoutMode.GRID
+            )
+        }
         y = SettingsUi.inlineToggle(w, width, y, "Commission Stats", "Total completed + comms/hour (/commtrack reset)", accent,
             { CommTracker.isStatsEnabled() }) { CommTracker.setStatsEnabled(it) }
         y = SettingsUi.inlineSlider(w, width, y, "Scale", 0.5f, 2.0f, 0.05f,
@@ -206,11 +211,52 @@ object FeatureDetails {
         return y
     }
 
+    /** The three states the pickaxe HUD can print, for the colour picker's live preview. */
+    private fun pickaxePreviewRows(): List<HudRow> {
+        fun line(label: String, labelColor: FloatArray, value: String, valueColor: FloatArray) =
+            if (PickaxeCooldownHUD.isCooldownOnly()) {
+                listOf(HudSegment(value, SettingsUi.rgbOf(valueColor)))
+            } else {
+                listOf(
+                    HudSegment("$label: ", SettingsUi.rgbOf(labelColor)),
+                    HudSegment(value, SettingsUi.rgbOf(valueColor))
+                )
+            }
+        return listOf(
+            HudRow("ON COOLDOWN", line("Pickobulus",
+                PickaxeCooldownHUD.getCooldownLabelColor(), "30s",
+                PickaxeCooldownHUD.getCooldownValueColor())),
+            HudRow("ABILITY ACTIVE", line("Mining Speed Boost",
+                PickaxeCooldownHUD.getActiveLabelColor(), "12s",
+                PickaxeCooldownHUD.getActiveValueColor())),
+            HudRow("READY", line("Pickobulus",
+                PickaxeCooldownHUD.getReadyLabelColor(), "\u2714 Ready",
+                PickaxeCooldownHUD.getReadyValueColor()))
+        )
+    }
+
+    private fun rollingPreviewRows(): List<HudRow> {
+        fun line(value: String, labelColor: FloatArray, valueColor: FloatArray) = listOf(
+            HudSegment("Rolling Miner: ", SettingsUi.rgbOf(labelColor)),
+            HudSegment(value, SettingsUi.rgbOf(valueColor))
+        )
+        return listOf(
+            HudRow("ON COOLDOWN", line("12s",
+                RollingMinerCooldown.getCooldownLabelColor(),
+                RollingMinerCooldown.getCooldownValueColor())),
+            HudRow("READY", line("\u2714 Ready",
+                RollingMinerCooldown.getReadyLabelColor(),
+                RollingMinerCooldown.getReadyValueColor()))
+        )
+    }
+
     fun pickaxeCooldown(host: VexelMainScreen, w: Rectangle, width: Float): Float {
         val accent = SettingsUi.PURPLE
         var y = 0f
         y = SettingsUi.inlineToggle(w, width, y, "Enabled", "Show the cooldown HUD", accent,
             { PickaxeCooldownHUD.isEnabled() }) { PickaxeCooldownHUD.setEnabled(it) }
+        y = SettingsUi.inlineToggle(w, width, y, "Cooldown Only", "Hide the ability name and show just the timer", accent,
+            { PickaxeCooldownHUD.isCooldownOnly() }) { PickaxeCooldownHUD.setCooldownOnly(it) }
         y = SettingsUi.inlineToggle(w, width, y, "Custom Cooldown", "Use a local timer instead of reading the tab list", accent,
             { PickaxeCooldownHUD.isCustomCooldownEnabled() }) { PickaxeCooldownHUD.setCustomCooldownEnabled(it) }
         y = SettingsUi.inlineTextInput(w, width, y, "Custom Cooldown Seconds", "Used when Custom Cooldown is enabled",
@@ -221,6 +267,34 @@ object FeatureDetails {
             PickaxeCooldownHUD.getScale(), accent, { String.format("%.2fx", it) }) {
             PickaxeCooldownHUD.setScale(it)
         }
+        y = SettingsUi.inlineRgb(w, width, y, "Cooldown Label Color",
+            getColor = { PickaxeCooldownHUD.getCooldownLabelColor() },
+            setColor = { r, g, b -> PickaxeCooldownHUD.setCooldownLabelColor(r, g, b) },
+            previewRowCount = 3, preview = ::pickaxePreviewRows)
+        y = SettingsUi.inlineRgb(w, width, y, "Cooldown Value Color",
+            getColor = { PickaxeCooldownHUD.getCooldownValueColor() },
+            setColor = { r, g, b -> PickaxeCooldownHUD.setCooldownValueColor(r, g, b) },
+            previewRowCount = 3, preview = ::pickaxePreviewRows)
+        y = SettingsUi.inlineRgb(w, width, y, "Ready Label Color",
+            getColor = { PickaxeCooldownHUD.getReadyLabelColor() },
+            setColor = { r, g, b -> PickaxeCooldownHUD.setReadyLabelColor(r, g, b) },
+            previewRowCount = 3, preview = ::pickaxePreviewRows)
+        y = SettingsUi.inlineRgb(w, width, y, "Ready Value Color",
+            getColor = { PickaxeCooldownHUD.getReadyValueColor() },
+            setColor = { r, g, b -> PickaxeCooldownHUD.setReadyValueColor(r, g, b) },
+            previewRowCount = 3, preview = ::pickaxePreviewRows)
+        y = SettingsUi.inlineSectionHeader(w, y, "Ability Active")
+        y = SettingsUi.inlineToggle(w, width, y, "Ability Active Timer",
+            "Count down how long the used ability stays active", accent,
+            { PickaxeCooldownHUD.isActiveTimerEnabled() }) { PickaxeCooldownHUD.setActiveTimerEnabled(it) }
+        y = SettingsUi.inlineRgb(w, width, y, "Active Label Color",
+            getColor = { PickaxeCooldownHUD.getActiveLabelColor() },
+            setColor = { r, g, b -> PickaxeCooldownHUD.setActiveLabelColor(r, g, b) },
+            previewRowCount = 3, preview = ::pickaxePreviewRows)
+        y = SettingsUi.inlineRgb(w, width, y, "Active Value Color",
+            getColor = { PickaxeCooldownHUD.getActiveValueColor() },
+            setColor = { r, g, b -> PickaxeCooldownHUD.setActiveValueColor(r, g, b) },
+            previewRowCount = 3, preview = ::pickaxePreviewRows)
         y = SettingsUi.inlineToggle(w, width, y, "Ready Title", "Flash a title when the ability comes off cooldown", accent,
             { PickaxeCooldownHUD.isTitleEnabled() }) { PickaxeCooldownHUD.setTitleEnabled(it) }
         y = SettingsUi.inlineSlider(w, width, y, "Title Threshold", 0f, 30f, 1f,
@@ -249,6 +323,22 @@ object FeatureDetails {
             { FiletWarning.isEnabled() }) { FiletWarning.setEnabled(it) }
         y = SettingsUi.inlineToggle(w, width, y, "Rolling Miner Cooldown", "Show a 20-second HUD timer after double drops", accent,
             { RollingMinerCooldown.isEnabled() }) { RollingMinerCooldown.setEnabled(it) }
+        y = SettingsUi.inlineRgb(w, width, y, "Rolling Cooldown Label Color",
+            getColor = { RollingMinerCooldown.getCooldownLabelColor() },
+            setColor = { r, g, b -> RollingMinerCooldown.setCooldownLabelColor(r, g, b) },
+            previewRowCount = 2, preview = ::rollingPreviewRows)
+        y = SettingsUi.inlineRgb(w, width, y, "Rolling Cooldown Value Color",
+            getColor = { RollingMinerCooldown.getCooldownValueColor() },
+            setColor = { r, g, b -> RollingMinerCooldown.setCooldownValueColor(r, g, b) },
+            previewRowCount = 2, preview = ::rollingPreviewRows)
+        y = SettingsUi.inlineRgb(w, width, y, "Rolling Ready Label Color",
+            getColor = { RollingMinerCooldown.getReadyLabelColor() },
+            setColor = { r, g, b -> RollingMinerCooldown.setReadyLabelColor(r, g, b) },
+            previewRowCount = 2, preview = ::rollingPreviewRows)
+        y = SettingsUi.inlineRgb(w, width, y, "Rolling Ready Value Color",
+            getColor = { RollingMinerCooldown.getReadyValueColor() },
+            setColor = { r, g, b -> RollingMinerCooldown.setReadyValueColor(r, g, b) },
+            previewRowCount = 2, preview = ::rollingPreviewRows)
         y = SettingsUi.inlineToggle(w, width, y, "Efficient Miner Overlay", "Heatmap the best clay / red sandstone (Glacite)", accent,
             { EfficientMinerOverlay.isEnabled() }) { EfficientMinerOverlay.setEnabled(it) }
         y = SettingsUi.inlineToggle(w, width, y, "Old Heatmap Colors", "Use the legacy 8-colour heatmap palette", accent,

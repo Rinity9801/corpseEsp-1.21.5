@@ -4,6 +4,9 @@ import net.fabricmc.fabric.api.client.rendering.v1.hud.HudElementRegistry;
 import net.fabricmc.fabric.api.client.rendering.v1.hud.VanillaHudElements;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.GuiGraphicsExtractor;
+import net.minecraft.network.chat.Component;
+import net.minecraft.network.chat.MutableComponent;
+import net.minecraft.network.chat.Style;
 import net.minecraft.resources.Identifier;
 
 import java.util.Locale;
@@ -19,6 +22,10 @@ public final class RollingMinerCooldown {
     private static long cooldownEndsAt;
     private static int hudX = 10;
     private static int hudY = 62;
+    private static final float[] cooldownLabelColor = {1.0f, 170.0f / 255.0f, 0.0f};
+    private static final float[] cooldownValueColor = {1.0f, 85.0f / 255.0f, 85.0f / 255.0f};
+    private static final float[] readyLabelColor = {85.0f / 255.0f, 1.0f, 85.0f / 255.0f};
+    private static final float[] readyValueColor = {0.0f, 170.0f / 255.0f, 0.0f};
 
     private RollingMinerCooldown() {}
 
@@ -58,13 +65,11 @@ public final class RollingMinerCooldown {
         if (client.player == null) return;
 
         int secondsLeft = secondsLeft();
-        String displayText = secondsLeft > 0
-            ? "§6Rolling Miner: §c" + secondsLeft + "s"
-            : "§aRolling Miner: §2✔ Ready";
+        boolean ready = secondsLeft <= 0;
 
         context.text(
             client.font,
-            displayText,
+            formatText(ready ? "✔ Ready" : secondsLeft + "s", ready),
             hudX,
             hudY,
             0xFFFFFFFF,
@@ -102,6 +107,67 @@ public final class RollingMinerCooldown {
 
     public static int getHeight() {
         return 12;
+    }
+
+    public static float[] getCooldownLabelColor() {
+        return cooldownLabelColor.clone();
+    }
+
+    public static void setCooldownLabelColor(float red, float green, float blue) {
+        setColor(cooldownLabelColor, red, green, blue);
+    }
+
+    public static float[] getCooldownValueColor() {
+        return cooldownValueColor.clone();
+    }
+
+    public static void setCooldownValueColor(float red, float green, float blue) {
+        setColor(cooldownValueColor, red, green, blue);
+    }
+
+    public static float[] getReadyLabelColor() {
+        return readyLabelColor.clone();
+    }
+
+    public static void setReadyLabelColor(float red, float green, float blue) {
+        setColor(readyLabelColor, red, green, blue);
+    }
+
+    public static float[] getReadyValueColor() {
+        return readyValueColor.clone();
+    }
+
+    public static void setReadyValueColor(float red, float green, float blue) {
+        setColor(readyValueColor, red, green, blue);
+    }
+
+    public static Component getPreviewText() {
+        return formatText("✔ Ready", true);
+    }
+
+    private static Component formatText(String value, boolean ready) {
+        float[] labelColor = ready ? readyLabelColor : cooldownLabelColor;
+        float[] valueColor = ready ? readyValueColor : cooldownValueColor;
+        MutableComponent text = Component.literal("Rolling Miner: ")
+            .setStyle(Style.EMPTY.withColor(toRgb(labelColor)));
+        return text.append(Component.literal(value).setStyle(Style.EMPTY.withColor(toRgb(valueColor))));
+    }
+
+    private static int toRgb(float[] color) {
+        int red = Math.round(color[0] * 255.0f);
+        int green = Math.round(color[1] * 255.0f);
+        int blue = Math.round(color[2] * 255.0f);
+        return (red << 16) | (green << 8) | blue;
+    }
+
+    private static void setColor(float[] color, float red, float green, float blue) {
+        color[0] = clampColor(red);
+        color[1] = clampColor(green);
+        color[2] = clampColor(blue);
+    }
+
+    private static float clampColor(float value) {
+        return Math.max(0.0f, Math.min(1.0f, value));
     }
 
     private static int secondsLeft() {

@@ -65,9 +65,8 @@ object KeybindsContent {
                 hoverColor = SettingsUi.alpha(SettingsUi.CARD_HOVER)
             )
                 .setSizing(160f, Size.Pixels, 34f, Size.Pixels)
-                .setPositioning(0f, Pos.ParentPixels, 0f, Pos.ParentCenter)
+                .setPositioning(-66f, Pos.ParentPixels, 0f, Pos.ParentCenter)
                 .alignRight()
-                .setOffset(-66f, 0f)
                 .childOf(card)
 
             val keyText = Text(keyLabel(row.mapping), SettingsUi.TEXT_PRIMARY, 13f, false)
@@ -93,9 +92,8 @@ object KeybindsContent {
             // Unbind
             Button("×", SettingsUi.RED, fontSize = 18f)
                 .setSizing(34f, Size.Pixels, 34f, Size.Pixels)
-                .setPositioning(0f, Pos.ParentPixels, 0f, Pos.ParentCenter)
+                .setPositioning(-18f, Pos.ParentPixels, 0f, Pos.ParentCenter)
                 .alignRight()
-                .setOffset(-18f, 0f)
                 .backgroundColor(SettingsUi.alpha(SettingsUi.TRACK))
                 .borderColor(SettingsUi.edge(SettingsUi.RED, 0.6f))
                 .borderRadius(9f)

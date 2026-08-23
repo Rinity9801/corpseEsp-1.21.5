@@ -115,9 +115,8 @@ object CommandKeybindContent {
 
             Button("×", SettingsUi.RED, fontSize = 20f)
                 .setSizing(40f, Size.Pixels, 40f, Size.Pixels)
-                .setPositioning(0f, Pos.ParentPixels, 0f, Pos.ParentCenter)
+                .setPositioning(-18f, Pos.ParentPixels, 0f, Pos.ParentCenter)
                 .alignRight()
-                .setOffset(-18f, 0f)
                 .backgroundColor(SettingsUi.alpha(SettingsUi.TRACK))
                 .borderColor(SettingsUi.edge(SettingsUi.RED, 0.6f))
                 .borderRadius(9f)
