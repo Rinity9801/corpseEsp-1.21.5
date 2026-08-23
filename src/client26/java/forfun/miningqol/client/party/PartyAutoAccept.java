@@ -1,6 +1,7 @@
 package forfun.miningqol.client.party;
 
 import forfun.miningqol.client.MqoChat;
+import forfun.miningqol.client.PickaxeCooldownHUD;
 import net.minecraft.client.Minecraft;
 
 import java.util.ArrayList;
@@ -22,6 +23,10 @@ public final class PartyAutoAccept {
         Pattern.compile("([A-Za-z0-9_]{1,16}) has invited you to join their party");
 
     private static boolean enabled = false;
+    /** Refuse invites mid-ability, so a warp cannot waste a Mining Speed Boost. */
+    private static boolean blockDuringAbility = true;
+    /** Refuse invites while in a shaft, so a warp cannot pull you out of one. */
+    private static boolean blockInShaft = true;
     private static final Set<String> allowed = new LinkedHashSet<>();
 
     private PartyAutoAccept() {}
@@ -42,6 +47,18 @@ public final class PartyAutoAccept {
         }
         if (match == null) return;
 
+        // Accepting warps you somewhere else, which is exactly what you do not want
+        // partway through an ability or partway through a shaft.
+        if (blockDuringAbility && PickaxeCooldownHUD.isAbilityActive()) {
+            MqoChat.log("§6[Auto Party] §7Ignored §f" + inviter + "§7 — ability active ("
+                + PickaxeCooldownHUD.getActiveSecondsRemaining() + "s left)");
+            return;
+        }
+        if (blockInShaft && MineshaftAutoParty.isInMineshaft()) {
+            MqoChat.log("§6[Auto Party] §7Ignored §f" + inviter + "§7 — still in a shaft");
+            return;
+        }
+
         Minecraft client = Minecraft.getInstance();
         if (client.player == null) return;
         client.player.connection.sendCommand("p accept " + inviter);
@@ -54,6 +71,22 @@ public final class PartyAutoAccept {
 
     public static void setEnabled(boolean value) {
         enabled = value;
+    }
+
+    public static boolean isBlockDuringAbility() {
+        return blockDuringAbility;
+    }
+
+    public static void setBlockDuringAbility(boolean value) {
+        blockDuringAbility = value;
+    }
+
+    public static boolean isBlockInShaft() {
+        return blockInShaft;
+    }
+
+    public static void setBlockInShaft(boolean value) {
+        blockInShaft = value;
     }
 
     public static List<String> names() {

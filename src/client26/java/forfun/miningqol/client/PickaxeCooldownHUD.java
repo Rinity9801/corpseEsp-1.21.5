@@ -155,8 +155,10 @@ public class PickaxeCooldownHUD {
 
         String used = matcher.group(1).trim();
 
+        // Tracked whether or not the HUD shows it: other features ask whether an ability
+        // is running, and that answer should not change with a display toggle.
         Integer duration = ABILITY_DURATIONS.get(used);
-        if (activeTimerEnabled && duration != null) {
+        if (duration != null) {
             activeAbility = used;
             activeUntil = System.currentTimeMillis() + duration * 1000L;
         }
@@ -359,14 +361,10 @@ public class PickaxeCooldownHUD {
 
     public static void setActiveTimerEnabled(boolean value) {
         activeTimerEnabled = value;
-        if (!value) {
-            activeUntil = 0;
-        }
     }
 
     /** Seconds left on the current ability duration, or 0 when nothing is active. */
     public static int getActiveSecondsRemaining() {
-        if (!activeTimerEnabled) return 0;
         long remaining = activeUntil - System.currentTimeMillis();
         return remaining > 0 ? (int) Math.ceil(remaining / 1000.0) : 0;
     }

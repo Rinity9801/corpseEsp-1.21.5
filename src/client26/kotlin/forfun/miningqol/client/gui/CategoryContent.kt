@@ -374,6 +374,12 @@ object FeatureDetails {
         y = SettingsUi.inlineToggle(w, width, y, "Auto Accept Invites",
             "Accept party invites from the auto-accept list", accent,
             { PartyAutoAccept.isEnabled() }) { PartyAutoAccept.setEnabled(it) }
+        y = SettingsUi.inlineToggle(w, width, y, "Not During Ability",
+            "Ignore invites while a pickaxe ability is still running", accent,
+            { PartyAutoAccept.isBlockDuringAbility() }) { PartyAutoAccept.setBlockDuringAbility(it) }
+        y = SettingsUi.inlineToggle(w, width, y, "Not While In A Shaft",
+            "Ignore invites until you have left the mineshaft you are in", accent,
+            { PartyAutoAccept.isBlockInShaft() }) { PartyAutoAccept.setBlockInShaft(it) }
         y = SettingsUi.inlineLink(w, width, y, "Edit Sign-ups",
             "${MineshaftAutoParty.players().size} players, ${MineshaftAutoParty.activeSignupCount()} with shafts picked") {
             // Scheduled: we are mid click-dispatch, and the settings screen is still open.

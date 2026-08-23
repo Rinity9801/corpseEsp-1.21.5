@@ -41,7 +41,7 @@ public class MiningConfig {
     public float commissionHudScale = 1.0f;
     public boolean commissionHudBackground = true;
     public String commissionHudLayout = "GRID";
-    public boolean commissionStatsEnabled = true;
+    public boolean commissionStatsEnabled = false;
     public long commTrackTotal = 0;
     public int commStatsHudX = 10;
     public int commStatsHudY = 220;
@@ -117,6 +117,8 @@ public class MiningConfig {
     public boolean autoPartyDisbandAfterWarp = true;
     public int autoPartyDisbandSeconds = 10;
     public boolean autoPartyAcceptEnabled = false;
+    public boolean autoPartyAcceptBlockAbility = true;
+    public boolean autoPartyAcceptBlockInShaft = true;
     public java.util.List<String> autoPartyAcceptList = new java.util.ArrayList<>();
     /** Players who want any shaft where the ESP spots a Littlefoot. */
     public java.util.List<String> autoPartyLittlefootMob = new java.util.ArrayList<>();
@@ -370,6 +372,8 @@ public class MiningConfig {
         MineshaftAutoParty.setDisbandAfterWarp(autoPartyDisbandAfterWarp);
         MineshaftAutoParty.setDisbandSeconds(autoPartyDisbandSeconds);
         PartyAutoAccept.setNames(autoPartyAcceptList);
+        PartyAutoAccept.setBlockDuringAbility(autoPartyAcceptBlockAbility);
+        PartyAutoAccept.setBlockInShaft(autoPartyAcceptBlockInShaft);
         PartyAutoAccept.setEnabled(autoPartyAcceptEnabled);
         MineshaftAutoParty.importSignups(autoPartySignups, autoPartyCorpseSignups, autoPartyLittlefootMob);
         // Last: setEnabled(false) aborts any in-flight party, so it must see the final state.
@@ -511,6 +515,8 @@ public class MiningConfig {
         autoPartyDisbandAfterWarp = MineshaftAutoParty.isDisbandAfterWarp();
         autoPartyDisbandSeconds = MineshaftAutoParty.getDisbandSeconds();
         autoPartyAcceptEnabled = PartyAutoAccept.isEnabled();
+        autoPartyAcceptBlockAbility = PartyAutoAccept.isBlockDuringAbility();
+        autoPartyAcceptBlockInShaft = PartyAutoAccept.isBlockInShaft();
         autoPartyAcceptList = PartyAutoAccept.names();
         autoPartySignups = MineshaftAutoParty.exportSignups();
         autoPartyCorpseSignups = MineshaftAutoParty.exportCorpseSignups();

@@ -307,6 +307,14 @@ public final class MineshaftAutoParty {
 
     // ---- detection ---------------------------------------------------------
 
+    /** Whether the sidebar says we are in a mineshaft right now. */
+    public static boolean isInMineshaft() {
+        Minecraft client = Minecraft.getInstance();
+        if (client.player == null || client.level == null) return false;
+        String sidebar = sidebarText(client);
+        return sidebar != null && sidebar.contains("Mineshaft");
+    }
+
     /** The sidebar as one formatting-stripped string, or null when there is no sidebar. */
     private static String sidebarText(Minecraft client) {
         if (client.level == null) return null;

@@ -17,7 +17,7 @@ import java.util.Locale;
 public class CommTracker {
     private static final long MAX_GAP_MS = 15 * 60 * 1000;
 
-    private static boolean statsEnabled = true;
+    private static boolean statsEnabled = false;
     private static long totalCompleted = 0;
 
     // Session rate: (completions - 1) over the ACTIVE time between completions.
