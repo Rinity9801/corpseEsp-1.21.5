@@ -29,12 +29,14 @@ public final class CheatBootstrap {
         // Reuse the category registered by the base MiningqolClient (runs first).
         KeyMapping.Category category = MiningqolClient.MINING_CATEGORY;
 
+        // Unbound by default, like the base tree's keybind — nothing should claim a key
+        // until the player picks one in Keybinds.
         toggleAutoClickerKey = KeyMappingHelper.registerKeyMapping(new KeyMapping(
-            "key.miningqol.toggle_coalclick", InputConstants.Type.KEYSYM, GLFW.GLFW_KEY_R, category));
+            "key.miningqol.toggle_coalclick", InputConstants.Type.KEYSYM, GLFW.GLFW_KEY_UNKNOWN, category));
         toggleShaftClickerKey = KeyMappingHelper.registerKeyMapping(new KeyMapping(
-            "key.miningqol.toggle_shaftclick", InputConstants.Type.KEYSYM, GLFW.GLFW_KEY_V, category));
+            "key.miningqol.toggle_shaftclick", InputConstants.Type.KEYSYM, GLFW.GLFW_KEY_UNKNOWN, category));
         toggleInShaftClickKey = KeyMappingHelper.registerKeyMapping(new KeyMapping(
-            "key.miningqol.toggle_inshaftclick", InputConstants.Type.KEYSYM, GLFW.GLFW_KEY_B, category));
+            "key.miningqol.toggle_inshaftclick", InputConstants.Type.KEYSYM, GLFW.GLFW_KEY_UNKNOWN, category));
 
         AutoClickerHUD.register();
         forfun.miningqol.client.hotm.HotmManager.init();

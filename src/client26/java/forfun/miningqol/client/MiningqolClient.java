@@ -40,8 +40,10 @@ public class MiningqolClient implements ClientModInitializer {
 
         MINING_CATEGORY = KeyMapping.Category.register(
             Identifier.fromNamespaceAndPath("miningqol", "category"));
+        // Unbound by default so the mod never steals a key on a fresh install; bind them
+        // in Keybinds. Existing installs keep whatever is already in options.txt.
         abilitySwitchKey = KeyMappingHelper.registerKeyMapping(new KeyMapping(
-            "key.miningqol.ability_switch", InputConstants.Type.KEYSYM, GLFW.GLFW_KEY_H, MINING_CATEGORY));
+            "key.miningqol.ability_switch", InputConstants.Type.KEYSYM, GLFW.GLFW_KEY_UNKNOWN, MINING_CATEGORY));
 
         // Cheat-only wiring (keybinds, clicker ticks, comm claim, config hooks) lives in
         // CheatBootstrap, which only exists in the -cheat variant's source tree.
@@ -264,7 +266,14 @@ public class MiningqolClient implements ClientModInitializer {
                     CorpseESP.getCorpseInfo();
                     return 1;
                 }));
-            dispatcher.register(ClientCommands.literal("shaftid")
+            dispatcher.register(ClientCommands.literal("partydebug")
+            .executes(context -> {
+                boolean on = forfun.miningqol.client.party.MineshaftAutoParty.toggleChatDebug();
+                MqoChat.reply("§6[Auto Party] §7Party chat echo: §f" + (on ? "§aon" : "§coff"));
+                return 1;
+            }));
+
+        dispatcher.register(ClientCommands.literal("shaftid")
             .executes(context -> {
                 forfun.miningqol.client.party.MineshaftAutoParty.dumpDetection();
                 return 1;

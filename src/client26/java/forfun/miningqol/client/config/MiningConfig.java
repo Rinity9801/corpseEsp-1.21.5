@@ -116,12 +116,15 @@ public class MiningConfig {
     public boolean autoPartyEnabled = false;
     public boolean autoPartyDisbandAfterWarp = true;
     public int autoPartyDisbandSeconds = 10;
+    public int autoPartyWarpDelaySeconds = 5;
     public boolean autoPartyAcceptEnabled = false;
     public boolean autoPartyAcceptBlockAbility = true;
     public boolean autoPartyAcceptBlockInShaft = true;
     public java.util.List<String> autoPartyAcceptList = new java.util.ArrayList<>();
     /** Players who want any shaft where the ESP spots a Littlefoot. */
     public java.util.List<String> autoPartyLittlefootMob = new java.util.ArrayList<>();
+    /** Player name -> shaft types they must never be warped to. */
+    public java.util.Map<String, java.util.List<String>> autoPartyBlockedSignups = new java.util.LinkedHashMap<>();
     /** Player name -> the ShaftType names they are signed up for. */
     public java.util.Map<String, java.util.List<String>> autoPartySignups = new java.util.LinkedHashMap<>();
     /** Player name -> "CORPSE:COUNT" picks, e.g. "LAPIS:3". */
@@ -268,6 +271,7 @@ public class MiningConfig {
         if (autoPartyCorpseSignups == null) autoPartyCorpseSignups = new java.util.LinkedHashMap<>();
         if (autoPartyAcceptList == null) autoPartyAcceptList = new java.util.ArrayList<>();
         if (autoPartyLittlefootMob == null) autoPartyLittlefootMob = new java.util.ArrayList<>();
+        if (autoPartyBlockedSignups == null) autoPartyBlockedSignups = new java.util.LinkedHashMap<>();
         if (soundBlockRules == null) soundBlockRules = new java.util.ArrayList<>();
     }
 
@@ -371,11 +375,13 @@ public class MiningConfig {
 
         MineshaftAutoParty.setDisbandAfterWarp(autoPartyDisbandAfterWarp);
         MineshaftAutoParty.setDisbandSeconds(autoPartyDisbandSeconds);
+        MineshaftAutoParty.setWarpDelaySeconds(autoPartyWarpDelaySeconds);
         PartyAutoAccept.setNames(autoPartyAcceptList);
         PartyAutoAccept.setBlockDuringAbility(autoPartyAcceptBlockAbility);
         PartyAutoAccept.setBlockInShaft(autoPartyAcceptBlockInShaft);
         PartyAutoAccept.setEnabled(autoPartyAcceptEnabled);
-        MineshaftAutoParty.importSignups(autoPartySignups, autoPartyCorpseSignups, autoPartyLittlefootMob);
+        MineshaftAutoParty.importSignups(autoPartySignups, autoPartyCorpseSignups, autoPartyLittlefootMob,
+            autoPartyBlockedSignups);
         // Last: setEnabled(false) aborts any in-flight party, so it must see the final state.
         MineshaftAutoParty.setEnabled(autoPartyEnabled);
 
@@ -514,6 +520,7 @@ public class MiningConfig {
         autoPartyEnabled = MineshaftAutoParty.isEnabled();
         autoPartyDisbandAfterWarp = MineshaftAutoParty.isDisbandAfterWarp();
         autoPartyDisbandSeconds = MineshaftAutoParty.getDisbandSeconds();
+        autoPartyWarpDelaySeconds = MineshaftAutoParty.getWarpDelaySeconds();
         autoPartyAcceptEnabled = PartyAutoAccept.isEnabled();
         autoPartyAcceptBlockAbility = PartyAutoAccept.isBlockDuringAbility();
         autoPartyAcceptBlockInShaft = PartyAutoAccept.isBlockInShaft();
@@ -521,6 +528,7 @@ public class MiningConfig {
         autoPartySignups = MineshaftAutoParty.exportSignups();
         autoPartyCorpseSignups = MineshaftAutoParty.exportCorpseSignups();
         autoPartyLittlefootMob = MineshaftAutoParty.exportMobSignups();
+        autoPartyBlockedSignups = MineshaftAutoParty.exportBlockedSignups();
 
         commandKeybinds.clear();
         for (java.util.Map.Entry<Integer, String> entry : CommandKeybindManager.getAllKeybinds().entrySet()) {

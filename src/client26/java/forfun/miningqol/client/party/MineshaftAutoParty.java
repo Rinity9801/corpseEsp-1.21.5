@@ -38,7 +38,8 @@ import java.util.regex.Pattern;
 public final class MineshaftAutoParty {
     /** Party of four: you plus three. */
     private static final int MAX_INVITES = 3;
-    private static final long WARP_DELAY_MS = 2_000L;
+    public static final int MIN_WARP_DELAY_SECONDS = 1;
+    public static final int MAX_WARP_DELAY_SECONDS = 15;
     /** Gap between invites — Hypixel drops commands sent in the same breath. */
     private static final long INVITE_INTERVAL_MS = 600L;
     private static final long DISBAND_DELAY_MS = 2_000L;
@@ -51,15 +52,22 @@ public final class MineshaftAutoParty {
     private static final int SHAFT_EXIT_SCANS = 4;
     /** Quiet period after a party finishes, so nothing can immediately re-party. */
     private static final long PARTY_COOLDOWN_MS = 10_000L;
+    /** How long a warp keeps disqualifying the next shaft we land in. */
+    private static final long WARP_ARRIVAL_WINDOW_MS = 30_000L;
 
     /** A trailing count on a tab list corpse line, as in "Lapis Corpse: 3". */
     private static final Pattern CORPSE_COUNT = Pattern.compile("(\\d+)");
+    /** "Bob joined the party." — rank prefixes sit in brackets, so they cannot be captured. */
+    private static final Pattern JOINED =
+        Pattern.compile("([A-Za-z0-9_]{1,16}) joined the party");
 
     private enum Stage { IDLE, WAITING_JOIN, WARP_PENDING, DISBAND_PENDING }
 
     /** What one player is signed up for. Any single match is enough to warp them. */
     private static final class Signup {
         final Set<ShaftType> shafts = EnumSet.noneOf(ShaftType.class);
+        /** Shafts to keep this player out of, whatever else would have matched. */
+        final Set<ShaftType> blocked = EnumSet.noneOf(ShaftType.class);
         final Map<CorpseType, Set<Integer>> corpses = new EnumMap<>(CorpseType.class);
         /** Warp on the ESP seeing a Littlefoot, whatever shaft it is. */
         boolean littlefootMob;
@@ -82,6 +90,8 @@ public final class MineshaftAutoParty {
     private static boolean disbandAfterWarp = true;
     /** How long to wait for someone to join before giving up on the party. */
     private static int disbandSeconds = 10;
+    /** Quiet period after the latest join before warping, so stragglers are not left behind. */
+    private static int warpDelaySeconds = 5;
 
     /** Player name (as typed) -> what they want. Insertion ordered: the list is a priority. */
     private static final Map<String, Signup> signups = new LinkedHashMap<>();
@@ -105,6 +115,14 @@ public final class MineshaftAutoParty {
      * moment it did. Only shafts found under our own steam are partied into.
      */
     private static boolean shaftFromWarp;
+    /**
+     * Set when a party we are a guest of warps us, and deliberately not cleared by
+     * {@link #abort()} — the world change that a warp causes runs abort, so a flag that
+     * did not survive it would be gone before the new shaft is ever seen.
+     */
+    private static boolean warpArrival;
+    private static long warpArrivalAt;
+    private static boolean debugChat;
     /** Everyone invited for the current shaft, so a top-up cannot double-invite. */
     private static final Set<String> roster = new LinkedHashSet<>();
     /**
@@ -154,8 +172,14 @@ public final class MineshaftAutoParty {
         missedScans = 0;
         if (shaftSeenAt == 0) {
             shaftSeenAt = now;
-            shaftFromWarp = foreignParty;
+            // A warp seen in the last half minute counts even if the party that sent us
+            // has already been disbanded by the time the shaft finished loading.
+            shaftFromWarp = foreignParty || (warpArrival && now - warpArrivalAt < WARP_ARRIVAL_WINDOW_MS);
+            warpArrival = false;
         }
+        // Sticky: being a guest at any point during this shaft is enough to disqualify it,
+        // so a disband part way through cannot hand the shaft back to the auto-party.
+        if (foreignParty) shaftFromWarp = true;
 
         Map<CorpseType, Integer> corpses = observeCorpses(client);
         // The tab list and the ESP fill in a beat after the shaft loads. Acting on the
@@ -269,9 +293,24 @@ public final class MineshaftAutoParty {
         if (message == null) return;
         String clean = message.replaceAll("§.", "");
 
+        if (debugChat) {
+            String lower = clean.toLowerCase(Locale.ROOT);
+            if (lower.contains("party") || lower.contains("warp")) {
+                MqoChat.reply("§8[party-chat] §7" + clean);
+            }
+        }
+
         // "You have joined Bob's party!" — us joining someone, not someone joining us.
         if (clean.contains("You have joined") && clean.contains("party")) foreignParty = true;
         if (clean.contains("The party was transferred to you")) foreignParty = false;
+        // Hypixel's party warp reads "Party Leader, <name>, summoned you to their server."
+        // Latched here because the party is routinely disbanded seconds later, before the
+        // new shaft's scoreboard has populated — and because the world change in between
+        // runs abort(), which is why this flag is deliberately not cleared there.
+        if (foreignParty && (clean.contains("summoned you to") || clean.contains("warped"))) {
+            warpArrival = true;
+            warpArrivalAt = System.currentTimeMillis();
+        }
         if (clean.contains("You left the party")
             || clean.contains("You have been kicked from the party")
             || clean.contains("You are not currently in a party")
@@ -281,11 +320,18 @@ public final class MineshaftAutoParty {
         }
 
         if (!enabled) return;
-        if (stage != Stage.WAITING_JOIN) return;
+        // Also accepted during WARP_PENDING: every join pushes the warp back, so a second
+        // person accepting three seconds later still makes the trip.
+        if (stage != Stage.WAITING_JOIN && stage != Stage.WARP_PENDING) return;
         if (!clean.contains("joined the party")) return;
 
+        Matcher joiner = JOINED.matcher(clean);
+        String name = joiner.find() ? joiner.group(1) : null;
+
         stage = Stage.WARP_PENDING;
-        actionAt = System.currentTimeMillis() + WARP_DELAY_MS;
+        actionAt = System.currentTimeMillis() + warpDelaySeconds * 1000L;
+        MqoChat.reply("§6[Auto Party] §f" + (name == null ? "Someone" : name)
+            + " §7joined — warping in " + warpDelaySeconds + "s");
     }
 
     /** Drops any in-flight party state without sending commands (world change, disconnect). */
@@ -306,6 +352,12 @@ public final class MineshaftAutoParty {
     }
 
     // ---- detection ---------------------------------------------------------
+
+    /** Echoes party and warp chat lines, for pinning down Hypixel's exact wording. */
+    public static boolean toggleChatDebug() {
+        debugChat = !debugChat;
+        return debugChat;
+    }
 
     /** Whether the sidebar says we are in a mineshaft right now. */
     public static boolean isInMineshaft() {
@@ -422,6 +474,9 @@ public final class MineshaftAutoParty {
 
     private static boolean matches(Signup signup, ShaftType shaft, Map<CorpseType, Integer> corpses,
                                    boolean littlefoot) {
+        // A block beats every positive rule, including Any, corpses and the Littlefoot.
+        if (shaft != null && signup.blocked.contains(shaft)) return false;
+
         if (signup.shafts.contains(ShaftType.ANY)) return true;
         if (shaft != null && signup.shafts.contains(shaft)) return true;
         // Separate from the LITT_L shaft type on purpose: that is an id on the scoreboard,
@@ -478,7 +533,8 @@ public final class MineshaftAutoParty {
         MqoChat.reply("§6[Auto Party] §7Shaft id: §f"
             + (shaft == null ? "§cnone found" : shaft.scoreboardId() + " §7(" + shaft.displayName() + ")"));
         MqoChat.reply("§6[Auto Party] §7Littlefoot (ESP): §f" + littlefoot);
-        MqoChat.reply("§6[Auto Party] §7Guest in another party: §f" + foreignParty);
+        MqoChat.reply("§6[Auto Party] §7Guest in another party: §f" + foreignParty
+            + " §7(chat debug: " + debugChat + ")");
         MqoChat.reply("§6[Auto Party] §7Warped into this shaft: §f" + shaftFromWarp
             + (shaftFromWarp || foreignParty ? " §7(suspended)" : ""));
         MqoChat.reply("§6[Auto Party] §7Corpses now: §f"
@@ -550,6 +606,13 @@ public final class MineshaftAutoParty {
         }
         parts.add("corpses: " + (picks.isEmpty() ? "none" : String.join("/", picks)));
         if (signup.littlefootMob) parts.add("littlefoot mob");
+        if (!signup.blocked.isEmpty()) {
+            List<String> names = new ArrayList<>();
+            for (ShaftType type : signup.blocked) {
+                names.add(type.displayName());
+            }
+            parts.add("blocked: " + String.join("/", names));
+        }
         return String.join(" §7| §f", parts);
     }
 
@@ -586,6 +649,14 @@ public final class MineshaftAutoParty {
 
     public static void setDisbandSeconds(int seconds) {
         disbandSeconds = Math.max(MIN_DISBAND_SECONDS, Math.min(MAX_DISBAND_SECONDS, seconds));
+    }
+
+    public static int getWarpDelaySeconds() {
+        return warpDelaySeconds;
+    }
+
+    public static void setWarpDelaySeconds(int seconds) {
+        warpDelaySeconds = Math.max(MIN_WARP_DELAY_SECONDS, Math.min(MAX_WARP_DELAY_SECONDS, seconds));
     }
 
     public static List<String> players() {
@@ -627,7 +698,29 @@ public final class MineshaftAutoParty {
     public static void toggleType(String name, ShaftType type) {
         Signup signup = signups.get(name);
         if (signup == null) return;
-        if (!signup.shafts.remove(type)) signup.shafts.add(type);
+        if (!signup.shafts.remove(type)) {
+            signup.shafts.add(type);
+            signup.blocked.remove(type);   // wanting and blocking the same shaft is meaningless
+        }
+    }
+
+    public static boolean isBlocked(String name, ShaftType type) {
+        Signup signup = signups.get(name);
+        return signup != null && signup.blocked.contains(type);
+    }
+
+    public static void toggleBlocked(String name, ShaftType type) {
+        Signup signup = signups.get(name);
+        if (signup == null || type == ShaftType.ANY) return;
+        if (!signup.blocked.remove(type)) {
+            signup.blocked.add(type);
+            signup.shafts.remove(type);
+        }
+    }
+
+    public static int blockedCount(String name) {
+        Signup signup = signups.get(name);
+        return signup == null ? 0 : signup.blocked.size();
     }
 
     public static boolean isCorpseSelected(String name, CorpseType type, int count) {
@@ -691,6 +784,19 @@ public final class MineshaftAutoParty {
         return out;
     }
 
+    /** Blocked shaft types per player, for the config round-trip. */
+    public static Map<String, List<String>> exportBlockedSignups() {
+        Map<String, List<String>> out = new LinkedHashMap<>();
+        for (Map.Entry<String, Signup> entry : signups.entrySet()) {
+            List<String> names = new ArrayList<>();
+            for (ShaftType type : entry.getValue().blocked) {
+                names.add(type.name());
+            }
+            out.put(entry.getKey(), names);
+        }
+        return out;
+    }
+
     /** Names of the players who want the Littlefoot mob, for the config round-trip. */
     public static List<String> exportMobSignups() {
         List<String> out = new ArrayList<>();
@@ -701,7 +807,7 @@ public final class MineshaftAutoParty {
     }
 
     public static void importSignups(Map<String, List<String>> shafts, Map<String, List<String>> corpses,
-                                     List<String> littlefootMob) {
+                                     List<String> littlefootMob, Map<String, List<String>> blocked) {
         signups.clear();
         if (shafts != null) {
             for (Map.Entry<String, List<String>> entry : shafts.entrySet()) {
@@ -740,6 +846,17 @@ public final class MineshaftAutoParty {
             for (String name : littlefootMob) {
                 if (name == null || name.isEmpty()) continue;
                 signups.computeIfAbsent(name, key -> new Signup()).littlefootMob = true;
+            }
+        }
+        if (blocked != null) {
+            for (Map.Entry<String, List<String>> entry : blocked.entrySet()) {
+                String name = entry.getKey();
+                if (name == null || name.isEmpty() || entry.getValue() == null) continue;
+                Signup signup = signups.computeIfAbsent(name, key -> new Signup());
+                for (String raw : entry.getValue()) {
+                    ShaftType type = ShaftType.byName(raw);
+                    if (type != null && type != ShaftType.ANY) signup.blocked.add(type);
+                }
             }
         }
     }

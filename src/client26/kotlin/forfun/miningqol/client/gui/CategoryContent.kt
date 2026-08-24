@@ -371,6 +371,13 @@ object FeatureDetails {
             MineshaftAutoParty.getDisbandSeconds().toFloat(), accent, { "${it.toInt()}s" }) {
             MineshaftAutoParty.setDisbandSeconds(it.toInt())
         }
+        y = SettingsUi.inlineSlider(w, width, y, "Warp Delay",
+            MineshaftAutoParty.MIN_WARP_DELAY_SECONDS.toFloat(),
+            MineshaftAutoParty.MAX_WARP_DELAY_SECONDS.toFloat(), 1f,
+            MineshaftAutoParty.getWarpDelaySeconds().toFloat(), accent,
+            { "${it.toInt()}s after the last join" }) {
+            MineshaftAutoParty.setWarpDelaySeconds(it.toInt())
+        }
         y = SettingsUi.inlineToggle(w, width, y, "Auto Accept Invites",
             "Accept party invites from the auto-accept list", accent,
             { PartyAutoAccept.isEnabled() }) { PartyAutoAccept.setEnabled(it) }

@@ -109,6 +109,27 @@ class MineshaftAutoPartyScreen(private val parent: Screen?) : VexelScreen("Mines
             }
             .childOf(panel)
 
+        // Master switch mirrored here so the list can be armed and paused without
+        // leaving the manager.
+        val on = MineshaftAutoParty.isEnabled()
+        val switchColor = if (on) SettingsUi.GREEN else SettingsUi.RED
+        Button(if (on) "Warps: ON" else "Warps: OFF", SettingsUi.TEXT_PRIMARY, fontSize = 13f)
+            .setSizing(130f, Size.Pixels, 34f, Size.Pixels)
+            .setPositioning(-152f, Pos.ParentPixels, 56f, Pos.ParentPixels)
+            .alignRight()
+            .backgroundColor(SettingsUi.tint(switchColor, 0.16f))
+            .borderColor(SettingsUi.edge(switchColor, 0.8f))
+            .borderRadius(9f)
+            .borderThickness(SettingsUi.EDGE_WIDTH)
+            .hoverColors(SettingsUi.tint(switchColor, 0.26f), SettingsUi.TEXT_PRIMARY)
+            .onClick { _ ->
+                MineshaftAutoParty.setEnabled(!MineshaftAutoParty.isEnabled())
+                save()
+                rebuild()
+                true
+            }
+            .childOf(panel)
+
         Button("Done", SettingsUi.TEXT_PRIMARY, fontSize = 13f)
             .setSizing(120f, Size.Pixels, 34f, Size.Pixels)
             .setPositioning(-pad, Pos.ParentPixels, 56f, Pos.ParentPixels)
@@ -161,6 +182,7 @@ class MineshaftAutoPartyScreen(private val parent: Screen?) : VexelScreen("Mines
         players.forEachIndexed { index, name ->
             val isSelected = name == selected
             val count = MineshaftAutoParty.selectionCount(name)
+            val blocks = MineshaftAutoParty.blockedCount(name)
             val row = Rectangle(
                 backgroundColor = if (isSelected) SettingsUi.alpha(SettingsUi.NAV_SELECTED)
                                   else SettingsUi.alpha(SettingsUi.TRACK),
@@ -177,7 +199,7 @@ class MineshaftAutoPartyScreen(private val parent: Screen?) : VexelScreen("Mines
                 .setPositioning(12f, Pos.ParentPixels, 0f, Pos.ParentCenter)
                 .childOf(row)
             Text(
-                if (count == 0) "none" else "$count",
+                if (count == 0) "none" else "$count" + if (blocks > 0) " / $blocks" else "",
                 if (count == 0) SettingsUi.TEXT_DIM else accent, 11f, false
             )
                 .setPositioning(-12f, Pos.ParentPixels, 0f, Pos.ParentCenter)
@@ -422,7 +444,7 @@ class MineshaftAutoPartyScreen(private val parent: Screen?) : VexelScreen("Mines
             .setPositioning(2f, Pos.ParentPixels, shaftLabelY, Pos.ParentPixels)
             .childOf(detail)
         Text(
-            "Any covers every mineshaft, which is what you want for a pickaxe ability reset.",
+            "Left click to want a shaft, right click to block it. Any covers every mineshaft.",
             SettingsUi.TEXT_MUTED, 11f, false
         )
             .setPositioning(96f, Pos.ParentPixels, shaftLabelY + 2f, Pos.ParentPixels)
@@ -437,11 +459,17 @@ class MineshaftAutoPartyScreen(private val parent: Screen?) : VexelScreen("Mines
             val column = index % columns
             val row = index / columns
             val on = MineshaftAutoParty.isSelected(name, type)
-            val highlight = if (type == ShaftType.ANY) SettingsUi.YELLOW else SettingsUi.GREEN
+            val blocked = MineshaftAutoParty.isBlocked(name, type)
+            val active = on || blocked
+            val highlight = when {
+                blocked -> SettingsUi.RED
+                type == ShaftType.ANY -> SettingsUi.YELLOW
+                else -> SettingsUi.GREEN
+            }
 
             val cell = Rectangle(
-                backgroundColor = if (on) SettingsUi.tint(highlight, 0.22f) else SettingsUi.alpha(SettingsUi.TRACK),
-                borderColor = if (on) SettingsUi.edge(highlight, 0.9f) else SettingsUi.edge(SettingsUi.CARD_BORDER),
+                backgroundColor = if (active) SettingsUi.tint(highlight, 0.22f) else SettingsUi.alpha(SettingsUi.TRACK),
+                borderColor = if (active) SettingsUi.edge(highlight, 0.9f) else SettingsUi.edge(SettingsUi.CARD_BORDER),
                 borderRadius = 8f,
                 borderThickness = SettingsUi.EDGE_WIDTH,
                 hoverColor = SettingsUi.alpha(SettingsUi.CARD_HOVER)
@@ -451,14 +479,15 @@ class MineshaftAutoPartyScreen(private val parent: Screen?) : VexelScreen("Mines
                 .childOf(detail)
 
             Text(
-                type.displayName(),
-                if (on) SettingsUi.TEXT_PRIMARY else SettingsUi.TEXT_SECONDARY, 12f, false
+                if (blocked) "✕ " + type.displayName() else type.displayName(),
+                if (active) SettingsUi.TEXT_PRIMARY else SettingsUi.TEXT_SECONDARY, 12f, false
             )
                 .setPositioning(0f, Pos.ParentCenter, 0f, Pos.ParentCenter)
                 .childOf(cell)
 
-            cell.onClick { _ ->
-                MineshaftAutoParty.toggleType(name, type)
+            cell.onClick { event ->
+                if (event.button == 1) MineshaftAutoParty.toggleBlocked(name, type)
+                else MineshaftAutoParty.toggleType(name, type)
                 save()
                 rebuild()
                 true
