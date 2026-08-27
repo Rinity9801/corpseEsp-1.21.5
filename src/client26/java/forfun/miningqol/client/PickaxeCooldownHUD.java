@@ -59,8 +59,7 @@ public class PickaxeCooldownHUD {
     private static boolean customCooldownEnabled = false;
     private static int customCooldownSeconds = 120;
 
-    private static int hudX = 10;
-    private static int hudY = 50;
+    private static final HudAnchor ANCHOR = new HudAnchor(10, 50, PickaxeCooldownHUD::getWidth, PickaxeCooldownHUD::getHeight);
     private static float scale = 1.0f;
     private static final float[] cooldownLabelColor = {1.0f, 170.0f / 255.0f, 0.0f};
     private static final float[] cooldownValueColor = {1.0f, 85.0f / 255.0f, 85.0f / 255.0f};
@@ -69,6 +68,10 @@ public class PickaxeCooldownHUD {
     private static final float[] activeLabelColor = {85.0f / 255.0f, 1.0f, 1.0f};
     private static final float[] activeValueColor = {85.0f / 255.0f, 1.0f, 85.0f / 255.0f};
 
+    /** 0 = left, 1 = centre, 2 = right — how the line sits inside the HUD box. */
+    private static int textAlign = 1;
+    /** Whether counts read "30s" or bare "30". */
+    private static boolean secondsSuffix = true;
     private static boolean cooldownOnly = false;
     private static boolean activeTimerEnabled = true;
     private static String activeAbility = "";
@@ -132,7 +135,7 @@ public class PickaxeCooldownHUD {
                         }
 
                         isOnCooldown = true;
-                        currentCooldown = cooldownSeconds + "s";
+                        currentCooldown = secs(cooldownSeconds);
                         return;
                     }
 
@@ -168,7 +171,7 @@ public class PickaxeCooldownHUD {
         abilityName = used;
         lastKnownCooldownSeconds = customCooldownSeconds;
         lastCooldownUpdateTime = System.currentTimeMillis();
-        currentCooldown = customCooldownSeconds + "s";
+        currentCooldown = secs(customCooldownSeconds);
         isOnCooldown = true;
         lastTitleCooldown = -1;
     }
@@ -192,11 +195,13 @@ public class PickaxeCooldownHUD {
             long remainingActiveMs = activeUntil - System.currentTimeMillis();
             if (remainingActiveMs > 0) {
                 int remaining = (int) Math.ceil(remainingActiveMs / 1000.0);
+                Component activeLine =
+                    formatText(activeAbility, secs(remaining), activeLabelColor, activeValueColor, false);
                 ctx.text(
                     font,
-                    formatText(activeAbility, remaining + "s", activeLabelColor, activeValueColor, false),
-                    hudX,
-                    hudY,
+                    activeLine,
+                    alignedX(activeLine),
+                    ANCHOR.y(),
                     0xFFFFFFFF,
                     true
                 );
@@ -213,7 +218,7 @@ public class PickaxeCooldownHUD {
             interpolatedCooldown = lastKnownCooldownSeconds - elapsedSeconds;
 
             if (interpolatedCooldown > 0 && interpolatedCooldown <= lastKnownCooldownSeconds) {
-                displayCooldown = interpolatedCooldown + "s";
+                displayCooldown = secs(interpolatedCooldown);
 
                 if (titleEnabled && interpolatedCooldown <= titleThreshold) {
                     long currentTime = System.currentTimeMillis();
@@ -223,7 +228,7 @@ public class PickaxeCooldownHUD {
                         client.gui.setTitle(Component.literal(""));
                         client.gui.setSubtitle(formatText(
                             abilityName,
-                            interpolatedCooldown + "s",
+                            secs(interpolatedCooldown),
                             cooldownLabelColor,
                             cooldownValueColor,
                             true
@@ -241,17 +246,18 @@ public class PickaxeCooldownHUD {
         }
 
         boolean ready = displayCooldown.equals("Ready");
+        Component line = formatText(
+            abilityName,
+            ready ? "✔ Ready" : displayCooldown,
+            ready ? readyLabelColor : cooldownLabelColor,
+            ready ? readyValueColor : cooldownValueColor,
+            false
+        );
         ctx.text(
             font,
-            formatText(
-                abilityName,
-                ready ? "✔ Ready" : displayCooldown,
-                ready ? readyLabelColor : cooldownLabelColor,
-                ready ? readyValueColor : cooldownValueColor,
-                false
-            ),
-            hudX,
-            hudY,
+            line,
+            alignedX(line),
+            ANCHOR.y(),
             0xFFFFFFFF,
             true
         );
@@ -284,17 +290,19 @@ public class PickaxeCooldownHUD {
     }
 
     public static int getX() {
-        return hudX;
+        return ANCHOR.x();
     }
 
     public static int getY() {
-        return hudY;
+        return ANCHOR.y();
     }
 
     public static void setPosition(int x, int y) {
-        hudX = x;
-        hudY = y;
+        ANCHOR.set(x, y);
     }
+
+    /** Edge anchor for the config — see {@link HudAnchor}. */
+    public static HudAnchor anchor() { return ANCHOR; }
 
     public static float getScale() {
         return scale;
@@ -304,12 +312,74 @@ public class PickaxeCooldownHUD {
         scale = Math.max(0.5f, Math.min(3.0f, newScale));
     }
 
+    /**
+     * Width of the widest line this HUD can draw, not of any one state.
+     *
+     * <p>Sampled against the live ability name as well as the preview's, since a real
+     * name like "Mining Speed Boost" is far wider than "Pickobulus" and would otherwise
+     * hang outside the box the mover draws.
+     */
     public static int getWidth() {
-        return (int) (100 * scale);
+        Minecraft client = Minecraft.getInstance();
+        if (client.font == null) return (int) (100 * scale);
+        int width = 12;
+        // Three-digit sample: Pickobulus and Mining Speed Boost both start above 99s, and a
+        // two-digit sample left those lines wider than the box for their first ten-odd seconds.
+        for (String label : new String[]{abilityName, "Pickobulus"}) {
+            if (label == null || label.isEmpty()) continue;
+            width = Math.max(width, client.font.width(
+                formatText(label, secs(120), cooldownLabelColor, cooldownValueColor, false)));
+            width = Math.max(width, client.font.width(
+                formatText(label, "✔ Ready", readyLabelColor, readyValueColor, false)));
+        }
+        if (activeTimerEnabled) {
+            for (String label : new String[]{activeAbility, "Mining Speed Boost"}) {
+                if (label == null || label.isEmpty()) continue;
+                width = Math.max(width, client.font.width(
+                    formatText(label, secs(120), activeLabelColor, activeValueColor, false)));
+            }
+        }
+        return width;
+    }
+
+    /**
+     * Left edge for [text] once alignment is applied.
+     *
+     * <p>getX() is the box's left edge and [getWidth] its width, so centred text sits in
+     * the middle of that box. The box is sized from the widest line the HUD can draw —
+     * including the live ability name — so a shorter line just gets more slack either
+     * side rather than falling out of the box.
+     */
+    public static int alignedX(Component text) {
+        Minecraft client = Minecraft.getInstance();
+        if (client.font == null || textAlign == 0) return ANCHOR.x();
+        // Applied even when the line is wider than the box: a line that overflows is still
+        // centred (or right-aligned) on the same point as every other line, rather than
+        // snapping to the left edge — which is what made the cooldown and active lines jump
+        // off-centre while "Ready" stayed put.
+        int slack = getWidth() - client.font.width(text);
+        return ANCHOR.x() + (textAlign == 1 ? slack / 2 : slack);
+    }
+
+    public static boolean isSecondsSuffix() {
+        return secondsSuffix;
+    }
+
+    public static void setSecondsSuffix(boolean value) {
+        secondsSuffix = value;
+    }
+
+    public static int getTextAlign() {
+        return textAlign;
+    }
+
+    public static void setTextAlign(int value) {
+        textAlign = Math.max(0, Math.min(2, value));
     }
 
     public static int getHeight() {
-        return (int) (20 * scale);
+        Minecraft client = Minecraft.getInstance();
+        return client.font == null ? 10 : client.font.lineHeight;
     }
 
     public static boolean isTitleEnabled() {
@@ -369,6 +439,16 @@ public class PickaxeCooldownHUD {
         return remaining > 0 ? (int) Math.ceil(remaining / 1000.0) : 0;
     }
 
+    /**
+     * Whether the pickaxe ability is off cooldown.
+     *
+     * <p>Mirrors what the HUD prints: the tracked flag can still say "on cooldown" while
+     * the interpolated countdown has already reached zero.
+     */
+    public static boolean isAbilityReady() {
+        return !isOnCooldown || getInterpolatedCooldown() <= 0;
+    }
+
     public static boolean isAbilityActive() {
         return getActiveSecondsRemaining() > 0;
     }
@@ -422,7 +502,7 @@ public class PickaxeCooldownHUD {
     }
 
     public static Component getPreviewText() {
-        return formatText("Pickobulus", "30s", cooldownLabelColor, cooldownValueColor, false);
+        return formatText("Pickobulus", secs(30), cooldownLabelColor, cooldownValueColor, false);
     }
 
     private static Component formatText(String label, String value, float[] labelColor, float[] valueColor,
@@ -436,6 +516,11 @@ public class PickaxeCooldownHUD {
         return Component.literal(label + ": ")
             .setStyle(Style.EMPTY.withColor(toRgb(labelColor)))
             .append(valueText);
+    }
+
+    /** Formats a second count for display, honouring [secondsSuffix]. */
+    private static String secs(int value) {
+        return secondsSuffix ? value + "s" : String.valueOf(value);
     }
 
     private static int toRgb(float[] color) {

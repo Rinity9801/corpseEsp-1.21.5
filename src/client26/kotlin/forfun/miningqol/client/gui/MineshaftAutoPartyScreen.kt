@@ -183,6 +183,7 @@ class MineshaftAutoPartyScreen(private val parent: Screen?) : VexelScreen("Mines
             val isSelected = name == selected
             val count = MineshaftAutoParty.selectionCount(name)
             val blocks = MineshaftAutoParty.blockedCount(name)
+            val playerOn = MineshaftAutoParty.isPlayerEnabled(name)
             val row = Rectangle(
                 backgroundColor = if (isSelected) SettingsUi.alpha(SettingsUi.NAV_SELECTED)
                                   else SettingsUi.alpha(SettingsUi.TRACK),
@@ -195,15 +196,41 @@ class MineshaftAutoPartyScreen(private val parent: Screen?) : VexelScreen("Mines
                 .setPositioning(0f, Pos.ParentPixels, index * 40f, Pos.ParentPixels)
                 .childOf(wrapper)
 
-            Text(name, if (isSelected) SettingsUi.TEXT_PRIMARY else SettingsUi.TEXT_SECONDARY, 13f, false)
+            Text(
+                name,
+                when {
+                    !playerOn -> SettingsUi.TEXT_DIM
+                    isSelected -> SettingsUi.TEXT_PRIMARY
+                    else -> SettingsUi.TEXT_SECONDARY
+                }, 13f, false
+            )
                 .setPositioning(12f, Pos.ParentPixels, 0f, Pos.ParentCenter)
                 .childOf(row)
             Text(
                 if (count == 0) "none" else "$count" + if (blocks > 0) " / $blocks" else "",
-                if (count == 0) SettingsUi.TEXT_DIM else accent, 11f, false
+                if (count == 0 || !playerOn) SettingsUi.TEXT_DIM else accent, 11f, false
             )
-                .setPositioning(-12f, Pos.ParentPixels, 0f, Pos.ParentCenter)
+                .setPositioning(-54f, Pos.ParentPixels, 0f, Pos.ParentCenter)
                 .alignRight()
+                .childOf(row)
+
+            // Per-player switch: pauses this one without touching their picks or the list.
+            val switchColor = if (playerOn) SettingsUi.GREEN else SettingsUi.RED
+            Button(if (playerOn) "ON" else "OFF", if (playerOn) SettingsUi.GREEN else SettingsUi.TEXT_DIM, fontSize = 10f)
+                .setSizing(36f, Size.Pixels, 20f, Size.Pixels)
+                .setPositioning(-8f, Pos.ParentPixels, 0f, Pos.ParentCenter)
+                .alignRight()
+                .backgroundColor(SettingsUi.tint(switchColor, if (playerOn) 0.16f else 0.08f))
+                .borderColor(SettingsUi.edge(switchColor, if (playerOn) 0.8f else 0.4f))
+                .borderRadius(6f)
+                .borderThickness(SettingsUi.EDGE_WIDTH)
+                .hoverColors(SettingsUi.tint(switchColor, 0.26f), SettingsUi.TEXT_PRIMARY)
+                .onClick { _ ->
+                    MineshaftAutoParty.togglePlayerEnabled(name)
+                    save()
+                    rebuild()
+                    true
+                }
                 .childOf(row)
 
             row.onClick { _ ->
@@ -335,8 +362,32 @@ class MineshaftAutoPartyScreen(private val parent: Screen?) : VexelScreen("Mines
             return
         }
 
-        Text(name, SettingsUi.CYAN, 16f, true)
+        val playerOn = MineshaftAutoParty.isPlayerEnabled(name)
+        Text(name, if (playerOn) SettingsUi.CYAN else SettingsUi.TEXT_DIM, 16f, true)
             .setPositioning(2f, Pos.ParentPixels, 2f, Pos.ParentPixels)
+            .childOf(detail)
+        if (!playerOn) {
+            Text("paused — keeps picks, never invited", SettingsUi.TEXT_MUTED, 11f, false)
+                .setPositioning(2f, Pos.ParentPixels, 22f, Pos.ParentPixels)
+                .childOf(detail)
+        }
+
+        val switchColor = if (playerOn) SettingsUi.GREEN else SettingsUi.RED
+        Button(if (playerOn) "Enabled" else "Paused", SettingsUi.TEXT_PRIMARY, fontSize = 12f)
+            .setSizing(110f, Size.Pixels, 30f, Size.Pixels)
+            .setPositioning(-142f, Pos.ParentPixels, 0f, Pos.ParentPixels)
+            .alignRight()
+            .backgroundColor(SettingsUi.tint(switchColor, 0.16f))
+            .borderColor(SettingsUi.edge(switchColor, 0.8f))
+            .borderRadius(9f)
+            .borderThickness(SettingsUi.EDGE_WIDTH)
+            .hoverColors(SettingsUi.tint(switchColor, 0.26f), SettingsUi.TEXT_PRIMARY)
+            .onClick { _ ->
+                MineshaftAutoParty.togglePlayerEnabled(name)
+                save()
+                rebuild()
+                true
+            }
             .childOf(detail)
 
         Button("Delete Player", SettingsUi.RED, fontSize = 12f)
@@ -533,7 +584,10 @@ class MineshaftAutoPartyScreen(private val parent: Screen?) : VexelScreen("Mines
                 if (focused === acceptInput) addPendingAccept() else addPending()
                 return true
             }
-            val shortcutDown = KnitKeyboard.isCtrlKeyPressed || KnitKeyboard.isSuperKeyPressed
+            // Polled key state misses Cmd on macOS, so trust the event's own modifier
+            // bits as well — without this, paste silently does nothing there.
+            val shortcutDown = KnitKeyboard.isCtrlKeyPressed || KnitKeyboard.isSuperKeyPressed ||
+                (input.modifiers() and (GLFW.GLFW_MOD_CONTROL or GLFW.GLFW_MOD_SUPER)) != 0
             if (shortcutDown) {
                 when (input.key()) {
                     GLFW.GLFW_KEY_A -> focused.selectAll()

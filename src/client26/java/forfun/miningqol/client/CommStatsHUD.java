@@ -23,8 +23,7 @@ public class CommStatsHUD {
     private static final int COLOR_CALC = 0xFF666B76;
     private static final int COLOR_SHADOW = 0xE0101018;
 
-    private static int hudX = 10;
-    private static int hudY = 220;
+    private static final HudAnchor ANCHOR = new HudAnchor(10, 220, CommStatsHUD::getWidth, CommStatsHUD::getHeight);
     private static float scale = 1.0f;
     private static int lastWidth = 110;
     private static int lastHeight = 42;
@@ -34,12 +33,14 @@ public class CommStatsHUD {
     private CommStatsHUD() {}
 
     public static void setPosition(int x, int y) {
-        hudX = x;
-        hudY = y;
+        ANCHOR.set(x, y);
     }
 
-    public static int getX() { return hudX; }
-    public static int getY() { return hudY; }
+    /** Edge anchor for the config — see {@link HudAnchor}. */
+    public static HudAnchor anchor() { return ANCHOR; }
+
+    public static int getX() { return ANCHOR.x(); }
+    public static int getY() { return ANCHOR.y(); }
 
     public static void setScale(float newScale) {
         scale = Math.max(0.5f, Math.min(2.0f, newScale));
@@ -92,8 +93,8 @@ public class CommStatsHUD {
         boolean paused = CommTracker.isPaused();
         String rateStr = hasRate ? String.format(Locale.US, "%.1f", rate) : "Calculating...";
 
-        float x = hudX * f;
-        float y = hudY * f;
+        float x = ANCHOR.x() * f;
+        float y = ANCHOR.y() * f;
         float maxW;
 
         // Title (+ paused tag, like colltrack's "(afk)")
@@ -116,7 +117,7 @@ public class CommStatsHUD {
         lastHeight = Math.round((titleStep + rowStep * 2f + size) / f);
 
         if (editor) {
-            r.hollowRect(hudX * f - 2f, hudY * f - 2f, maxW + 4f, titleStep + rowStep * 2f + size + 4f,
+            r.hollowRect(ANCHOR.x() * f - 2f, ANCHOR.y() * f - 2f, maxW + 4f, titleStep + rowStep * 2f + size + 4f,
                 Math.max(1f, u), 0xFF88AAFF, 3f * u);
         }
     }

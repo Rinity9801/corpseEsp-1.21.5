@@ -114,6 +114,7 @@ public class MiningqolClient implements ClientModInitializer {
             }
 
             CommTracker.onChatMessage(messageText);
+            CommissionHUD.onCommissionComplete(messageText);
 
             if (CheatHooks.onGameMessage != null) {
                 CheatHooks.onGameMessage.accept(messageText);
@@ -266,7 +267,13 @@ public class MiningqolClient implements ClientModInitializer {
                     CorpseESP.getCorpseInfo();
                     return 1;
                 }));
-            dispatcher.register(ClientCommands.literal("partydebug")
+            dispatcher.register(ClientCommands.literal("gettablist")
+            .executes(context -> {
+                forfun.miningqol.client.party.MineshaftAutoParty.dumpTabList();
+                return 1;
+            }));
+
+        dispatcher.register(ClientCommands.literal("partydebug")
             .executes(context -> {
                 boolean on = forfun.miningqol.client.party.MineshaftAutoParty.toggleChatDebug();
                 MqoChat.reply("§6[Auto Party] §7Party chat echo: §f" + (on ? "§aon" : "§coff"));

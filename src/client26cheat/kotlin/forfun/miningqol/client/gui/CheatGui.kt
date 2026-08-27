@@ -15,6 +15,7 @@ import xyz.meowing.vexel.components.core.Rectangle
 import xyz.meowing.vexel.components.core.Text
 import xyz.meowing.vexel.elements.Button
 import xyz.meowing.vexel.elements.Dropdown
+import xyz.meowing.vexel.elements.TextInput
 
 /**
  * Cheat-only sidebar categories (Clickers, Automation), contributed to the
@@ -43,7 +44,7 @@ object CheatGui {
                 detail = { _, w, width -> emptyStash(w, width) },
                 status = { EmptyStashManager.isRunning() }),
             GuiFeature("Auto Forge", "Craft picker whenever The Forge opens", SettingsUi.ORANGE,
-                detail = { _, w, width -> autoForge(w, width) },
+                detail = { host, w, width -> autoForge(host, w, width) },
                 status = { AutoForgeManager.isEnabled() }),
             GuiFeature("HOTM Presets", "Heart of the Mountain editor + auto-apply", SettingsUi.TEAL,
                 open = { forfun.miningqol.client.hotm.HotmChestScreen.open() })
@@ -63,15 +64,15 @@ object CheatGui {
     private fun coalClick(w: Rectangle, width: Float): Float {
         val accent = SettingsUi.RED
         var y = 0f
-        y = SettingsUi.inlineSlider(w, width, y, "Mining Slot", 0f, 8f, 1f,
-            AutoClickerManager.getMiningSlot().toFloat(), accent, { "slot ${it.toInt() + 1}" }) {
-            AutoClickerManager.setMiningSlot(it.toInt())
+        y = SettingsUi.inlineSlider(w, width, y, "Mining Slot", 1f, 9f, 1f,
+            (AutoClickerManager.getMiningSlot() + 1).toFloat(), accent, { "slot ${it.toInt()}" }) {
+            AutoClickerManager.setMiningSlot(it.toInt() - 1)
         }
         y = SettingsUi.inlineToggle(w, width, y, "Second Drill", "Rotate a second drill into the cycle", accent,
             { AutoClickerManager.isSecondDrillEnabled() }) { AutoClickerManager.setEnableSecondDrill(it) }
-        y = SettingsUi.inlineSlider(w, width, y, "Second Drill Slot", 0f, 8f, 1f,
-            AutoClickerManager.getSecondDrillSlot().toFloat(), accent, { "slot ${it.toInt() + 1}" }) {
-            AutoClickerManager.setSecondDrillSlot(it.toInt())
+        y = SettingsUi.inlineSlider(w, width, y, "Second Drill Slot", 1f, 9f, 1f,
+            (AutoClickerManager.getSecondDrillSlot() + 1).toFloat(), accent, { "slot ${it.toInt()}" }) {
+            AutoClickerManager.setSecondDrillSlot(it.toInt() - 1)
         }
         y = SettingsUi.inlineSlider(w, width, y, "Main Drill Delay", 1f, 10f, 1f,
             AutoClickerManager.getMainDrillDelay().toFloat(), accent, { "${it.toInt()} ticks" }) {
@@ -89,19 +90,19 @@ object CheatGui {
     private fun inShaftClick(w: Rectangle, width: Float): Float {
         val accent = SettingsUi.BLUE
         var y = 0f
-        y = SettingsUi.inlineSlider(w, width, y, "Mining Slot", 0f, 8f, 1f,
-            InShaftClickManager.getMiningSlot().toFloat(), accent, { "slot ${it.toInt() + 1}" }) {
-            InShaftClickManager.setMiningSlot(it.toInt())
+        y = SettingsUi.inlineSlider(w, width, y, "Mining Slot", 1f, 9f, 1f,
+            (InShaftClickManager.getMiningSlot() + 1).toFloat(), accent, { "slot ${it.toInt()}" }) {
+            InShaftClickManager.setMiningSlot(it.toInt() - 1)
         }
-        y = SettingsUi.inlineSlider(w, width, y, "Second Drill Slot", 0f, 8f, 1f,
-            InShaftClickManager.getSecondDrillSlot().toFloat(), accent, { "slot ${it.toInt() + 1}" }) {
-            InShaftClickManager.setSecondDrillSlot(it.toInt())
+        y = SettingsUi.inlineSlider(w, width, y, "Second Drill Slot", 1f, 9f, 1f,
+            (InShaftClickManager.getSecondDrillSlot() + 1).toFloat(), accent, { "slot ${it.toInt()}" }) {
+            InShaftClickManager.setSecondDrillSlot(it.toInt() - 1)
         }
         y = SettingsUi.inlineToggle(w, width, y, "Third Drill", "Swap to a third drill for the ability right-click", accent,
             { InShaftClickManager.isThirdDrillEnabled() }) { InShaftClickManager.setThirdDrillEnabled(it) }
-        y = SettingsUi.inlineSlider(w, width, y, "Third Drill Slot", 0f, 8f, 1f,
-            InShaftClickManager.getThirdDrillSlot().toFloat(), accent, { "slot ${it.toInt() + 1}" }) {
-            InShaftClickManager.setThirdDrillSlot(it.toInt())
+        y = SettingsUi.inlineSlider(w, width, y, "Third Drill Slot", 1f, 9f, 1f,
+            (InShaftClickManager.getThirdDrillSlot() + 1).toFloat(), accent, { "slot ${it.toInt()}" }) {
+            InShaftClickManager.setThirdDrillSlot(it.toInt() - 1)
         }
         y = SettingsUi.inlineSlider(w, width, y, "Main Drill Delay", 1f, 10f, 1f,
             InShaftClickManager.getMainDrillDelay().toFloat(), accent, { "${it.toInt()} ticks" }) {
@@ -123,9 +124,9 @@ object CheatGui {
     private fun shaftClicker(w: Rectangle, width: Float): Float {
         val accent = SettingsUi.TEAL
         var y = 0f
-        y = SettingsUi.inlineSlider(w, width, y, "Mining Slot", 0f, 8f, 1f,
-            ShaftClickerManager.getMiningSlot().toFloat(), accent, { "slot ${it.toInt() + 1}" }) {
-            ShaftClickerManager.setMiningSlot(it.toInt())
+        y = SettingsUi.inlineSlider(w, width, y, "Mining Slot", 1f, 9f, 1f,
+            (ShaftClickerManager.getMiningSlot() + 1).toFloat(), accent, { "slot ${it.toInt()}" }) {
+            ShaftClickerManager.setMiningSlot(it.toInt() - 1)
         }
         y = SettingsUi.inlineToggle(w, width, y, "Toggle Message", "Chat message when toggled via keybind", accent,
             { ShaftClickerManager.isShowToggleMessage() }) { ShaftClickerManager.setShowToggleMessage(it) }
@@ -137,7 +138,7 @@ object CheatGui {
         var y = 0f
         y = SettingsUi.inlineToggle(w, width, y, "Auto Trigger", "Run when all mining commissions complete", accent,
             { CommClaimManager.isAutoTrigger() }) { CommClaimManager.setAutoTrigger(it) }
-        y = SettingsUi.inlineToggle(w, width, y, "Loadout Swap", "Swap armor via /loadout during the claim", accent,
+        y = SettingsUi.inlineToggle(w, width, y, "Loadout Swap", "Swap loadouts around the claim via /loadout", accent,
             { CommClaimManager.isWardrobeSwap() }) { CommClaimManager.setWardrobeSwap(it) }
         y = SettingsUi.inlineToggle(w, width, y, "Batch Mining", "On: wait for ALL comms. Off: claim each as it completes", accent,
             { CommClaimManager.isBatchMining() }) { CommClaimManager.setBatchMining(it) }
@@ -145,24 +146,24 @@ object CheatGui {
             { CommClaimManager.isBlockInput() }) { CommClaimManager.setBlockInput(it) }
         y = SettingsUi.inlineToggle(w, width, y, "Hide GUI", "Don't render loadout/pigeon menus during a claim", accent,
             { CommClaimManager.isHideGui() }) { CommClaimManager.setHideGui(it) }
-        y = SettingsUi.inlineSlider(w, width, y, "Bat Person Loadout", 1f, 12f, 1f,
+        y = SettingsUi.inlineSlider(w, width, y, "Claim Loadout", 1f, 12f, 1f,
             CommClaimManager.getBatPersonSlot().toFloat(), accent, { "loadout ${it.toInt()}" }) {
             CommClaimManager.setBatPersonSlot(it.toInt())
         }
-        y = SettingsUi.inlineSlider(w, width, y, "Divan Loadout", 1f, 12f, 1f,
+        y = SettingsUi.inlineSlider(w, width, y, "Return Loadout", 1f, 12f, 1f,
             CommClaimManager.getDivanSlot().toFloat(), accent, { "loadout ${it.toInt()}" }) {
             CommClaimManager.setDivanSlot(it.toInt())
         }
-        y = SettingsUi.inlineSlider(w, width, y, "Refined Tool Slot", 0f, 8f, 1f,
-            CommClaimManager.getRefinedToolSlot().toFloat(), accent, { "hotbar ${it.toInt() + 1}" }) {
-            CommClaimManager.setRefinedToolSlot(it.toInt())
+        y = SettingsUi.inlineSlider(w, width, y, "Mining Tool Slot", 1f, 9f, 1f,
+            (CommClaimManager.getRefinedToolSlot() + 1).toFloat(), accent, { "hotbar ${it.toInt()}" }) {
+            CommClaimManager.setRefinedToolSlot(it.toInt() - 1)
         }
-        y = SettingsUi.inlineSlider(w, width, y, "Tick Delay", 1f, 10f, 1f,
-            CommClaimManager.getTickDelay().toFloat(), accent, { "${it.toInt()} ticks" }) {
+        y = SettingsUi.inlineSlider(w, width, y, "Action Delay", 1f, 10f, 1f,
+            CommClaimManager.getTickDelay().toFloat(), accent, { "${it.toInt() * 50}ms" }) {
             CommClaimManager.setTickDelay(it.toInt())
         }
-        y = SettingsUi.inlineSlider(w, width, y, "GUI Wait Delay", 1f, 10f, 1f,
-            CommClaimManager.getGuiWaitDelay().toFloat(), accent, { "${it.toInt()} ticks" }) {
+        y = SettingsUi.inlineSlider(w, width, y, "Menu Timeout", 5f, 20f, 1f,
+            CommClaimManager.getGuiWaitDelay().coerceAtLeast(5).toFloat(), accent, { "${it.toInt()}s" }) {
             CommClaimManager.setGuiWaitDelay(it.toInt())
         }
         return y
@@ -251,7 +252,7 @@ object CheatGui {
         return y
     }
 
-    private fun autoForge(w: Rectangle, width: Float): Float {
+    private fun autoForge(host: VexelMainScreen, w: Rectangle, width: Float): Float {
         val accent = SettingsUi.ORANGE
         var y = 0f
         y = SettingsUi.inlineToggle(w, width, y, "Enabled", "Show the craft picker when The Forge opens", accent,
@@ -264,6 +265,105 @@ object CheatGui {
             AutoForgeManager.getRunCount().toFloat(), accent, { "${it.toInt()}x per click" }) {
             AutoForgeManager.setRunCount(it.toInt())
         }
+
+        y = SettingsUi.inlineSectionHeader(w, y, "Picker Buttons")
+        for (label in AutoForgeManager.builtinLabels()) {
+            y = SettingsUi.inlineToggle(w, width, y, label, "Show this craft on the picker", accent,
+                { AutoForgeManager.isBuiltinShown(label) }) { AutoForgeManager.setBuiltinShown(label, it) }
+        }
+
+        y = SettingsUi.inlineSectionHeader(w, y, "Recorded Crafts")
+        y = SettingsUi.inlineCard(w, width, y, 40f).let {
+            Text("Press Record, open The Forge and click through a craft once. It saves itself when The Forge reopens.",
+                SettingsUi.TEXT_MUTED, 11f, false)
+                .setPositioning(18f, Pos.ParentPixels, 0f, Pos.ParentCenter)
+                .childOf(it)
+            y + 52f
+        }
+
+        val armed = AutoForgeManager.isRecordArmed()
+        val recordColor = if (armed) SettingsUi.RED else accent
+        Button(if (armed) "● Armed — open The Forge (click to cancel)" else "● Record next craft",
+            SettingsUi.TEXT_PRIMARY, fontSize = 14f)
+            .setSizing(if (armed) 320f else 200f, Size.Pixels, 40f, Size.Pixels)
+            .setPositioning(0f, Pos.ParentPixels, y + 4f, Pos.ParentPixels)
+            .backgroundColor(SettingsUi.tint(recordColor, 0.14f))
+            .borderColor(SettingsUi.edge(recordColor, 0.65f))
+            .borderRadius(10f)
+            .borderThickness(SettingsUi.EDGE_WIDTH)
+            .hoverColors(SettingsUi.tint(recordColor, 0.24f), SettingsUi.TEXT_PRIMARY)
+            .onClick { _ ->
+                AutoForgeManager.armRecording()
+                host.refreshDetail()
+                true
+            }
+            .childOf(w)
+        y += 56f
+
+        for (recorded in AutoForgeManager.getRecordedCrafts().toList()) {
+            val card = SettingsUi.inlineCard(w, width, y, 92f)
+
+            Text("Name", SettingsUi.TEXT_MUTED, 12f, false)
+                .setPositioning(18f, Pos.ParentPixels, 14f, Pos.ParentPixels)
+                .childOf(card)
+            val labelInput = TextInput(initialValue = recorded.label ?: "", placeholder = "Shown on the button", fontSize = 13f)
+                .setSizing(220f, Size.Pixels, 36f, Size.Pixels)
+                .setPositioning(18f, Pos.ParentPixels, 38f, Pos.ParentPixels)
+                .backgroundColor(SettingsUi.alpha(SettingsUi.TRACK))
+                .borderColor(SettingsUi.edge(SettingsUi.CARD_BORDER))
+                .borderRadius(9f)
+                .borderThickness(SettingsUi.EDGE_WIDTH)
+                .childOf(card)
+            labelInput.onValueChange { value ->
+                recorded.label = value as String
+                AutoForgeManager.refreshRecordedCrafts()
+            }
+
+            Text("Clicks (${recorded.steps.size})", SettingsUi.TEXT_MUTED, 12f, false)
+                .setPositioning(256f, Pos.ParentPixels, 14f, Pos.ParentPixels)
+                .childOf(card)
+            Text(recorded.summary(), SettingsUi.TEXT_SECONDARY, 12f, false)
+                .setPositioning(256f, Pos.ParentPixels, 48f, Pos.ParentPixels)
+                .childOf(card)
+
+            // Show/hide on the picker without losing the recording.
+            val shownColor = if (recorded.shown) SettingsUi.GREEN else SettingsUi.TEXT_DIM
+            Button(if (recorded.shown) "Shown" else "Hidden", SettingsUi.TEXT_PRIMARY, fontSize = 12f)
+                .setSizing(70f, Size.Pixels, 40f, Size.Pixels)
+                .setPositioning(-70f, Pos.ParentPixels, 0f, Pos.ParentCenter)
+                .alignRight()
+                .backgroundColor(SettingsUi.tint(shownColor, if (recorded.shown) 0.16f else 0.08f))
+                .borderColor(SettingsUi.edge(shownColor, if (recorded.shown) 0.8f else 0.4f))
+                .borderRadius(9f)
+                .borderThickness(SettingsUi.EDGE_WIDTH)
+                .hoverColors(SettingsUi.tint(shownColor, 0.26f), SettingsUi.TEXT_PRIMARY)
+                .onClick { _ ->
+                    recorded.shown = !recorded.shown
+                    AutoForgeManager.refreshRecordedCrafts()
+                    host.refreshDetail()
+                    true
+                }
+                .childOf(card)
+
+            Button("x", SettingsUi.RED, fontSize = 20f)
+                .setSizing(40f, Size.Pixels, 40f, Size.Pixels)
+                .setPositioning(-18f, Pos.ParentPixels, 0f, Pos.ParentCenter)
+                .alignRight()
+                .backgroundColor(SettingsUi.alpha(SettingsUi.TRACK))
+                .borderColor(SettingsUi.edge(SettingsUi.RED, 0.6f))
+                .borderRadius(9f)
+                .borderThickness(SettingsUi.EDGE_WIDTH)
+                .hoverColors(SettingsUi.alpha(SettingsUi.CARD_HOVER), SettingsUi.RED)
+                .onClick { _ ->
+                    AutoForgeManager.removeRecordedCraft(recorded)
+                    host.refreshDetail()
+                    true
+                }
+                .childOf(card)
+
+            y += 104f
+        }
+
         return y
     }
 }

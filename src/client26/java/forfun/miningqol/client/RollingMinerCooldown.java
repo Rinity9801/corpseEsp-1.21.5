@@ -20,8 +20,7 @@ public final class RollingMinerCooldown {
     private static boolean registered;
     private static boolean enabled;
     private static long cooldownEndsAt;
-    private static int hudX = 10;
-    private static int hudY = 62;
+    private static final HudAnchor ANCHOR = new HudAnchor(10, 62, RollingMinerCooldown::getWidth, RollingMinerCooldown::getHeight);
     private static final float[] cooldownLabelColor = {1.0f, 170.0f / 255.0f, 0.0f};
     private static final float[] cooldownValueColor = {1.0f, 85.0f / 255.0f, 85.0f / 255.0f};
     private static final float[] readyLabelColor = {85.0f / 255.0f, 1.0f, 85.0f / 255.0f};
@@ -70,8 +69,8 @@ public final class RollingMinerCooldown {
         context.text(
             client.font,
             formatText(ready ? "✔ Ready" : secondsLeft + "s", ready),
-            hudX,
-            hudY,
+            ANCHOR.x(),
+            ANCHOR.y(),
             0xFFFFFFFF,
             true
         );
@@ -89,24 +88,30 @@ public final class RollingMinerCooldown {
     }
 
     public static void setPosition(int x, int y) {
-        hudX = x;
-        hudY = y;
+        ANCHOR.set(x, y);
     }
 
+    /** Edge anchor for the config — see {@link HudAnchor}. */
+    public static HudAnchor anchor() { return ANCHOR; }
+
     public static int getX() {
-        return hudX;
+        return ANCHOR.x();
     }
 
     public static int getY() {
-        return hudY;
+        return ANCHOR.y();
     }
 
+    /** Measured from the text actually drawn, so the mover box hugs it. */
     public static int getWidth() {
-        return 120;
+        Minecraft client = Minecraft.getInstance();
+        if (client.font == null) return 120;
+        return Math.max(12, client.font.width(getPreviewText()));
     }
 
     public static int getHeight() {
-        return 12;
+        Minecraft client = Minecraft.getInstance();
+        return client.font == null ? 10 : client.font.lineHeight;
     }
 
     public static float[] getCooldownLabelColor() {

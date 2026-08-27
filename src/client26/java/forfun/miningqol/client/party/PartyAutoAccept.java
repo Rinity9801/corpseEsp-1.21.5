@@ -27,6 +27,8 @@ public final class PartyAutoAccept {
     private static boolean blockDuringAbility = true;
     /** Refuse invites while in a shaft, so a warp cannot pull you out of one. */
     private static boolean blockInShaft = true;
+    /** Refuse invites while the ability is off cooldown — a reset warp has nothing to reset. */
+    private static boolean blockWhenReady = true;
     private static final Set<String> allowed = new LinkedHashSet<>();
 
     private PartyAutoAccept() {}
@@ -54,6 +56,10 @@ public final class PartyAutoAccept {
                 + PickaxeCooldownHUD.getActiveSecondsRemaining() + "s left)");
             return;
         }
+        if (blockWhenReady && PickaxeCooldownHUD.isAbilityReady()) {
+            MqoChat.log("§6[Auto Party] §7Ignored §f" + inviter + "§7 — ability is already ready");
+            return;
+        }
         if (blockInShaft && MineshaftAutoParty.isInMineshaft()) {
             MqoChat.log("§6[Auto Party] §7Ignored §f" + inviter + "§7 — still in a shaft");
             return;
@@ -79,6 +85,14 @@ public final class PartyAutoAccept {
 
     public static void setBlockDuringAbility(boolean value) {
         blockDuringAbility = value;
+    }
+
+    public static boolean isBlockWhenReady() {
+        return blockWhenReady;
+    }
+
+    public static void setBlockWhenReady(boolean value) {
+        blockWhenReady = value;
     }
 
     public static boolean isBlockInShaft() {

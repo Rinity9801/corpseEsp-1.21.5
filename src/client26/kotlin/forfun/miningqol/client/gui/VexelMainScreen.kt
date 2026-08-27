@@ -35,16 +35,38 @@ class VexelMainScreen : VexelScreen("Sybau Settings") {
 
     private var selectedCategory = 0
     private var openFeature: GuiFeature? = null
+    /** The detail panel's scroll container, so a rebuild can put the scroll back where it was. */
+    private var detailScroll: Rectangle? = null
+    private var pendingDetailScroll = 0f
+
+    companion object {
+        // Where the GUI was when it closed, so reopening lands on the same tab and feature.
+        private var lastCategory = 0
+        private var lastFeatureTitle: String? = null
+    }
     private var searchQuery = ""
 
-    private val sidebarWidth = 210f
+    // Re-read from the chosen layout on every build, so switching layout takes effect
+    // on the next rebuild without reopening the screen.
+    private var sidebarWidth = 210f
     private val panelGap = 6f
-    private val mainWidth = 844f
-    private val panelHeight = 700f
-    private val totalWidth = sidebarWidth + panelGap + mainWidth
+    private var mainWidth = 844f
+    private var panelHeight = 700f
+    private var gridColumns = 3
+    private var totalWidth = sidebarWidth + panelGap + mainWidth
     private val contentPad = 24f
-    private val contentWidth = mainWidth - 2 * contentPad
+    private var contentWidth = mainWidth - 2 * contentPad
     private val scrollbarGutter = 14f
+
+    private fun readLayout() {
+        val layout = SettingsUi.layout
+        sidebarWidth = layout.sidebarWidth
+        mainWidth = layout.mainWidth
+        panelHeight = layout.panelHeight
+        gridColumns = layout.gridColumns
+        totalWidth = sidebarWidth + panelGap + mainWidth
+        contentWidth = mainWidth - 2 * contentPad
+    }
 
     private var mainPanel: Rectangle? = null
     private var gridContainer: Rectangle? = null
@@ -52,7 +74,7 @@ class VexelMainScreen : VexelScreen("Sybau Settings") {
     private fun builtInCategories(): List<GuiCategory> = listOf(
         GuiCategory("General", listOf(
             GuiFeature("Misc", "GUI opacity, chat, sounds, overlays", SettingsUi.ORANGE,
-                detail = { _, w, width -> FeatureDetails.misc(w, width) }),
+                detail = { host, w, width -> FeatureDetails.misc(host, w, width) }),
             GuiFeature("Block Overlay", "Custom targeted block highlight", SettingsUi.SKY,
                 detail = { _, w, width -> FeatureDetails.blockOverlay(w, width) },
                 status = { BlockOverlay.isEnabled() }),
@@ -99,12 +121,21 @@ class VexelMainScreen : VexelScreen("Sybau Settings") {
     private fun categories(): List<GuiCategory> = builtInCategories() + ExtraCategories.categories
 
     override fun afterInitialization() {
+        val cats = categories()
+        selectedCategory = lastCategory.coerceIn(0, (cats.size - 1).coerceAtLeast(0))
+        openFeature = lastFeatureTitle?.let { title ->
+            cats.getOrNull(selectedCategory)?.features?.firstOrNull { it.title == title && it.detail != null }
+        }
         buildUi()
     }
 
     private fun buildUi() {
+        readLayout()
         val cats = categories()
         if (selectedCategory >= cats.size) selectedCategory = 0
+        lastCategory = selectedCategory
+        lastFeatureTitle = openFeature?.title
+        detailScroll = null
         val root = ScaledUiRoot(uiScaleFor(totalWidth, panelHeight), totalWidth, panelHeight)
             .childOf(window)
         buildSidebar(root, cats)
@@ -277,12 +308,12 @@ class VexelMainScreen : VexelScreen("Sybau Settings") {
 
         val gap = 14f
         val gridContentWidth = contentWidth - scrollbarGutter
-        val cardWidth = floor((gridContentWidth - 2 * gap) / 3f)
+        val cardWidth = floor((gridContentWidth - (gridColumns - 1) * gap) / gridColumns.toFloat())
         val cardHeight = 96f
 
         features.forEachIndexed { index, feature ->
-            val col = index % 3
-            val row = index / 3
+            val col = index % gridColumns
+            val row = index / gridColumns
             val card = Rectangle(
                 backgroundColor = SettingsUi.alpha(SettingsUi.CARD_BG),
                 borderColor = SettingsUi.edge(SettingsUi.CARD_BORDER),
@@ -385,6 +416,13 @@ class VexelMainScreen : VexelScreen("Sybau Settings") {
 
         val finalY = feature.detail?.invoke(this, wrapper, contentWidth - scrollbarGutter) ?: 0f
         wrapper.setSizing(100f, Size.Percent, finalY + 8f, Size.Pixels)
+
+        // A refresh (toggle flipped, craft deleted) rebuilds the tree; without this the panel
+        // snapped back to the top every time.
+        val viewHeight = panelHeight - 116f - 20f
+        scroll.scrollOffset = pendingDetailScroll.coerceIn(0f, (finalY + 8f - viewHeight).coerceAtLeast(0f))
+        pendingDetailScroll = 0f
+        detailScroll = scroll
     }
 
     private fun closeDetail() {
@@ -393,8 +431,9 @@ class VexelMainScreen : VexelScreen("Sybau Settings") {
         scheduleRebuild()
     }
 
-    /** Rebuilds the whole GUI, keeping the open feature — for detail panels whose height changed. */
+    /** Rebuilds the whole GUI, keeping the open feature and its scroll position. */
     fun refreshDetail() {
+        pendingDetailScroll = detailScroll?.scrollOffset ?: 0f
         scheduleRebuild()
     }
 
@@ -404,6 +443,7 @@ class VexelMainScreen : VexelScreen("Sybau Settings") {
         // Deferred a tick: KnitScreen won't re-run afterInitialization on setScreen(this),
         // and tearing the element tree down inside a click dispatch is unsafe.
         Minecraft.getInstance().schedule(Runnable {
+            SettingsUi.clearNumberFields()
             window.cleanup()
             buildUi()
         })
@@ -413,7 +453,10 @@ class VexelMainScreen : VexelScreen("Sybau Settings") {
         if (input.key() == GLFW.GLFW_KEY_ESCAPE && ColorEditor.close()) return true
         keyHandler?.let { if (it(input)) return true }
         focusedTextInput()?.let { textInput ->
-            val shortcutDown = KnitKeyboard.isCtrlKeyPressed || KnitKeyboard.isSuperKeyPressed
+            // Polled key state misses Cmd on macOS, so trust the event's own modifier
+            // bits as well — without this, paste silently does nothing there.
+            val shortcutDown = KnitKeyboard.isCtrlKeyPressed || KnitKeyboard.isSuperKeyPressed ||
+                (input.modifiers() and (GLFW.GLFW_MOD_CONTROL or GLFW.GLFW_MOD_SUPER)) != 0
             if (shortcutDown) {
                 when (input.key()) {
                     GLFW.GLFW_KEY_A -> textInput.selectAll()
@@ -443,6 +486,11 @@ class VexelMainScreen : VexelScreen("Sybau Settings") {
             findFocusedTextInput(element.children)?.let { return it }
         }
         return null
+    }
+
+    override fun tick() {
+        super.tick()
+        SettingsUi.pollNumberFields()
     }
 
     override fun onClose() {

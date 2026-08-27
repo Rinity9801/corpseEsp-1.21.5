@@ -25,6 +25,12 @@ public final class CheatHooks {
     public static BooleanSupplier hideContainerGui = null;
     /** Cheat drawing on container GUIs (e.g. the Auto Forge picker/status). */
     public static ContainerGuiOverlay containerGuiOverlay = null;
+    /** Every container click the client sends — Auto Forge records crafts from these. */
+    public static ContainerClickListener onContainerClick = null;
+
+    public interface ContainerClickListener {
+        void onContainerClick(int containerId, int slot, int button, net.minecraft.world.inventory.ContainerInput input);
+    }
 
     public interface ContainerGuiOverlay {
         /**

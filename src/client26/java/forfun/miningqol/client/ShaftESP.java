@@ -39,16 +39,38 @@ public class ShaftESP {
     private static boolean littlefootTracer = true; // draw a line from the crosshair to each littlefoot
     private static boolean mobsEnabled = false;
     private static boolean externalEsp = false;
-    private static EntityEspMode renderMode = EntityEspMode.BOX;
 
-    private static final float[] LITTLEFOOT_COLOR = {0.0f, 1.0f, 0.4f};
+    private static float[] littlefootColor = {0.0f, 1.0f, 0.4f};
     private static float[] mobColor = {1.0f, 0.2f, 0.2f};
     private static float mobAlpha = 0.2f;
 
-    // Entity ID -> is-littlefoot (colors resolved at render time so config changes apply live)
-    private static final Map<Integer, Boolean> trackedEntities = new HashMap<>();
-    // IDs of entities identified as littlefoot
+    /**
+     * What is drawn for one tracked entity. Colours are resolved at render time so config
+     * changes apply live.
+     *
+     * @param mob        the skin-matched mob, or null for a nametag Littlefoot / generic mob
+     * @param littlefoot whether it gets the Littlefoot treatment (tracer, auto-party sign-up)
+     */
+    private record Track(SkinMob mob, boolean littlefoot) {
+        float[] color() {
+            return littlefoot ? littlefootColor : mobColor;
+        }
+
+        float alpha() {
+            return littlefoot ? 1.0f : mobAlpha;
+        }
+
+        String name(Entity entity) {
+            if (mob != null) return mob.displayName();
+            return littlefoot ? "Littlefoot" : entity.getName().getString();
+        }
+    }
+
+    private static final Map<Integer, Track> trackedEntities = new HashMap<>();
+    // IDs of nametag stands identified as littlefoot
     private static final Set<Integer> littlefootEntityIds = new HashSet<>();
+    /** Entity ID -> skin hash ("" when the profile carries none), so the profile is decoded once. */
+    private static final Map<Integer, String> skinHashes = new HashMap<>();
 
     private static boolean checkIfInMineshaft() {
         Minecraft client = Minecraft.getInstance();
@@ -94,7 +116,7 @@ public class ShaftESP {
             locationCheckCooldown = 20;
         }
 
-        if (!littlefootEnabled && !mobsEnabled) {
+        if (!littlefootEnabled && !mobsEnabled && !anySkinMobEnabled()) {
             trackedEntities.clear();
             littlefootEntityIds.clear();
             return;
@@ -111,8 +133,35 @@ public class ShaftESP {
         // Remove stale entity IDs
         trackedEntities.keySet().removeIf(id -> level.getEntity(id) == null);
         littlefootEntityIds.removeIf(id -> level.getEntity(id) == null);
+        skinHashes.keySet().removeIf(id -> level.getEntity(id) == null);
 
-        // Identify littlefoot entities via nametag armor stands
+        // Build tracked entities
+        trackedEntities.clear();
+
+        // Skin pass first: Hypixel's humanoid mobs are fake players in a fixed skin, and the
+        // profile's texture hash names the mob exactly — so the box lands on the mob itself.
+        List<Player> skinned = level.getEntitiesOfClass(
+            Player.class,
+            client.player.getBoundingBox().inflate(800),
+            e -> isTrackableMob(client, e)
+        );
+        List<Player> skinLittlefeet = new java.util.ArrayList<>();
+        for (Player player : skinned) {
+            String hash = skinHashes.computeIfAbsent(player.getId(), id -> {
+                String h = SkinMob.skinHash(player);
+                return h == null ? "" : h;
+            });
+            SkinMob mob = SkinMob.byHash(hash);
+            if (mob == null) continue;
+            boolean littlefoot = mob == SkinMob.LITTLEFOOT;
+            if (littlefoot ? !littlefootEnabled : !mob.isEnabled()) continue;
+            trackedEntities.put(player.getId(), new Track(mob, littlefoot));
+            if (littlefoot) skinLittlefeet.add(player);
+        }
+
+        // Identify littlefoot entities via nametag armor stands — the fallback for when the skin
+        // is not recognised. A stand sitting over a skin-matched Littlefoot is its own label, and
+        // drawing both would box the mob twice.
         List<ArmorStand> nametagStands = level.getEntitiesOfClass(
             ArmorStand.class,
             client.player.getBoundingBox().inflate(800),
@@ -123,13 +172,17 @@ public class ShaftESP {
             String name = stand.getCustomName().getString()
                 .replaceAll("\u00A7.", "").trim().toLowerCase();
 
-            if (name.contains("littlefoot")) {
-                littlefootEntityIds.add(stand.getId());
+            if (!name.contains("littlefoot")) continue;
+            boolean labelsSkinMob = false;
+            for (Player mob : skinLittlefeet) {
+                if (Math.abs(mob.getX() - stand.getX()) < 2.0 && Math.abs(mob.getZ() - stand.getZ()) < 2.0
+                        && stand.getY() - mob.getY() > -1.0 && stand.getY() - mob.getY() < 4.0) {
+                    labelsSkinMob = true;
+                    break;
+                }
             }
+            if (!labelsSkinMob) littlefootEntityIds.add(stand.getId());
         }
-
-        // Build tracked entities
-        trackedEntities.clear();
 
         if (mobsEnabled) {
             // Hypixel humanoid mobs are fake Player entities, so excluding Player wholesale drops
@@ -162,7 +215,9 @@ public class ShaftESP {
                     }
                 }
 
-                trackedEntities.put(entity.getId(), littlefootEntityIds.contains(entity.getId()));
+                // A skin match already placed here keeps its own colour.
+                trackedEntities.putIfAbsent(entity.getId(),
+                    new Track(null, littlefootEntityIds.contains(entity.getId())));
             }
         }
 
@@ -171,16 +226,18 @@ public class ShaftESP {
         // be dropped entirely, taking its box and tracer with it.
         if (littlefootEnabled) {
             for (int id : littlefootEntityIds) {
-                trackedEntities.put(id, true);
+                trackedEntities.put(id, new Track(null, true));
             }
         }
 
-        if (renderMode != EntityEspMode.BOX && !(externalEsp && EspHooks.isOverlayConnected())) {
-            for (int id : trackedEntities.keySet()) {
-                Entity entity = level.getEntity(id);
-                if (entity != null) EntityGlowESP.forceVisible(entity);
-            }
+    }
+
+    /** Any of the skin-matched mobs other than the Littlefoot switched on. */
+    private static boolean anySkinMobEnabled() {
+        for (SkinMob mob : SkinMob.values()) {
+            if (mob != SkinMob.LITTLEFOOT && mob.isEnabled()) return true;
         }
+        return false;
     }
 
     private static boolean isTrackableMob(Minecraft client, LivingEntity entity) {
@@ -211,14 +268,13 @@ public class ShaftESP {
         // boxes and the tracer is what stopped the tracer from drawing.
         VertexConsumer quads = buffers.getBuffer(RenderTypes.textBackgroundSeeThrough());
 
-        if (renderMode == EntityEspMode.BOX) {
-            for (Map.Entry<Integer, Boolean> entry : trackedEntities.entrySet()) {
+        {
+            for (Map.Entry<Integer, Track> entry : trackedEntities.entrySet()) {
                 Entity entity = client.level.getEntity(entry.getKey());
                 if (entity == null) continue;
 
-                boolean littlefoot = entry.getValue();
-                float[] color = littlefoot ? LITTLEFOOT_COLOR : mobColor;
-                float alpha = littlefoot ? 1.0f : mobAlpha;
+                float[] color = entry.getValue().color();
+                float alpha = entry.getValue().alpha();
                 double minX, minY, minZ, maxX, maxY, maxZ;
 
                 if (entity instanceof ArmorStand stand && stand.isMarker()) {
@@ -249,8 +305,8 @@ public class ShaftESP {
             Vector3f forward = new Vector3f(0, 0, -1);
             cameraState.orientation.transform(forward);
             Vec3 lineStart = cam.add(forward.x, forward.y, forward.z);
-            for (Map.Entry<Integer, Boolean> entry : trackedEntities.entrySet()) {
-                if (!entry.getValue()) continue;
+            for (Map.Entry<Integer, Track> entry : trackedEntities.entrySet()) {
+                if (!entry.getValue().littlefoot()) continue;
                 Entity entity = client.level.getEntity(entry.getKey());
                 if (entity == null) continue;
 
@@ -260,7 +316,7 @@ public class ShaftESP {
                 } else {
                     target = entity.getBoundingBox().getCenter();
                 }
-                line(buffers, pose, cam, lineStart, target, LITTLEFOOT_COLOR, 1.0f);
+                line(buffers, pose, cam, lineStart, target, littlefootColor, 1.0f);
             }
         }
 
@@ -298,6 +354,7 @@ public class ShaftESP {
     public static void onWorldUnload() {
         trackedEntities.clear();
         littlefootEntityIds.clear();
+        skinHashes.clear();
         isInMines = false;
     }
 
@@ -308,7 +365,22 @@ public class ShaftESP {
      * <p>Only populated while Littlefoot ESP is on and you are in a mineshaft.
      */
     public static boolean hasLittlefoot() {
-        return littlefootEnabled && !littlefootEntityIds.isEmpty();
+        if (!littlefootEnabled) return false;
+        if (!littlefootEntityIds.isEmpty()) return true;
+        for (Track track : trackedEntities.values()) {
+            if (track.littlefoot()) return true;
+        }
+        return false;
+    }
+
+    /** Per-skin-mob toggle and colour — the Littlefoot's colour lives here too. */
+    public static boolean isSkinMobEnabled(SkinMob mob) {
+        return mob == SkinMob.LITTLEFOOT ? littlefootEnabled : mob.isEnabled();
+    }
+
+    public static void setSkinMobEnabled(SkinMob mob, boolean value) {
+        if (mob == SkinMob.LITTLEFOOT) littlefootEnabled = value;
+        else mob.setEnabled(value);
     }
 
     public static boolean isLittlefootTracer() {
@@ -331,6 +403,8 @@ public class ShaftESP {
         mobsEnabled = value;
     }
 
+    public static float[] getLittlefootColor() { return littlefootColor; }
+    public static void setLittlefootColor(float r, float g, float b) { littlefootColor = new float[]{r, g, b}; }
     public static float[] getMobColor() { return mobColor; }
     public static void setMobColor(float r, float g, float b) { mobColor = new float[]{r, g, b}; }
     public static float getMobAlpha() { return mobAlpha; }
@@ -340,23 +414,18 @@ public class ShaftESP {
         return mobsEnabled;
     }
 
+    /** Shaft ESP draws boxes only; the glow paths are Corpse ESP's. */
     public static EntityEspMode getRenderMode() {
-        return renderMode;
-    }
-
-    public static void setRenderMode(EntityEspMode mode) {
-        renderMode = mode == null ? EntityEspMode.BOX : mode;
+        return EntityEspMode.BOX;
     }
 
     public static boolean isGlowTarget(Entity entity) {
-        return renderMode != EntityEspMode.BOX
-            && entity != null
-            && !(externalEsp && EspHooks.isOverlayConnected())
-            && trackedEntities.containsKey(entity.getId());
+        return false;
     }
 
     public static float[] getEspColor(Entity entity) {
-        return Boolean.TRUE.equals(trackedEntities.get(entity.getId())) ? LITTLEFOOT_COLOR : mobColor;
+        Track track = trackedEntities.get(entity.getId());
+        return track == null ? mobColor : track.color();
     }
 
     /**
@@ -378,19 +447,19 @@ public class ShaftESP {
         java.util.List<EspTarget> out = new java.util.ArrayList<>();
         if (!externalEsp || client.level == null) return out;
 
-        for (Map.Entry<Integer, Boolean> entry : trackedEntities.entrySet()) {
+        for (Map.Entry<Integer, Track> entry : trackedEntities.entrySet()) {
             Entity entity = client.level.getEntity(entry.getKey());
             if (entity == null) continue;
-            boolean littlefoot = entry.getValue();
+            Track track = entry.getValue();
             // Marker armour stands sit ~1.8 above the mob they label; drop to the mob itself.
             double y = entity instanceof ArmorStand stand && stand.isMarker()
                 ? entity.getY() - 1.8
                 : entity.getY();
             out.add(new EspTarget(
                 entity.getX(), y, entity.getZ(),
-                littlefoot ? "Littlefoot" : entity.getName().getString(),
-                littlefoot ? "littlefoot" : "mob",
-                EspTarget.packColor(littlefoot ? LITTLEFOOT_COLOR : mobColor)));
+                track.name(entity),
+                track.littlefoot() ? "littlefoot" : "mob",
+                EspTarget.packColor(track.color())));
         }
         return out;
     }

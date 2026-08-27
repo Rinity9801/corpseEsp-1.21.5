@@ -49,7 +49,8 @@ public class HudPositionScreen extends Screen {
             ctx.guiWidth() / 2, 26, 0xFF9EA4B3);
 
         if (isVisible(Target.PICKAXE)) {
-            ctx.text(font, PickaxeCooldownHUD.getPreviewText(), PickaxeCooldownHUD.getX(), PickaxeCooldownHUD.getY(),
+            Component pickaxeLine = PickaxeCooldownHUD.getPreviewText();
+            ctx.text(font, pickaxeLine, PickaxeCooldownHUD.alignedX(pickaxeLine), PickaxeCooldownHUD.getY(),
                 0xFFFFFFFF, true);
             ctx.outline(PickaxeCooldownHUD.getX() - 2, PickaxeCooldownHUD.getY() - 2,
                 targetWidth(Target.PICKAXE) + 4, targetHeight(Target.PICKAXE) + 4, 0xFF7FA8DB);
@@ -272,7 +273,7 @@ public class HudPositionScreen extends Screen {
 
     private int targetWidth(Target target) {
         return switch (target) {
-            case PICKAXE -> Math.max(120, PickaxeCooldownHUD.getWidth());
+            case PICKAXE -> PickaxeCooldownHUD.getWidth();
             case ROLLING -> RollingMinerCooldown.getWidth();
             case FORGE -> ForgeDisplay.getWidth();
             case COMMISSIONS -> Math.max(120, CommissionHUD.getWidth());
@@ -282,7 +283,7 @@ public class HudPositionScreen extends Screen {
 
     private int targetHeight(Target target) {
         return switch (target) {
-            case PICKAXE -> 12;
+            case PICKAXE -> PickaxeCooldownHUD.getHeight();
             case ROLLING -> RollingMinerCooldown.getHeight();
             case FORGE -> ForgeDisplay.getHeight();
             case COMMISSIONS -> Math.max(60, CommissionHUD.getHeight());

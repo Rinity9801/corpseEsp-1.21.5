@@ -40,8 +40,7 @@ public final class ForgeDisplay {
     private static boolean showEmpty = false;
     private static boolean sortByTime = true;
 
-    private static int hudX = 10;
-    private static int hudY = 90;
+    private static final HudAnchor ANCHOR = new HudAnchor(10, 90, ForgeDisplay::getWidth, ForgeDisplay::getHeight);
 
     private static final float[] titleColor = {1.0f, 170.0f / 255.0f, 0.0f};
     private static final float[] itemColor = {1.0f, 1.0f, 1.0f};
@@ -147,9 +146,9 @@ public final class ForgeDisplay {
         if (lines.isEmpty()) return;
 
         Font font = client.font;
-        int y = hudY;
+        int y = ANCHOR.y();
         for (Component line : lines) {
-            ctx.text(font, line, hudX, y, 0xFFFFFFFF, true);
+            ctx.text(font, line, ANCHOR.x(), y, 0xFFFFFFFF, true);
             y += 10;
         }
     }
@@ -224,17 +223,19 @@ public final class ForgeDisplay {
     }
 
     public static int getX() {
-        return hudX;
+        return ANCHOR.x();
     }
 
     public static int getY() {
-        return hudY;
+        return ANCHOR.y();
     }
 
     public static void setPosition(int x, int y) {
-        hudX = x;
-        hudY = y;
+        ANCHOR.set(x, y);
     }
+
+    /** Edge anchor for the config — see {@link HudAnchor}. */
+    public static HudAnchor anchor() { return ANCHOR; }
 
     public static int getWidth() {
         Minecraft client = Minecraft.getInstance();

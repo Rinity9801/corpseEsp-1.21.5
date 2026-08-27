@@ -12,8 +12,14 @@ import net.minecraft.world.item.Items;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import net.minecraft.world.scores.DisplaySlot;
+import net.minecraft.world.scores.Objective;
+import net.minecraft.world.scores.PlayerTeam;
+import net.minecraft.world.scores.Scoreboard;
+
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Locale;
 
 public class CommClaimManager {
     private static final Logger LOGGER = LoggerFactory.getLogger("CommClaimManager");
@@ -68,6 +74,7 @@ public class CommClaimManager {
         // Mineshaft Explorer completes the moment you enter a shaft \u2014 always claim
         // instantly, never hold it for the mining batch.
         if (name.contains("mineshaft explorer")) {
+            fireNotBefore = System.currentTimeMillis() + 2_500L;
             fireAutoClaim("mineshaft explorer complete");
             return;
         }
@@ -150,6 +157,22 @@ public class CommClaimManager {
         if (running || autoTriggerLatch) return;
         Minecraft client = Minecraft.getInstance();
         if (client.level == null || client.player == null) return;
+        // Held without latching until the location has settled. Mineshaft Explorer
+        // completes in the same instant you enter a shaft, so the sidebar still reads the
+        // old area when the message lands and the shaft check below would pass on it.
+        if (System.currentTimeMillis() < fireNotBefore) {
+            pendingFireTicks = Math.max(pendingFireTicks, 100);
+            pendingFireReason = reason;
+            return;
+        }
+        // Mismyla cannot be called from a shaft. Hold the trigger without latching or
+        // announcing, so it fires on its own once you are out — Mineshaft Explorer
+        // completes the moment you enter one, which is exactly this case.
+        if (hasMineshaftScoreboard(client)) {
+            pendingFireTicks = Math.max(pendingFireTicks, 200);
+            pendingFireReason = reason;
+            return;
+        }
         if (!tabHasCommissionsWidget(client)) {
             pendingFireTicks = 200; // keep trying for ~10s while the tab populates
             pendingFireReason = reason;
@@ -176,7 +199,7 @@ public class CommClaimManager {
     private static int state = 0;
     private static int tickCounter = 0;
     private static int tickDelay = 2; // Minimum ticks between actions
-    private static int guiWaitDelay = 3; // Ticks to wait after GUI actions
+    private static int guiWaitDelay = 10; // Seconds a menu gets to appear before giving up
     private static boolean autoTrigger = false; // Auto-trigger on commission complete message
     private static boolean wardrobeSwap = true; // Enable wardrobe/loadout armor swapping
     private static boolean batchMining = true;  // true: wait until ALL mining commissions are done;
@@ -190,51 +213,32 @@ public class CommClaimManager {
     private static int divanSlot = 2; // 1-12, loadout index (equip after claim)
     private static int refinedToolSlot = 0; // Hotbar slot 0-8
 
-    // State machine states
-    private static final int STATE_IDLE = 0;
-    // Phase 1: Equip Bat Person armor
-    private static final int STATE_OPEN_WARDROBE_1 = 1;
-    private static final int STATE_WAIT_WARDROBE_1 = 2;
-    private static final int STATE_DELAY_BEFORE_CLICK_BAT = 3;
-    private static final int STATE_CLICK_BAT_ARMOR = 4;
-    private static final int STATE_DELAY_AFTER_CLICK_BAT = 5;
-    private static final int STATE_CLOSE_WARDROBE_1 = 6;
-    private static final int STATE_DELAY_AFTER_CLOSE_1 = 7;
-    // Phase 2: Use pigeon and switch to refined tool
-    private static final int STATE_FIND_PIGEON = 8;
-    private static final int STATE_DELAY_BEFORE_USE_PIGEON = 9;
-    private static final int STATE_USE_PIGEON = 10;
-    private static final int STATE_SWITCH_REFINED = 11; // Immediate after pigeon right-click
-    // Phase 3: Claim commissions
-    private static final int STATE_WAIT_PIGEON_GUI = 12;
-    private static final int STATE_DELAY_AFTER_PIGEON_OPEN = 25;
-    private static final int STATE_DELAY_BEFORE_CLICK_COMPLETED = 13;
-    private static final int STATE_CLICK_COMPLETED = 14;
-    private static final int STATE_DELAY_AFTER_CLICK_COMPLETED = 15;
-    private static final int STATE_CLOSE_PIGEON = 16;
-    private static final int STATE_DELAY_AFTER_CLOSE_PIGEON = 17;
-    // Phase 4: Equip Divan armor
-    private static final int STATE_OPEN_WARDROBE_2 = 18;
-    private static final int STATE_WAIT_WARDROBE_2 = 19;
-    private static final int STATE_DELAY_BEFORE_CLICK_DIVAN = 20;
-    private static final int STATE_CLICK_DIVAN_ARMOR = 21;
-    private static final int STATE_DELAY_AFTER_CLICK_DIVAN = 22;
-    private static final int STATE_CLOSE_WARDROBE_2 = 23;
-    private static final int STATE_DONE = 24;
+    // State machine — millisecond driven, so a laggy server stretches waits rather
+    // than desynchronising a tick counter.
+    private enum State {
+        IDLE,
+        CALL_MISMYLA,
+        OPEN_CLAIM_LOADOUT,
+        WAIT_CLAIM_LOADOUT,
+        CLOSE_CLAIM_LOADOUT,
+        WAIT_COMMISSIONS,
+        CLAIM,
+        CLOSE_COMMISSIONS,
+        OPEN_RETURN_LOADOUT,
+        WAIT_RETURN_LOADOUT,
+        CLOSE_RETURN_LOADOUT,
+        DONE
+    }
 
-    private static int pigeonSlot = -1;
-    private static int completedClickAttempts = 0;
-    private static final int MAX_COMPLETED_CLICKS = 10;
-
-    // The Royal Pigeon has a 5s use cooldown — using it earlier silently does
-    // nothing and the wait-for-GUI step would time out. Small buffer on top.
-    private static final long PIGEON_COOLDOWN_MS = 5_100;
-    private static long lastPigeonUseAt = 0;
-
-    // Wardrobe phase timings (kept separate from the configurable pigeon/claim delays).
-    private static final int WARDROBE_READY_TIMEOUT = 40; // max ticks to wait for the armor slot to load
-    private static final int WARDROBE_EQUIP_TICKS = 2;    // wait after clicking armor before closing
-    private static final int WARDROBE_POST_CLOSE_TICKS = 1; // wait after closing the wardrobe
+    private static State phase = State.IDLE;
+    private static long readyAt = 0L;
+    private static long timeoutAt = 0L;
+    private static int claimAttempts = 0;
+    private static long lastShaftCheckAt = 0L;
+    private static long fireNotBefore = 0L;
+    private static final int MAX_CLAIM_ATTEMPTS = 10;
+    /** Brief pause after the commission menu closes before changing loadouts. */
+    private static final int COMMISSION_CLOSE_DELAY_MS = 120;
 
     public static void start() {
         if (running) {
@@ -245,21 +249,30 @@ public class CommClaimManager {
         Minecraft client = Minecraft.getInstance();
         if (client.player == null) return;
 
-        running = true;
-        // Skip first wardrobe phase if wardrobe swap is disabled
-        state = wardrobeSwap ? STATE_OPEN_WARDROBE_1 : STATE_FIND_PIGEON;
-        tickCounter = 0;
-        completedClickAttempts = 0;
-        pigeonSlot = -1;
+        // Mismyla cannot be called from a shaft, so the run would only time out.
+        if (hasMineshaftScoreboard(client)) {
+            MqoChat.log(Component.literal("\u00A76[CommClaim] \u00A7cUnavailable in mineshafts."));
+            return;
+        }
 
-        LOGGER.info("[CommClaim] Starting commission claim sequence (wardrobeSwap={})", wardrobeSwap);
+        running = true;
+        phase = State.CALL_MISMYLA;
+        // A beat before the first command so the sidebar can catch up with a location
+        // change that happened in the same moment as the trigger.
+        readyAt = System.currentTimeMillis() + 500L;
+        timeoutAt = 0L;
+        claimAttempts = 0;
+
+        LOGGER.info("[CommClaim] Starting commission claim sequence (loadoutSwap={})", wardrobeSwap);
         MqoChat.log(Component.literal("\u00A76[CommClaim] \u00A7aStarting commission claim..."));
     }
 
     public static void stop() {
         running = false;
-        state = STATE_IDLE;
-        tickCounter = 0;
+        phase = State.IDLE;
+        readyAt = 0L;
+        timeoutAt = 0L;
+        claimAttempts = 0;
 
         Minecraft client = Minecraft.getInstance();
         if (client != null) {
@@ -405,343 +418,240 @@ public class CommClaimManager {
     }
 
     public static void tick() {
-        if (!running) return;
-
         Minecraft client = Minecraft.getInstance();
-        if (client.player == null) {
-            stop();
+        if (client.player == null || client.level == null || client.player.connection == null) {
+            if (running) stop();
             return;
         }
+        if (!running) return;
 
-        tickCounter++;
+        long now = System.currentTimeMillis();
+        // A warp can drop you into a shaft part way through; the rest of the run would
+        // only time out there.
+        if (now - lastShaftCheckAt >= 500L) {
+            lastShaftCheckAt = now;
+            if (hasMineshaftScoreboard(client)) {
+                fail("Entered a mineshaft — claim aborted.");
+                return;
+            }
+        }
+        if (now < readyAt) return;
 
-        switch (state) {
-            // ===== PHASE 1: EQUIP BAT PERSON ARMOR =====
-            case STATE_OPEN_WARDROBE_1:
+        switch (phase) {
+            case CALL_MISMYLA -> {
+                // Re-checked unguarded by the throttle: the trigger for this run is often
+                // Mineshaft Explorer, whose completion message beats the sidebar update, so
+                // the start-time check can pass on a location that is already stale.
+                if (hasMineshaftScoreboard(client)) {
+                    fail("In a mineshaft — claim aborted.");
+                    return;
+                }
+                client.player.connection.sendCommand("call mismyla");
+                client.player.getInventory().setSelectedSlot(Math.max(0, Math.min(8, refinedToolSlot)));
+                if (wardrobeSwap) {
+                    advance(State.OPEN_CLAIM_LOADOUT);
+                } else {
+                    waitForCommissions();
+                }
+            }
+            case OPEN_CLAIM_LOADOUT -> {
                 client.player.connection.sendCommand("loadout");
-                state = STATE_WAIT_WARDROBE_1;
-                tickCounter = 0;
-                break;
-
-            case STATE_WAIT_WARDROBE_1:
-                if (isLoadoutOpen(client)) {
-                    // Athen-style: click the instant the slot is populated (short fallback), then
-                    // close on the next tick — no fixed equip/close waits.
-                    if (isLoadoutSlotReady(client, batPersonSlot) || tickCounter >= WARDROBE_READY_TIMEOUT) {
-                        clickLoadoutSlot(client, batPersonSlot);
-                        state = STATE_CLOSE_WARDROBE_1;
-                        tickCounter = 0;
+                phase = State.WAIT_CLAIM_LOADOUT;
+                timeoutAt = now + menuTimeoutMs();
+            }
+            case WAIT_CLAIM_LOADOUT -> {
+                if (isLoadoutOpen(client) && isLoadoutSlotReady(client, batPersonSlot)) {
+                    if (!clickLoadoutSlot(client, batPersonSlot)) {
+                        fail("Could not select the claim loadout.");
+                        return;
                     }
-                } else if (tickCounter >= 60) {
-                    LOGGER.warn("[CommClaim] Loadout menu didn't open in time");
-                    stop();
+                    advance(State.CLOSE_CLAIM_LOADOUT);
+                } else if (now >= timeoutAt) {
+                    fail("Claim loadout did not open.");
                 }
-                break;
-
-            case STATE_CLOSE_WARDROBE_1:
-                if (client.screen != null) {
-                    client.screen.onClose();
+            }
+            case CLOSE_CLAIM_LOADOUT -> {
+                closeIfOpen(client, true);
+                waitForCommissions();
+            }
+            case WAIT_COMMISSIONS -> {
+                if (isCommissionsOpen(client)) {
+                    advance(State.CLAIM);
+                } else if (now >= timeoutAt) {
+                    fail("Queen Mismyla did not answer.");
                 }
-                state = STATE_FIND_PIGEON;
-                tickCounter = 0;
-                break;
-
-            // ===== PHASE 2: USE PIGEON & SWITCH TO REFINED TOOL =====
-            case STATE_FIND_PIGEON:
-                pigeonSlot = findPigeonSlot(client);
-                if (pigeonSlot != -1) {
-                    client.player.getInventory().setSelectedSlot(pigeonSlot);
-                    state = STATE_DELAY_BEFORE_USE_PIGEON;
-                    tickCounter = 0;
-                } else {
-                    LOGGER.warn("[CommClaim] Could not find Royal Pigeon in hotbar");
-                    MqoChat.log(Component.literal("\u00A76[CommClaim] \u00A7cCould not find Royal Pigeon in hotbar"));
-                    stop();
-                }
-                break;
-
-            case STATE_DELAY_BEFORE_USE_PIGEON:
-                // Also hold here until the pigeon's 5s cooldown from the previous claim is over.
-                if (tickCounter >= tickDelay
-                        && System.currentTimeMillis() - lastPigeonUseAt >= PIGEON_COOLDOWN_MS) {
-                    state = STATE_USE_PIGEON;
-                    tickCounter = 0;
-                }
-                break;
-
-            case STATE_USE_PIGEON:
-                // Right click the pigeon
-                client.options.keyUse.setDown(true);
-                lastPigeonUseAt = System.currentTimeMillis();
-                if (tickCounter >= 3) {
-                    client.options.keyUse.setDown(false);
-                    // Immediately switch to refined tool after right-clicking pigeon
-                    state = STATE_SWITCH_REFINED;
-                    tickCounter = 0;
-                }
-                break;
-
-            case STATE_SWITCH_REFINED:
-                // Immediate switch - no delay, right after pigeon use
-                client.player.getInventory().setSelectedSlot(refinedToolSlot);
-                state = STATE_WAIT_PIGEON_GUI;
-                tickCounter = 0;
-                break;
-
-            // ===== PHASE 3: CLAIM COMMISSIONS =====
-            case STATE_WAIT_PIGEON_GUI:
-                if (isPigeonGuiOpen(client)) {
-                    state = STATE_DELAY_AFTER_PIGEON_OPEN;
-                    tickCounter = 0;
-                    completedClickAttempts = 0;
-                } else if (tickCounter >= 60) {
-                    LOGGER.warn("[CommClaim] Pigeon GUI didn't open");
-                    stop();
-                }
-                break;
-
-            case STATE_DELAY_AFTER_PIGEON_OPEN:
-                if (tickCounter >= 2) {
-                    state = STATE_DELAY_BEFORE_CLICK_COMPLETED;
-                    tickCounter = 0;
-                }
-                break;
-
-            case STATE_DELAY_BEFORE_CLICK_COMPLETED:
-                if (tickCounter >= tickDelay) {
-                    state = STATE_CLICK_COMPLETED;
-                    tickCounter = 0;
-                }
-                break;
-
-            case STATE_CLICK_COMPLETED:
-                boolean clicked = clickCompletedSlots(client);
-                completedClickAttempts++;
-
-                if (!clicked || completedClickAttempts >= MAX_COMPLETED_CLICKS) {
-                    state = STATE_DELAY_AFTER_CLICK_COMPLETED;
-                    tickCounter = 0;
-                } else {
-                    // More to click - add delay between clicks
-                    state = STATE_DELAY_AFTER_CLICK_COMPLETED;
-                    tickCounter = 0;
-                }
-                break;
-
-            case STATE_DELAY_AFTER_CLICK_COMPLETED:
-                if (tickCounter >= tickDelay) {
-                    // Check if we should click more or close
-                    if (completedClickAttempts < MAX_COMPLETED_CLICKS && hasCompletedSlots(client)) {
-                        state = STATE_CLICK_COMPLETED;
-                        tickCounter = 0;
+            }
+            case CLAIM -> {
+                if (!isCommissionsOpen(client)) {
+                    // Claiming the last one closes the menu server-side. That is a normal
+                    // finish, not a failure — only an empty-handed close is a problem.
+                    if (claimAttempts > 0) {
+                        advanceIn(State.CLOSE_COMMISSIONS, COMMISSION_CLOSE_DELAY_MS);
                     } else {
-                        state = STATE_CLOSE_PIGEON;
-                        tickCounter = 0;
+                        fail("Commissions closed unexpectedly.");
                     }
+                    return;
                 }
-                break;
-
-            case STATE_CLOSE_PIGEON:
-                if (client.screen != null) {
-                    client.screen.onClose();
+                if (claimAttempts < MAX_CLAIM_ATTEMPTS && clickCompletedCommission(client)) {
+                    claimAttempts++;
+                    // Match the old implementation: wait the configured action delay,
+                    // then scan the current menu again without waiting for an acknowledgement.
+                    advance(State.CLAIM);
+                } else {
+                    advance(State.CLOSE_COMMISSIONS);
                 }
-                state = STATE_DELAY_AFTER_CLOSE_PIGEON;
-                tickCounter = 0;
-                break;
-
-            case STATE_DELAY_AFTER_CLOSE_PIGEON:
-                if (tickCounter >= tickDelay) {
-                    // Skip second wardrobe phase if wardrobe swap is disabled
-                    state = wardrobeSwap ? STATE_OPEN_WARDROBE_2 : STATE_DONE;
-                    tickCounter = 0;
+            }
+            case CLOSE_COMMISSIONS -> {
+                if (client.screen != null && isCommissionsOpen(client)) client.screen.onClose();
+                if (wardrobeSwap) {
+                    advanceIn(State.OPEN_RETURN_LOADOUT, COMMISSION_CLOSE_DELAY_MS);
+                } else {
+                    advance(State.DONE);
                 }
-                break;
-
-            // ===== PHASE 4: EQUIP DIVAN ARMOR =====
-            case STATE_OPEN_WARDROBE_2:
+            }
+            case OPEN_RETURN_LOADOUT -> {
                 client.player.connection.sendCommand("loadout");
-                state = STATE_WAIT_WARDROBE_2;
-                tickCounter = 0;
-                break;
-
-            case STATE_WAIT_WARDROBE_2:
-                if (isLoadoutOpen(client)) {
-                    if (isLoadoutSlotReady(client, divanSlot) || tickCounter >= WARDROBE_READY_TIMEOUT) {
-                        clickLoadoutSlot(client, divanSlot);
-                        state = STATE_CLOSE_WARDROBE_2;
-                        tickCounter = 0;
+                phase = State.WAIT_RETURN_LOADOUT;
+                timeoutAt = now + menuTimeoutMs();
+            }
+            case WAIT_RETURN_LOADOUT -> {
+                if (isLoadoutOpen(client) && isLoadoutSlotReady(client, divanSlot)) {
+                    if (!clickLoadoutSlot(client, divanSlot)) {
+                        fail("Could not select the return loadout.");
+                        return;
                     }
-                } else if (tickCounter >= 60) {
-                    LOGGER.warn("[CommClaim] Second loadout menu didn't open");
-                    stop();
+                    advance(State.CLOSE_RETURN_LOADOUT);
+                } else if (now >= timeoutAt) {
+                    fail("Return loadout did not open.");
                 }
-                break;
-
-            case STATE_CLOSE_WARDROBE_2:
-                if (client.screen != null) {
-                    client.screen.onClose();
-                }
-                state = STATE_DONE;
-                tickCounter = 0;
-                break;
-
-            case STATE_DONE:
-                MqoChat.log(Component.literal("\u00A76[CommClaim] \u00A7aCommission claim complete!"));
-                LOGGER.info("[CommClaim] Sequence complete");
+            }
+            case CLOSE_RETURN_LOADOUT -> {
+                closeIfOpen(client, true);
+                advance(State.DONE);
+            }
+            case DONE -> {
                 running = false;
-                state = STATE_IDLE;
-                break;
+                phase = State.IDLE;
+                MqoChat.log(Component.literal("\u00A76[CommClaim] \u00A7aFinished."));
+            }
+            case IDLE -> running = false;
         }
     }
 
-    private static boolean isLoadoutOpen(Minecraft client) {
-        if (!(client.screen instanceof ContainerScreen screen)) return false;
-        String title = screen.getTitle().getString();
-        return title.toLowerCase().contains("loadout");
+    /** Milliseconds between actions, from the Action Delay slider. */
+    private static long actionDelayMs() {
+        return Math.max(50, Math.min(1000, tickDelay * 50L));
+    }
+
+    /** How long a menu gets to appear before the run is abandoned. */
+    private static long menuTimeoutMs() {
+        return Math.max(5, guiWaitDelay) * 1000L;
+    }
+
+    private static void advance(State next) {
+        advanceIn(next, actionDelayMs());
+    }
+
+    private static void advanceIn(State next, long delayMs) {
+        phase = next;
+        readyAt = System.currentTimeMillis() + delayMs;
+        timeoutAt = 0L;
+    }
+
+    private static void waitForCommissions() {
+        long now = System.currentTimeMillis();
+        phase = State.WAIT_COMMISSIONS;
+        readyAt = now + actionDelayMs();
+        timeoutAt = now + menuTimeoutMs();
+    }
+
+    /** Aborts the run with a reason, leaving no menu open behind us. */
+    private static void fail(String reason) {
+        LOGGER.info("[CommClaim] {}", reason);
+        MqoChat.log(Component.literal("\u00A76[CommClaim] \u00A7c" + reason));
+        stop();
+    }
+
+    private static void closeIfOpen(Minecraft client, boolean loadout) {
+        if (client.screen == null) return;
+        if (loadout ? isLoadoutOpen(client) : isCommissionsOpen(client)) client.screen.onClose();
     }
 
     /**
-     * Hypixel now equips via /loadout: a 3x4 grid at columns 6-8, rows 2-5 (1-indexed).
-     * Loadout 1-12 reads left-to-right, top-to-bottom; convert to a 0-indexed chest slot.
+     * Delegates to the auto-party's detector rather than keeping a second copy.
+     *
+     * <p>That one is the version actually verified in game through /shaftid, and a
+     * near-duplicate here is how a shaft guard ends up silently not firing.
      */
+    static boolean hasMineshaftScoreboard(Minecraft client) {
+        return forfun.miningqol.client.party.MineshaftAutoParty.isInMineshaft();
+    }
+
+    private static boolean isLoadoutOpen(Minecraft client) {
+        return client.screen instanceof ContainerScreen screen
+            && screen.getTitle().getString().toLowerCase(Locale.ROOT).contains("loadout");
+    }
+
+    private static boolean isCommissionsOpen(Minecraft client) {
+        return client.screen instanceof ContainerScreen screen
+            && screen.getTitle().getString().toLowerCase(Locale.ROOT).contains("commission");
+    }
+
+    /** Loadouts sit in a 3-wide block starting at the second row, sixth column. */
     private static int loadoutSlotIndex(int loadout) {
-        int n = Math.max(1, Math.min(12, loadout)) - 1;
-        int row = 1 + n / 3; // rows 2-5 -> 0-indexed 1-4
-        int col = 5 + n % 3; // columns 6-8 -> 0-indexed 5-7
-        return row * 9 + col;
+        int index = Math.max(1, Math.min(12, loadout)) - 1;
+        return (1 + index / 3) * 9 + 5 + index % 3;
     }
 
-    private static boolean isPigeonGuiOpen(Minecraft client) {
+    private static boolean isLoadoutSlotReady(Minecraft client, int loadout) {
         if (!(client.screen instanceof ContainerScreen screen)) return false;
-        String title = screen.getTitle().getString();
-        // Royal Pigeon opens a commission-related GUI
-        return title.contains("Commissions") || title.contains("Pigeon") || title.contains("Commission");
+        int slot = loadoutSlotIndex(loadout);
+        return slot < screen.getMenu().slots.size() && !screen.getMenu().getSlot(slot).getItem().isEmpty();
     }
 
-    private static boolean isLoadoutSlotReady(Minecraft client, int column) {
-        if (!(client.screen instanceof ContainerScreen screen)) return false;
-        int slotIndex = loadoutSlotIndex(column);
-        var menu = screen.getMenu();
-        if (slotIndex >= menu.slots.size()) return false;
-        return !menu.slots.get(slotIndex).getItem().isEmpty();
+    private static boolean clickLoadoutSlot(Minecraft client, int loadout) {
+        if (!(client.screen instanceof ContainerScreen screen)
+            || client.gameMode == null || client.player == null) return false;
+        int slot = loadoutSlotIndex(loadout);
+        if (slot < 0 || slot >= screen.getMenu().slots.size()) return false;
+        client.gameMode.handleContainerInput(
+            screen.getMenu().containerId, slot, 0, ContainerInput.PICKUP, client.player);
+        return true;
     }
 
-    private static boolean clickLoadoutSlot(Minecraft client, int column) {
-        if (!(client.screen instanceof ContainerScreen screen)) return false;
+    /** Container slots only — the trailing 36 are the player's own inventory. */
+    private static int containerSlotCount(ContainerScreen screen) {
+        return Math.max(0, screen.getMenu().slots.size() - 36);
+    }
 
-        int slotIndex = loadoutSlotIndex(column);
-
-        try {
-            var menu = screen.getMenu();
-            if (slotIndex < menu.slots.size()) {
-                client.gameMode.handleContainerInput(
-                    menu.containerId,
-                    slotIndex,
-                    0,
-                    ContainerInput.PICKUP,
-                    client.player
-                );
-                LOGGER.info("[CommClaim] Clicked loadout {} (slot index {})", column, slotIndex);
-                return true;
-            }
-        } catch (Exception e) {
-            LOGGER.error("[CommClaim] Error clicking loadout slot", e);
+    /** Clicks the first completed commission in the open menu, then lets the delay pace rescans. */
+    private static boolean clickCompletedCommission(Minecraft client) {
+        if (!(client.screen instanceof ContainerScreen screen)
+            || client.gameMode == null || client.player == null) return false;
+        int limit = containerSlotCount(screen);
+        for (int slot = 0; slot < limit; slot++) {
+            ItemStack item = screen.getMenu().getSlot(slot).getItem();
+            if (!isCompleted(item)) continue;
+            client.gameMode.handleContainerInput(
+                screen.getMenu().containerId, slot, 0, ContainerInput.PICKUP, client.player);
+            return true;
         }
         return false;
     }
 
-    private static int findPigeonSlot(Minecraft client) {
-        if (client.player == null) return -1;
-
-        for (int i = 0; i < 9; i++) {
-            ItemStack stack = client.player.getInventory().getItem(i);
-            if (stack.isEmpty()) continue;
-
-            // Check if it's a player head
-            if (stack.getItem() != Items.PLAYER_HEAD) continue;
-
-            // Check lore for ROYAL_PIGEON
-            var lore = stack.get(DataComponents.LORE);
-            if (lore != null) {
-                for (var line : lore.lines()) {
-                    String lineStr = line.getString();
-                    if (lineStr.contains("ROYAL_PIGEON")) {
-                        LOGGER.info("[CommClaim] Found Royal Pigeon in slot {}", i);
-                        return i;
-                    }
-                }
-            }
-
-            // Also check custom name or item ID in NBT
-            var customData = stack.get(DataComponents.CUSTOM_DATA);
-            if (customData != null) {
-                String nbtStr = customData.toString();
-                if (nbtStr.contains("ROYAL_PIGEON")) {
-                    LOGGER.info("[CommClaim] Found Royal Pigeon (via NBT) in slot {}", i);
-                    return i;
-                }
-            }
-        }
-        return -1;
-    }
-
-    private static boolean hasCompletedSlots(Minecraft client) {
-        if (!(client.screen instanceof ContainerScreen screen)) return false;
-
-        var menu = screen.getMenu();
-
-        for (int i = 0; i < menu.slots.size() - 36; i++) {
-            Slot slot = menu.slots.get(i);
-            ItemStack stack = slot.getItem();
-            if (stack.isEmpty()) continue;
-
-            var lore = stack.get(DataComponents.LORE);
-            if (lore != null) {
-                for (var line : lore.lines()) {
-                    String lineStr = line.getString().toLowerCase();
-                    if (lineStr.contains("completed") || lineStr.contains("click to claim")) {
-                        return true;
-                    }
-                }
-            }
+    private static boolean isCompleted(ItemStack stack) {
+        if (stack.isEmpty()) return false;
+        String name = stack.getHoverName().getString().toLowerCase(Locale.ROOT);
+        if (name.contains("completed") || name.contains("click to claim")) return true;
+        var lore = stack.get(DataComponents.LORE);
+        if (lore == null) return false;
+        for (Component line : lore.lines()) {
+            String lower = line.getString().toLowerCase(Locale.ROOT);
+            if (lower.contains("completed") || lower.contains("click to claim")) return true;
         }
         return false;
     }
 
-    private static boolean clickCompletedSlots(Minecraft client) {
-        if (!(client.screen instanceof ContainerScreen screen)) return false;
-
-        var menu = screen.getMenu();
-
-        for (int i = 0; i < menu.slots.size() - 36; i++) { // Exclude player inventory
-            Slot slot = menu.slots.get(i);
-            ItemStack stack = slot.getItem();
-            if (stack.isEmpty()) continue;
-
-            // Check lore for "Completed" or "COMPLETED"
-            var lore = stack.get(DataComponents.LORE);
-            if (lore != null) {
-                for (var line : lore.lines()) {
-                    String lineStr = line.getString().toLowerCase();
-                    if (lineStr.contains("completed") || lineStr.contains("click to claim")) {
-                        client.gameMode.handleContainerInput(
-                            menu.containerId,
-                            i,
-                            0,
-                            ContainerInput.PICKUP,
-                            client.player
-                        );
-                        LOGGER.info("[CommClaim] Clicked completed commission slot {}", i);
-                        return true; // Click one at a time
-                    }
-                }
-            }
-        }
-
-        return false;
-    }
-
-    // Config getters/setters
     public static int getBatPersonSlot() {
         return batPersonSlot;
     }
@@ -779,7 +689,8 @@ public class CommClaimManager {
     }
 
     public static void setGuiWaitDelay(int delay) {
-        guiWaitDelay = Math.max(1, Math.min(10, delay));
+        // Repurposed from ticks to a menu timeout in seconds.
+        guiWaitDelay = Math.max(5, Math.min(20, delay));
     }
 
     public static boolean isAutoTrigger() {

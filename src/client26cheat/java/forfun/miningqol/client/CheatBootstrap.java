@@ -195,6 +195,8 @@ public final class CheatBootstrap {
             EtherwarpClickManager.cleanup();
         };
 
+        // Auto Forge records a craft by watching the player's own container clicks.
+        CheatHooks.onContainerClick = AutoForgeManager::onContainerClick;
         // Hide the container GUI visuals while a claim is running (if the toggle is on).
         CheatHooks.hideContainerGui = () -> CommClaimManager.isRunning() && CommClaimManager.isHideGui();
         // Auto Forge: side picker drawn over "The Forge", status card replacing GUIs mid-craft.
@@ -223,6 +225,9 @@ public final class CheatBootstrap {
             AutoClickerManager.setMainDrillDelay(config.autoClickerMainDrillDelay);
             AutoClickerManager.setSecondDrillDelay(config.autoClickerSecondDrillDelay);
             AutoClickerHUD.setEnabled(config.autoClickerHudEnabled);
+
+            AutoForgeManager.importRecordedCrafts(config.autoForgeRecordedCrafts);
+            AutoForgeManager.importHiddenBuiltins(config.autoForgeHiddenCrafts);
 
             InShaftClickManager.setMiningSlot(config.coldClickerMiningSlot);
             InShaftClickManager.setSecondDrillSlot(config.coldClickerSecondDrillSlot);
@@ -269,6 +274,9 @@ public final class CheatBootstrap {
             config.autoClickerMainDrillDelay = AutoClickerManager.getMainDrillDelay();
             config.autoClickerSecondDrillDelay = AutoClickerManager.getSecondDrillDelay();
             config.autoClickerHudEnabled = AutoClickerHUD.isEnabled();
+
+            config.autoForgeRecordedCrafts = AutoForgeManager.exportRecordedCrafts();
+            config.autoForgeHiddenCrafts = AutoForgeManager.exportHiddenBuiltins();
 
             config.coldClickerMiningSlot = InShaftClickManager.getMiningSlot();
             config.coldClickerSecondDrillSlot = InShaftClickManager.getSecondDrillSlot();

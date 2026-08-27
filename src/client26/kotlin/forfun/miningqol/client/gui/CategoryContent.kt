@@ -18,6 +18,7 @@ import forfun.miningqol.client.party.PartyAutoAccept
 import net.minecraft.client.Minecraft
 import forfun.miningqol.client.RollingMinerCooldown
 import forfun.miningqol.client.ShaftESP
+import forfun.miningqol.client.SkinMob
 import forfun.miningqol.client.SoundBlocker
 import forfun.miningqol.client.waypoints.OrderedWaypointManager
 import xyz.meowing.vexel.components.core.Rectangle
@@ -72,6 +73,9 @@ object FeatureDetails {
                 if (index == 1) CommissionHUD.LayoutMode.COLUMN else CommissionHUD.LayoutMode.GRID
             )
         }
+        y = SettingsUi.inlineToggle(w, width, y, "Show Over Menus",
+            "Keep the panel visible on top of Hypixel menus", accent,
+            { CommissionHUD.isShowOverMenus() }) { CommissionHUD.setShowOverMenus(it) }
         y = SettingsUi.inlineToggle(w, width, y, "Commission Stats", "Total completed + comms/hour (/commtrack reset)", accent,
             { CommTracker.isStatsEnabled() }) { CommTracker.setStatsEnabled(it) }
         y = SettingsUi.inlineSlider(w, width, y, "Scale", 0.5f, 2.0f, 0.05f,
@@ -174,14 +178,14 @@ object FeatureDetails {
     fun shaftEsp(w: Rectangle, width: Float): Float {
         val accent = SettingsUi.CYAN
         var y = 0f
-        y = SettingsUi.inlineDropdown(w, width, y, "Render Mode", "Choose boxes, Prisma glow, or Minecraft glow", accent,
-            EntityEspMode.values().map { it.displayName }, ShaftESP.getRenderMode().ordinal) {
-            ShaftESP.setRenderMode(EntityEspMode.values()[it])
-        }
         y = SettingsUi.inlineToggle(w, width, y, "Littlefoot ESP", "Highlight the Littlefoot in mineshafts", accent,
             { ShaftESP.isLittlefootEnabled() }) { ShaftESP.setLittlefootEnabled(it) }
         y = SettingsUi.inlineToggle(w, width, y, "Littlefoot Tracer", "Line from your crosshair to the Littlefoot", accent,
             { ShaftESP.isLittlefootTracer() }) { ShaftESP.setLittlefootTracer(it) }
+        y = SettingsUi.inlineColor(w, width, y, "Littlefoot Color",
+            { ShaftESP.getLittlefootColor() },
+            { r, g, b -> ShaftESP.setLittlefootColor(r, g, b) },
+            { 1f }, { }, showAlpha = false)
         y = SettingsUi.inlineToggle(w, width, y, "Mob ESP", "Highlight mineshaft mobs", accent,
             { ShaftESP.isMobsEnabled() }) { ShaftESP.setMobsEnabled(it) }
         for (row in ExtraEspRows.shaft) {
@@ -192,6 +196,14 @@ object FeatureDetails {
             { r, g, b -> ShaftESP.setMobColor(r, g, b) },
             { ShaftESP.getMobAlpha() },
             { ShaftESP.setMobAlpha(it) })
+        // Mobs recognised by skin get their own switch, on top of (or without) Mob ESP.
+        y = SettingsUi.inlineSectionHeader(w, y, "Skin-matched mobs")
+        for (mob in SkinMob.values()) {
+            if (mob == SkinMob.LITTLEFOOT) continue
+            y = SettingsUi.inlineToggle(w, width, y, mob.displayName() + " ESP",
+                "Highlight ${mob.displayName()}s by their skin, in the Mob ESP colour", accent,
+                { ShaftESP.isSkinMobEnabled(mob) }) { ShaftESP.setSkinMobEnabled(mob, it) }
+        }
         return y
     }
 
@@ -260,6 +272,14 @@ object FeatureDetails {
         var y = 0f
         y = SettingsUi.inlineToggle(w, width, y, "Enabled", "Show the cooldown HUD", accent,
             { PickaxeCooldownHUD.isEnabled() }) { PickaxeCooldownHUD.setEnabled(it) }
+        y = SettingsUi.inlineDropdown(w, width, y, "Text Align",
+            "Where the line sits inside the HUD box", accent,
+            listOf("Left", "Center", "Right"), PickaxeCooldownHUD.getTextAlign()) {
+            PickaxeCooldownHUD.setTextAlign(it)
+        }
+        y = SettingsUi.inlineToggle(w, width, y, "Seconds Suffix",
+            "Off shows a bare number instead of 30s", accent,
+            { PickaxeCooldownHUD.isSecondsSuffix() }) { PickaxeCooldownHUD.setSecondsSuffix(it) }
         y = SettingsUi.inlineToggle(w, width, y, "Cooldown Only", "Hide the ability name and show just the timer", accent,
             { PickaxeCooldownHUD.isCooldownOnly() }) { PickaxeCooldownHUD.setCooldownOnly(it) }
         y = SettingsUi.inlineToggle(w, width, y, "Custom Cooldown", "Use a local timer instead of reading the tab list", accent,
@@ -365,6 +385,16 @@ object FeatureDetails {
         y = SettingsUi.inlineToggle(w, width, y, "Disband After Warp",
             "Disband 2s after warping so the next shaft starts from a clean party", accent,
             { MineshaftAutoParty.isDisbandAfterWarp() }) { MineshaftAutoParty.setDisbandAfterWarp(it) }
+        y = SettingsUi.inlineSlider(w, width, y, "Settle Delay",
+            MineshaftAutoParty.MIN_SETTLE_SECONDS.toFloat(),
+            MineshaftAutoParty.MAX_SETTLE_SECONDS.toFloat(), 1f,
+            MineshaftAutoParty.getSettleSeconds().toFloat(), accent,
+            { "up to ${it.toInt()}s for the tab list" }) {
+            MineshaftAutoParty.setSettleSeconds(it.toInt())
+        }
+        y = SettingsUi.inlineToggle(w, width, y, "Disband On Timeout",
+            "Send /p disband when nobody joins in time", accent,
+            { MineshaftAutoParty.isDisbandOnTimeout() }) { MineshaftAutoParty.setDisbandOnTimeout(it) }
         y = SettingsUi.inlineSlider(w, width, y, "Disband Timeout",
             MineshaftAutoParty.MIN_DISBAND_SECONDS.toFloat(),
             MineshaftAutoParty.MAX_DISBAND_SECONDS.toFloat(), 1f,
@@ -373,10 +403,10 @@ object FeatureDetails {
         }
         y = SettingsUi.inlineSlider(w, width, y, "Warp Delay",
             MineshaftAutoParty.MIN_WARP_DELAY_SECONDS.toFloat(),
-            MineshaftAutoParty.MAX_WARP_DELAY_SECONDS.toFloat(), 1f,
-            MineshaftAutoParty.getWarpDelaySeconds().toFloat(), accent,
-            { "${it.toInt()}s after the last join" }) {
-            MineshaftAutoParty.setWarpDelaySeconds(it.toInt())
+            MineshaftAutoParty.MAX_WARP_DELAY_SECONDS.toFloat(), 0.5f,
+            MineshaftAutoParty.getWarpDelaySeconds(), accent,
+            { String.format(java.util.Locale.US, "%.1fs after the last join", it) }) {
+            MineshaftAutoParty.setWarpDelaySeconds(it)
         }
         y = SettingsUi.inlineToggle(w, width, y, "Auto Accept Invites",
             "Accept party invites from the auto-accept list", accent,
@@ -384,6 +414,9 @@ object FeatureDetails {
         y = SettingsUi.inlineToggle(w, width, y, "Not During Ability",
             "Ignore invites while a pickaxe ability is still running", accent,
             { PartyAutoAccept.isBlockDuringAbility() }) { PartyAutoAccept.setBlockDuringAbility(it) }
+        y = SettingsUi.inlineToggle(w, width, y, "Not When Ability Ready",
+            "Ignore invites when the pickaxe ability is already off cooldown", accent,
+            { PartyAutoAccept.isBlockWhenReady() }) { PartyAutoAccept.setBlockWhenReady(it) }
         y = SettingsUi.inlineToggle(w, width, y, "Not While In A Shaft",
             "Ignore invites until you have left the mineshaft you are in", accent,
             { PartyAutoAccept.isBlockInShaft() }) { PartyAutoAccept.setBlockInShaft(it) }
@@ -398,9 +431,19 @@ object FeatureDetails {
         return y
     }
 
-    fun misc(w: Rectangle, width: Float): Float {
+    fun misc(host: VexelMainScreen, w: Rectangle, width: Float): Float {
         val accent = SettingsUi.ORANGE
         var y = 0f
+        y = SettingsUi.inlineDropdown(w, width, y, "GUI Theme", "Colour palette for the whole settings GUI",
+            accent, SettingsUi.THEMES.map { it.name }, SettingsUi.themeIndex) {
+            SettingsUi.applyTheme(it)
+            host.refreshDetail()
+        }
+        y = SettingsUi.inlineDropdown(w, width, y, "GUI Layout", "Panel size and how many cards per row",
+            accent, SettingsUi.LAYOUTS.map { it.name }, SettingsUi.layoutIndex) {
+            SettingsUi.setLayout(it)
+            host.refreshDetail()
+        }
         y = SettingsUi.inlineSlider(w, width, y, "GUI Opacity", 0.3f, 1.0f, 0.05f,
             SettingsUi.guiOpacity, accent, { "${(it * 100).toInt()}%" }) {
             SettingsUi.guiOpacity = it

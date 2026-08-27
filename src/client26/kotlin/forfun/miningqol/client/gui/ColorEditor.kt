@@ -335,7 +335,10 @@ class ColorEditorOverlay(
         if (hex.length == 3 || (hex.length == 4 && showAlpha)) {
             hex = hex.map { "$it$it" }.joinToString("")
         }
-        if (hex.length != 6 && !(showAlpha && hex.length == 8)) return null
+        // An 8-digit value pasted into an RGB-only picker keeps its colour and drops the
+        // alpha, rather than being rejected outright.
+        if (hex.length == 8 && !showAlpha) hex = hex.substring(0, 6)
+        if (hex.length != 6 && hex.length != 8) return null
         return try {
             Color(
                 hex.substring(0, 2).toInt(16),

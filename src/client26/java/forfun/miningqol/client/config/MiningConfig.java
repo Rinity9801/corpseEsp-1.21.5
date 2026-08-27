@@ -34,17 +34,37 @@ public class MiningConfig {
     private static final Logger LOGGER = LoggerFactory.getLogger("MiningConfig");
     private static final Gson GSON = new GsonBuilder().setPrettyPrinting().create();
     private static final File CONFIG_FILE = new File("config/miningqol.json");
+    private static final int HUD_ANCHOR_VERSION = 2;
+
+    /** A saved anchor mode, or -1 (pixel position only) when it was written by an older formula. */
+    private int anchorMode(int mode) {
+        return hudAnchorVersion >= HUD_ANCHOR_VERSION ? mode : -1;
+    }
 
     public boolean commissionHudEnabled = true;
     public int commissionHudX = 10;
     public int commissionHudY = 90;
+    /**
+     * Which formula the anchor offsets were written with; older offsets are dropped on load
+     * and the pixel position adopted instead. 2 = offset to the HUD's top-left corner.
+     */
+    public int hudAnchorVersion = 0;
+    public int commissionHudAnchorModeX = -1;
+    public int commissionHudAnchorOffX = 0;
+    public int commissionHudAnchorModeY = -1;
+    public int commissionHudAnchorOffY = 0;
     public float commissionHudScale = 1.0f;
     public boolean commissionHudBackground = true;
     public String commissionHudLayout = "GRID";
     public boolean commissionStatsEnabled = false;
+    public boolean commissionShowOverMenus = true;
     public long commTrackTotal = 0;
     public int commStatsHudX = 10;
     public int commStatsHudY = 220;
+    public int commStatsHudAnchorModeX = -1;
+    public int commStatsHudAnchorOffX = 0;
+    public int commStatsHudAnchorModeY = -1;
+    public int commStatsHudAnchorOffY = 0;
     public float commStatsHudScale = 1.0f;
 
     public boolean lapisEnabled = true;
@@ -57,7 +77,9 @@ public class MiningConfig {
     public boolean shaftESPMobsEnabled = false;
     public float[] shaftESPMobColor = {1.0f, 0.2f, 0.2f};
     public float shaftESPMobAlpha = 0.2f;
-    public String shaftESPRenderMode = "BOX";
+    public float[] shaftESPLittlefootColor = {0.0f, 1.0f, 0.4f};
+    /** Skin-matched mineshaft mobs (see SkinMob): per-mob toggle, keyed by enum name. */
+    public java.util.Map<String, Boolean> shaftESPSkinMobEnabled = new java.util.LinkedHashMap<>();
     public String corpseESPRenderMode = "BOX";
 
     public boolean blockOverlayEnabled = false;
@@ -73,6 +95,10 @@ public class MiningConfig {
     public boolean pickaxeCooldownEnabled = true;
     public int pickaxeCooldownX = 10;
     public int pickaxeCooldownY = 50;
+    public int pickaxeCooldownAnchorModeX = -1;
+    public int pickaxeCooldownAnchorOffX = 0;
+    public int pickaxeCooldownAnchorModeY = -1;
+    public int pickaxeCooldownAnchorOffY = 0;
     public float pickaxeCooldownScale = 1.0f;
     public boolean pickaxeCooldownTitleEnabled = true;
     public int pickaxeCooldownTitleThreshold = 5;
@@ -83,6 +109,8 @@ public class MiningConfig {
     public float[] pickaxeReadyLabelColor = {85.0f / 255.0f, 1.0f, 85.0f / 255.0f};
     public float[] pickaxeReadyValueColor = {0.0f, 170.0f / 255.0f, 0.0f};
     public boolean pickaxeCooldownOnly = false;
+    public int pickaxeTextAlign = 1;
+    public boolean pickaxeSecondsSuffix = true;
     public boolean pickaxeActiveTimerEnabled = true;
     public float[] pickaxeActiveLabelColor = {85.0f / 255.0f, 1.0f, 1.0f};
     public float[] pickaxeActiveValueColor = {85.0f / 255.0f, 1.0f, 85.0f / 255.0f};
@@ -92,6 +120,10 @@ public class MiningConfig {
     public boolean rollingMinerCooldownEnabled = false;
     public int rollingMinerCooldownX = 10;
     public int rollingMinerCooldownY = 62;
+    public int rollingMinerCooldownAnchorModeX = -1;
+    public int rollingMinerCooldownAnchorOffX = 0;
+    public int rollingMinerCooldownAnchorModeY = -1;
+    public int rollingMinerCooldownAnchorOffY = 0;
     public float[] rollingCooldownLabelColor = {1.0f, 170.0f / 255.0f, 0.0f};
     public float[] rollingCooldownValueColor = {1.0f, 85.0f / 255.0f, 85.0f / 255.0f};
     public float[] rollingReadyLabelColor = {85.0f / 255.0f, 1.0f, 85.0f / 255.0f};
@@ -108,6 +140,10 @@ public class MiningConfig {
     public boolean forgeDisplaySortByTime = true;
     public int forgeDisplayX = 10;
     public int forgeDisplayY = 90;
+    public int forgeDisplayAnchorModeX = -1;
+    public int forgeDisplayAnchorOffX = 0;
+    public int forgeDisplayAnchorModeY = -1;
+    public int forgeDisplayAnchorOffY = 0;
     public float[] forgeTitleColor = {1.0f, 170.0f / 255.0f, 0.0f};
     public float[] forgeItemColor = {1.0f, 1.0f, 1.0f};
     public float[] forgeTimeColor = {170.0f / 255.0f, 170.0f / 255.0f, 170.0f / 255.0f};
@@ -116,19 +152,27 @@ public class MiningConfig {
     public boolean autoPartyEnabled = false;
     public boolean autoPartyDisbandAfterWarp = true;
     public int autoPartyDisbandSeconds = 10;
-    public int autoPartyWarpDelaySeconds = 5;
+    public float autoPartyWarpDelaySeconds = 5f;
+    public boolean autoPartyDisbandOnTimeout = true;
+    public int autoPartySettleSeconds = 5;
     public boolean autoPartyAcceptEnabled = false;
     public boolean autoPartyAcceptBlockAbility = true;
     public boolean autoPartyAcceptBlockInShaft = true;
+    public boolean autoPartyAcceptBlockWhenReady = true;
     public java.util.List<String> autoPartyAcceptList = new java.util.ArrayList<>();
     /** Players who want any shaft where the ESP spots a Littlefoot. */
     public java.util.List<String> autoPartyLittlefootMob = new java.util.ArrayList<>();
     /** Player name -> shaft types they must never be warped to. */
     public java.util.Map<String, java.util.List<String>> autoPartyBlockedSignups = new java.util.LinkedHashMap<>();
+    /** Players switched off in the manager: kept with their picks, never invited. */
+    public java.util.List<String> autoPartyDisabledPlayers = new java.util.ArrayList<>();
     /** Player name -> the ShaftType names they are signed up for. */
     public java.util.Map<String, java.util.List<String>> autoPartySignups = new java.util.LinkedHashMap<>();
     /** Player name -> "CORPSE:COUNT" picks, e.g. "LAPIS:3". */
     public java.util.Map<String, java.util.List<String>> autoPartyCorpseSignups = new java.util.LinkedHashMap<>();
+
+    public int guiTheme = 0;
+    public int guiLayout = 0;
 
     public boolean chatLogsEnabled = true;
     public boolean critParticleDrop = false;
@@ -158,7 +202,7 @@ public class MiningConfig {
     public int commClaimDivanSlot = 2;
     public int commClaimRefinedToolSlot = 0;
     public int commClaimTickDelay = 2;
-    public int commClaimGuiWaitDelay = 3;
+    public int commClaimGuiWaitDelay = 10;
     public boolean commClaimAutoTrigger = false;
     public boolean commClaimWardrobeSwap = true;
     public boolean commClaimBatchMining = true;
@@ -169,6 +213,11 @@ public class MiningConfig {
     public boolean autoForgeEnabled = true;
     public int autoForgeTickDelay = 3;
     public int autoForgeRunCount = 1;
+    /** Custom crafts as "label|category|needle". */
+    /** Crafts recorded by clicking through The Forge: "label|title>item>slot;title>item>slot…". */
+    public java.util.List<String> autoForgeRecordedCrafts = new java.util.ArrayList<>();
+    /** Built-in Auto Forge crafts hidden from the picker, by label. */
+    public java.util.List<String> autoForgeHiddenCrafts = new java.util.ArrayList<>();
     public boolean shaftJoinCdEnabled = true;
     public int shaftJoinCdSeconds = 30;
 
@@ -243,7 +292,8 @@ public class MiningConfig {
         if (orderedWaypointPreviousColor == null) orderedWaypointPreviousColor = new float[]{85f/255f, 85f/255f, 1f};
         if (orderedWaypointTraceLineColor == null) orderedWaypointTraceLineColor = new float[]{85f/255f, 1f, 85f/255f};
         if (shaftESPMobColor == null) shaftESPMobColor = new float[]{1.0f, 0.2f, 0.2f};
-        if (shaftESPRenderMode == null) shaftESPRenderMode = "BOX";
+        if (shaftESPLittlefootColor == null || shaftESPLittlefootColor.length < 3) shaftESPLittlefootColor = new float[]{0.0f, 1.0f, 0.4f};
+        if (shaftESPSkinMobEnabled == null) shaftESPSkinMobEnabled = new java.util.LinkedHashMap<>();
         if (corpseESPRenderMode == null) corpseESPRenderMode = "BOX";
         if (blockOverlayMode == null) blockOverlayMode = "FILLED_OUTLINE";
         if (blockOverlayFillColor == null) blockOverlayFillColor = new float[]{0.0f, 134.0f / 255.0f, 1.0f};
@@ -272,6 +322,9 @@ public class MiningConfig {
         if (autoPartyAcceptList == null) autoPartyAcceptList = new java.util.ArrayList<>();
         if (autoPartyLittlefootMob == null) autoPartyLittlefootMob = new java.util.ArrayList<>();
         if (autoPartyBlockedSignups == null) autoPartyBlockedSignups = new java.util.LinkedHashMap<>();
+        if (autoPartyDisabledPlayers == null) autoPartyDisabledPlayers = new java.util.ArrayList<>();
+        if (autoForgeRecordedCrafts == null) autoForgeRecordedCrafts = new java.util.ArrayList<>();
+        if (autoForgeHiddenCrafts == null) autoForgeHiddenCrafts = new java.util.ArrayList<>();
         if (soundBlockRules == null) soundBlockRules = new java.util.ArrayList<>();
     }
 
@@ -290,6 +343,7 @@ public class MiningConfig {
         forfun.miningqol.client.gui.SettingsUi.setGuiOpacity(guiOpacity);
         CommissionHUD.setEnabled(commissionHudEnabled);
         CommissionHUD.setPosition(commissionHudX, commissionHudY);
+        CommissionHUD.anchor().load(anchorMode(commissionHudAnchorModeX), commissionHudAnchorOffX, anchorMode(commissionHudAnchorModeY), commissionHudAnchorOffY);
         CommissionHUD.setScale(commissionHudScale);
         CommissionHUD.setBackgroundEnabled(commissionHudBackground);
         try {
@@ -298,8 +352,10 @@ public class MiningConfig {
             CommissionHUD.setLayoutMode(CommissionHUD.LayoutMode.GRID);
         }
         CommTracker.setStatsEnabled(commissionStatsEnabled);
+        CommissionHUD.setShowOverMenus(commissionShowOverMenus);
         CommTracker.setTotalCompleted(commTrackTotal);
         CommStatsHUD.setPosition(commStatsHudX, commStatsHudY);
+        CommStatsHUD.anchor().load(anchorMode(commStatsHudAnchorModeX), commStatsHudAnchorOffX, anchorMode(commStatsHudAnchorModeY), commStatsHudAnchorOffY);
         CommStatsHUD.setScale(commStatsHudScale);
 
         if (CorpseESP.isLapisEnabled() != lapisEnabled) CorpseESP.toggleLapis();
@@ -312,11 +368,12 @@ public class MiningConfig {
         ShaftESP.setMobsEnabled(shaftESPMobsEnabled);
         ShaftESP.setMobColor(shaftESPMobColor[0], shaftESPMobColor[1], shaftESPMobColor[2]);
         ShaftESP.setMobAlpha(shaftESPMobAlpha);
-        try {
-            ShaftESP.setRenderMode(EntityEspMode.valueOf(shaftESPRenderMode));
-        } catch (IllegalArgumentException e) {
-            ShaftESP.setRenderMode(EntityEspMode.BOX);
+        for (forfun.miningqol.client.SkinMob mob : forfun.miningqol.client.SkinMob.values()) {
+            if (mob == forfun.miningqol.client.SkinMob.LITTLEFOOT) continue;   // shaftESPEnabled is its toggle
+            Boolean on = shaftESPSkinMobEnabled.get(mob.name());
+            if (on != null) mob.setEnabled(on);
         }
+        ShaftESP.setLittlefootColor(shaftESPLittlefootColor[0], shaftESPLittlefootColor[1], shaftESPLittlefootColor[2]);
         try {
             CorpseESP.setRenderMode(EntityEspMode.valueOf(corpseESPRenderMode));
         } catch (IllegalArgumentException e) {
@@ -339,6 +396,7 @@ public class MiningConfig {
 
         PickaxeCooldownHUD.setEnabled(pickaxeCooldownEnabled);
         PickaxeCooldownHUD.setPosition(pickaxeCooldownX, pickaxeCooldownY);
+        PickaxeCooldownHUD.anchor().load(anchorMode(pickaxeCooldownAnchorModeX), pickaxeCooldownAnchorOffX, anchorMode(pickaxeCooldownAnchorModeY), pickaxeCooldownAnchorOffY);
         PickaxeCooldownHUD.setScale(pickaxeCooldownScale);
         PickaxeCooldownHUD.setTitleEnabled(pickaxeCooldownTitleEnabled);
         PickaxeCooldownHUD.setTitleThreshold(pickaxeCooldownTitleThreshold);
@@ -349,12 +407,15 @@ public class MiningConfig {
         PickaxeCooldownHUD.setReadyLabelColor(pickaxeReadyLabelColor[0], pickaxeReadyLabelColor[1], pickaxeReadyLabelColor[2]);
         PickaxeCooldownHUD.setReadyValueColor(pickaxeReadyValueColor[0], pickaxeReadyValueColor[1], pickaxeReadyValueColor[2]);
         PickaxeCooldownHUD.setCooldownOnly(pickaxeCooldownOnly);
+        PickaxeCooldownHUD.setTextAlign(pickaxeTextAlign);
+        PickaxeCooldownHUD.setSecondsSuffix(pickaxeSecondsSuffix);
         PickaxeCooldownHUD.setActiveTimerEnabled(pickaxeActiveTimerEnabled);
         PickaxeCooldownHUD.setActiveLabelColor(pickaxeActiveLabelColor[0], pickaxeActiveLabelColor[1], pickaxeActiveLabelColor[2]);
         PickaxeCooldownHUD.setActiveValueColor(pickaxeActiveValueColor[0], pickaxeActiveValueColor[1], pickaxeActiveValueColor[2]);
 
         FiletWarning.setEnabled(filetWarningEnabled);
         RollingMinerCooldown.setPosition(rollingMinerCooldownX, rollingMinerCooldownY);
+        RollingMinerCooldown.anchor().load(anchorMode(rollingMinerCooldownAnchorModeX), rollingMinerCooldownAnchorOffX, anchorMode(rollingMinerCooldownAnchorModeY), rollingMinerCooldownAnchorOffY);
         RollingMinerCooldown.setEnabled(rollingMinerCooldownEnabled);
         RollingMinerCooldown.setCooldownLabelColor(rollingCooldownLabelColor[0], rollingCooldownLabelColor[1], rollingCooldownLabelColor[2]);
         RollingMinerCooldown.setCooldownValueColor(rollingCooldownValueColor[0], rollingCooldownValueColor[1], rollingCooldownValueColor[2]);
@@ -368,6 +429,7 @@ public class MiningConfig {
         ForgeDisplay.setShowEmpty(forgeDisplayShowEmpty);
         ForgeDisplay.setSortByTime(forgeDisplaySortByTime);
         ForgeDisplay.setPosition(forgeDisplayX, forgeDisplayY);
+        ForgeDisplay.anchor().load(anchorMode(forgeDisplayAnchorModeX), forgeDisplayAnchorOffX, anchorMode(forgeDisplayAnchorModeY), forgeDisplayAnchorOffY);
         ForgeDisplay.setTitleColor(forgeTitleColor[0], forgeTitleColor[1], forgeTitleColor[2]);
         ForgeDisplay.setItemColor(forgeItemColor[0], forgeItemColor[1], forgeItemColor[2]);
         ForgeDisplay.setTimeColor(forgeTimeColor[0], forgeTimeColor[1], forgeTimeColor[2]);
@@ -376,12 +438,15 @@ public class MiningConfig {
         MineshaftAutoParty.setDisbandAfterWarp(autoPartyDisbandAfterWarp);
         MineshaftAutoParty.setDisbandSeconds(autoPartyDisbandSeconds);
         MineshaftAutoParty.setWarpDelaySeconds(autoPartyWarpDelaySeconds);
+        MineshaftAutoParty.setDisbandOnTimeout(autoPartyDisbandOnTimeout);
+        MineshaftAutoParty.setSettleSeconds(autoPartySettleSeconds);
         PartyAutoAccept.setNames(autoPartyAcceptList);
         PartyAutoAccept.setBlockDuringAbility(autoPartyAcceptBlockAbility);
         PartyAutoAccept.setBlockInShaft(autoPartyAcceptBlockInShaft);
+        PartyAutoAccept.setBlockWhenReady(autoPartyAcceptBlockWhenReady);
         PartyAutoAccept.setEnabled(autoPartyAcceptEnabled);
         MineshaftAutoParty.importSignups(autoPartySignups, autoPartyCorpseSignups, autoPartyLittlefootMob,
-            autoPartyBlockedSignups);
+            autoPartyBlockedSignups, autoPartyDisabledPlayers);
         // Last: setEnabled(false) aborts any in-flight party, so it must see the final state.
         MineshaftAutoParty.setEnabled(autoPartyEnabled);
 
@@ -404,6 +469,8 @@ public class MiningConfig {
         }
         LobbyFinder.setTrackedBlocks(blocks);
 
+        forfun.miningqol.client.gui.SettingsUi.INSTANCE.applyTheme(guiTheme);
+        forfun.miningqol.client.gui.SettingsUi.INSTANCE.setLayout(guiLayout);
         MqoChat.setLogsEnabled(chatLogsEnabled);
         CritParticleDrop.setEnabled(critParticleDrop);
 
@@ -447,13 +514,23 @@ public class MiningConfig {
         commissionHudEnabled = CommissionHUD.isEnabled();
         commissionHudX = CommissionHUD.getX();
         commissionHudY = CommissionHUD.getY();
+        hudAnchorVersion = HUD_ANCHOR_VERSION;
+        commissionHudAnchorModeX = CommissionHUD.anchor().modeX();
+        commissionHudAnchorOffX = CommissionHUD.anchor().offX();
+        commissionHudAnchorModeY = CommissionHUD.anchor().modeY();
+        commissionHudAnchorOffY = CommissionHUD.anchor().offY();
         commissionHudScale = CommissionHUD.getScale();
         commissionHudBackground = CommissionHUD.isBackgroundEnabled();
         commissionHudLayout = CommissionHUD.getLayoutMode().name();
         commissionStatsEnabled = CommTracker.isStatsEnabled();
+        commissionShowOverMenus = CommissionHUD.isShowOverMenus();
         commTrackTotal = CommTracker.getTotalCompleted();
         commStatsHudX = CommStatsHUD.getX();
         commStatsHudY = CommStatsHUD.getY();
+        commStatsHudAnchorModeX = CommStatsHUD.anchor().modeX();
+        commStatsHudAnchorOffX = CommStatsHUD.anchor().offX();
+        commStatsHudAnchorModeY = CommStatsHUD.anchor().modeY();
+        commStatsHudAnchorOffY = CommStatsHUD.anchor().offY();
         commStatsHudScale = CommStatsHUD.getScale();
 
         lapisEnabled = CorpseESP.isLapisEnabled();
@@ -466,7 +543,10 @@ public class MiningConfig {
         shaftESPMobsEnabled = ShaftESP.isMobsEnabled();
         shaftESPMobColor = ShaftESP.getMobColor();
         shaftESPMobAlpha = ShaftESP.getMobAlpha();
-        shaftESPRenderMode = ShaftESP.getRenderMode().name();
+        for (forfun.miningqol.client.SkinMob mob : forfun.miningqol.client.SkinMob.values()) {
+            if (mob != forfun.miningqol.client.SkinMob.LITTLEFOOT) shaftESPSkinMobEnabled.put(mob.name(), mob.isEnabled());
+        }
+        shaftESPLittlefootColor = ShaftESP.getLittlefootColor();
         corpseESPRenderMode = CorpseESP.getRenderMode().name();
 
         blockOverlayEnabled = BlockOverlay.isEnabled();
@@ -482,6 +562,10 @@ public class MiningConfig {
         pickaxeCooldownEnabled = PickaxeCooldownHUD.isEnabled();
         pickaxeCooldownX = PickaxeCooldownHUD.getX();
         pickaxeCooldownY = PickaxeCooldownHUD.getY();
+        pickaxeCooldownAnchorModeX = PickaxeCooldownHUD.anchor().modeX();
+        pickaxeCooldownAnchorOffX = PickaxeCooldownHUD.anchor().offX();
+        pickaxeCooldownAnchorModeY = PickaxeCooldownHUD.anchor().modeY();
+        pickaxeCooldownAnchorOffY = PickaxeCooldownHUD.anchor().offY();
         pickaxeCooldownScale = PickaxeCooldownHUD.getScale();
         pickaxeCooldownTitleEnabled = PickaxeCooldownHUD.isTitleEnabled();
         pickaxeCooldownTitleThreshold = PickaxeCooldownHUD.getTitleThreshold();
@@ -492,6 +576,8 @@ public class MiningConfig {
         pickaxeReadyLabelColor = PickaxeCooldownHUD.getReadyLabelColor();
         pickaxeReadyValueColor = PickaxeCooldownHUD.getReadyValueColor();
         pickaxeCooldownOnly = PickaxeCooldownHUD.isCooldownOnly();
+        pickaxeTextAlign = PickaxeCooldownHUD.getTextAlign();
+        pickaxeSecondsSuffix = PickaxeCooldownHUD.isSecondsSuffix();
         pickaxeActiveTimerEnabled = PickaxeCooldownHUD.isActiveTimerEnabled();
         pickaxeActiveLabelColor = PickaxeCooldownHUD.getActiveLabelColor();
         pickaxeActiveValueColor = PickaxeCooldownHUD.getActiveValueColor();
@@ -500,6 +586,10 @@ public class MiningConfig {
         rollingMinerCooldownEnabled = RollingMinerCooldown.isEnabled();
         rollingMinerCooldownX = RollingMinerCooldown.getX();
         rollingMinerCooldownY = RollingMinerCooldown.getY();
+        rollingMinerCooldownAnchorModeX = RollingMinerCooldown.anchor().modeX();
+        rollingMinerCooldownAnchorOffX = RollingMinerCooldown.anchor().offX();
+        rollingMinerCooldownAnchorModeY = RollingMinerCooldown.anchor().modeY();
+        rollingMinerCooldownAnchorOffY = RollingMinerCooldown.anchor().offY();
         rollingCooldownLabelColor = RollingMinerCooldown.getCooldownLabelColor();
         rollingCooldownValueColor = RollingMinerCooldown.getCooldownValueColor();
         rollingReadyLabelColor = RollingMinerCooldown.getReadyLabelColor();
@@ -512,6 +602,10 @@ public class MiningConfig {
         forgeDisplaySortByTime = ForgeDisplay.isSortByTime();
         forgeDisplayX = ForgeDisplay.getX();
         forgeDisplayY = ForgeDisplay.getY();
+        forgeDisplayAnchorModeX = ForgeDisplay.anchor().modeX();
+        forgeDisplayAnchorOffX = ForgeDisplay.anchor().offX();
+        forgeDisplayAnchorModeY = ForgeDisplay.anchor().modeY();
+        forgeDisplayAnchorOffY = ForgeDisplay.anchor().offY();
         forgeTitleColor = ForgeDisplay.getTitleColor();
         forgeItemColor = ForgeDisplay.getItemColor();
         forgeTimeColor = ForgeDisplay.getTimeColor();
@@ -521,14 +615,18 @@ public class MiningConfig {
         autoPartyDisbandAfterWarp = MineshaftAutoParty.isDisbandAfterWarp();
         autoPartyDisbandSeconds = MineshaftAutoParty.getDisbandSeconds();
         autoPartyWarpDelaySeconds = MineshaftAutoParty.getWarpDelaySeconds();
+        autoPartyDisbandOnTimeout = MineshaftAutoParty.isDisbandOnTimeout();
+        autoPartySettleSeconds = MineshaftAutoParty.getSettleSeconds();
         autoPartyAcceptEnabled = PartyAutoAccept.isEnabled();
         autoPartyAcceptBlockAbility = PartyAutoAccept.isBlockDuringAbility();
         autoPartyAcceptBlockInShaft = PartyAutoAccept.isBlockInShaft();
+        autoPartyAcceptBlockWhenReady = PartyAutoAccept.isBlockWhenReady();
         autoPartyAcceptList = PartyAutoAccept.names();
         autoPartySignups = MineshaftAutoParty.exportSignups();
         autoPartyCorpseSignups = MineshaftAutoParty.exportCorpseSignups();
         autoPartyLittlefootMob = MineshaftAutoParty.exportMobSignups();
         autoPartyBlockedSignups = MineshaftAutoParty.exportBlockedSignups();
+        autoPartyDisabledPlayers = MineshaftAutoParty.exportDisabledPlayers();
 
         commandKeybinds.clear();
         for (java.util.Map.Entry<Integer, String> entry : CommandKeybindManager.getAllKeybinds().entrySet()) {
@@ -540,6 +638,8 @@ public class MiningConfig {
             lobbyFinderBlocks.add(pos.getX() + "," + pos.getY() + "," + pos.getZ());
         }
 
+        guiTheme = forfun.miningqol.client.gui.SettingsUi.INSTANCE.getThemeIndex();
+        guiLayout = forfun.miningqol.client.gui.SettingsUi.INSTANCE.getLayoutIndex();
         chatLogsEnabled = MqoChat.isLogsEnabled();
         critParticleDrop = CritParticleDrop.isEnabled();
 
