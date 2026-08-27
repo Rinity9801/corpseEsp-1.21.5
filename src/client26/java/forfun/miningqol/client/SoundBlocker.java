@@ -30,7 +30,7 @@ import java.util.Map;
  * pitch (±0.01). {@code *} is a wildcard in the id, e.g. {@code *.enderman.*}.
  */
 public class SoundBlocker {
-    private static final Logger LOGGER = LoggerFactory.getLogger("Sybau/Sound");
+    private static final Logger LOGGER = LoggerFactory.getLogger("MiningQOL/Sound");
     private static final int MAX_CAPTURED = 2000;
     private static final float PITCH_TOLERANCE = 0.01f;
 

@@ -28,7 +28,7 @@ import kotlin.math.floor
  * for an inline detail panel. Cheat-only categories are contributed through
  * ExtraCategories (registered by CheatGui, which only exists in the -cheat tree).
  */
-class VexelMainScreen : VexelScreen("Sybau Settings") {
+class VexelMainScreen : VexelScreen("MiningQOL Settings") {
 
     /** Set by feature detail builders that need raw key input (keybind capture). */
     var keyHandler: ((KeyEvent) -> Boolean)? = null
@@ -158,11 +158,11 @@ class VexelMainScreen : VexelScreen("Sybau Settings") {
                 shadowSpread = 2f
                 shadowColor = 0xB0000000.toInt()
             }
-        Text("Sybau", SettingsUi.TEXT_PRIMARY, 20f, true)
+        Text("MiningQOL", SettingsUi.TEXT_PRIMARY, 20f, true)
             .setPositioning(18f, Pos.ParentPixels, 22f, Pos.ParentPixels)
             .childOf(sidebar)
 
-        val version = FabricLoader.getInstance().getModContainer("sybau")
+        val version = FabricLoader.getInstance().getModContainer("miningqol")
             .map { "v" + it.metadata.version.friendlyString + " · 26.1.2" }
             .orElse("dev")
         Text(version, SettingsUi.TEXT_MUTED, 11f, false)

@@ -59,7 +59,7 @@ public class MiningqolClient implements ClientModInitializer {
 
     @Override
     public void onInitializeClient() {
-        LOGGER.info("[MiningqolClient] Initializing Sybau Mod");
+        LOGGER.info("[MiningqolClient] Initializing MiningQOL Mod");
 
         config = MiningConfig.load();
         config.applyToGame();
@@ -727,7 +727,7 @@ public class MiningqolClient implements ClientModInitializer {
             config.save();
         });
 
-        LOGGER.info("[MiningqolClient] Sybau Mod initialized");
+        LOGGER.info("[MiningqolClient] MiningQOL Mod initialized");
     }
 
     public static MiningConfig getConfig() {

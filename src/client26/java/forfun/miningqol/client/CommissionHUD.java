@@ -39,7 +39,7 @@ import java.util.regex.Pattern;
  * re-broadcast a few seconds later cannot resurrect the claimed commission.
  */
 public class CommissionHUD {
-    private static final org.slf4j.Logger LOGGER = org.slf4j.LoggerFactory.getLogger("Sybau");
+    private static final org.slf4j.Logger LOGGER = org.slf4j.LoggerFactory.getLogger("MiningQOL");
     public enum LayoutMode {
         GRID,
         COLUMN

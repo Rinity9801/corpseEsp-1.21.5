@@ -1,13 +1,13 @@
 {
   "schemaVersion": 1,
-  "id": "sybau",
+  "id": "miningqol",
   "version": "${version}",
-  "name": "Sybau",
+  "name": "MiningQOL",
   "description": "Quality of life features for mining in Hypixel Skyblock - Corpse ESP, profit tracking, and efficient mining overlays",
   "authors": ["forfun"],
   "contact": {
-    "homepage": "https://github.com/Rinity9801/Sybau",
-    "sources": "https://github.com/Rinity9801/Sybau"
+    "homepage": "https://github.com/Rinity9801/MiningQOL",
+    "sources": "https://github.com/Rinity9801/MiningQOL"
   },
   "license": "All-Rights-Reserved",
   "icon": "assets/miningqol/icon.png",

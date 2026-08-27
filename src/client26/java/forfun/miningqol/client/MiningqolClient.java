@@ -24,7 +24,7 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 public class MiningqolClient implements ClientModInitializer {
-    private static final Logger LOGGER = LoggerFactory.getLogger("Sybau");
+    private static final Logger LOGGER = LoggerFactory.getLogger("MiningQOL");
     private static final Pattern CORPSE_LOOT_PATTERN = Pattern.compile("\\s(.+) CORPSE LOOT!\\s");
 
     private static MiningConfig config;
@@ -49,21 +49,21 @@ public class MiningqolClient implements ClientModInitializer {
         // CheatBootstrap, which only exists in the -cheat variant's source tree.
         try {
             Class.forName("forfun.miningqol.client.CheatBootstrap").getMethod("init").invoke(null);
-            LOGGER.info("[Sybau] Cheat features enabled");
+            LOGGER.info("[MiningQOL] Cheat features enabled");
         } catch (ClassNotFoundException e) {
             // legit build — no cheat features
         } catch (Exception e) {
-            LOGGER.error("[Sybau] Failed to init cheat features", e);
+            LOGGER.error("[MiningQOL] Failed to init cheat features", e);
         }
 
         // Local-only external ESP feed (local/esp/). Absent from every released build.
         try {
             Class.forName("forfun.miningqol.client.EspBootstrap").getMethod("init").invoke(null);
-            LOGGER.info("[Sybau] External ESP feed enabled (local build)");
+            LOGGER.info("[MiningQOL] External ESP feed enabled (local build)");
         } catch (ClassNotFoundException e) {
             // released build — no external ESP
         } catch (Exception e) {
-            LOGGER.error("[Sybau] Failed to init external ESP feed", e);
+            LOGGER.error("[MiningQOL] Failed to init external ESP feed", e);
         }
         config.applyToGame();
         CommissionHUD.register();
@@ -137,7 +137,7 @@ public class MiningqolClient implements ClientModInitializer {
                         } catch (InterruptedException e) {
                             LOGGER.error("Failed to auto-skip sho load", e);
                         }
-                    }, "Sybau-ShoSkip").start();
+                    }, "MiningQOL-ShoSkip").start();
                 }
             }
         });

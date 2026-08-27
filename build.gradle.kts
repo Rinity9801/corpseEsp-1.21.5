@@ -31,7 +31,7 @@ loom {
     splitEnvironmentSourceSets()
 
     mods {
-        create("sybau") {
+        create("miningqol") {
             sourceSet(sourceSets["main"])
             sourceSet(sourceSets["client"])
         }
