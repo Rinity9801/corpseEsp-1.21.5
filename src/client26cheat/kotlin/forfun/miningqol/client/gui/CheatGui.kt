@@ -15,7 +15,6 @@ import xyz.meowing.vexel.components.core.Rectangle
 import xyz.meowing.vexel.components.core.Text
 import xyz.meowing.vexel.elements.Button
 import xyz.meowing.vexel.elements.Dropdown
-import xyz.meowing.vexel.elements.TextInput
 
 /**
  * Cheat-only sidebar categories (Clickers, Automation), contributed to the
@@ -44,7 +43,7 @@ object CheatGui {
                 detail = { _, w, width -> emptyStash(w, width) },
                 status = { EmptyStashManager.isRunning() }),
             GuiFeature("Auto Forge", "Craft picker whenever The Forge opens", SettingsUi.ORANGE,
-                detail = { host, w, width -> autoForge(host, w, width) },
+                detail = { _, w, width -> autoForge(w, width) },
                 status = { AutoForgeManager.isEnabled() }),
             GuiFeature("HOTM Presets", "Heart of the Mountain editor + auto-apply", SettingsUi.TEAL,
                 open = { forfun.miningqol.client.hotm.HotmChestScreen.open() })
@@ -252,7 +251,7 @@ object CheatGui {
         return y
     }
 
-    private fun autoForge(host: VexelMainScreen, w: Rectangle, width: Float): Float {
+    private fun autoForge(w: Rectangle, width: Float): Float {
         val accent = SettingsUi.ORANGE
         var y = 0f
         y = SettingsUi.inlineToggle(w, width, y, "Enabled", "Show the craft picker when The Forge opens", accent,
@@ -265,105 +264,6 @@ object CheatGui {
             AutoForgeManager.getRunCount().toFloat(), accent, { "${it.toInt()}x per click" }) {
             AutoForgeManager.setRunCount(it.toInt())
         }
-
-        y = SettingsUi.inlineSectionHeader(w, y, "Picker Buttons")
-        for (label in AutoForgeManager.builtinLabels()) {
-            y = SettingsUi.inlineToggle(w, width, y, label, "Show this craft on the picker", accent,
-                { AutoForgeManager.isBuiltinShown(label) }) { AutoForgeManager.setBuiltinShown(label, it) }
-        }
-
-        y = SettingsUi.inlineSectionHeader(w, y, "Recorded Crafts")
-        y = SettingsUi.inlineCard(w, width, y, 40f).let {
-            Text("Press Record, open The Forge and click through a craft once. It saves itself when The Forge reopens.",
-                SettingsUi.TEXT_MUTED, 11f, false)
-                .setPositioning(18f, Pos.ParentPixels, 0f, Pos.ParentCenter)
-                .childOf(it)
-            y + 52f
-        }
-
-        val armed = AutoForgeManager.isRecordArmed()
-        val recordColor = if (armed) SettingsUi.RED else accent
-        Button(if (armed) "● Armed — open The Forge (click to cancel)" else "● Record next craft",
-            SettingsUi.TEXT_PRIMARY, fontSize = 14f)
-            .setSizing(if (armed) 320f else 200f, Size.Pixels, 40f, Size.Pixels)
-            .setPositioning(0f, Pos.ParentPixels, y + 4f, Pos.ParentPixels)
-            .backgroundColor(SettingsUi.tint(recordColor, 0.14f))
-            .borderColor(SettingsUi.edge(recordColor, 0.65f))
-            .borderRadius(10f)
-            .borderThickness(SettingsUi.EDGE_WIDTH)
-            .hoverColors(SettingsUi.tint(recordColor, 0.24f), SettingsUi.TEXT_PRIMARY)
-            .onClick { _ ->
-                AutoForgeManager.armRecording()
-                host.refreshDetail()
-                true
-            }
-            .childOf(w)
-        y += 56f
-
-        for (recorded in AutoForgeManager.getRecordedCrafts().toList()) {
-            val card = SettingsUi.inlineCard(w, width, y, 92f)
-
-            Text("Name", SettingsUi.TEXT_MUTED, 12f, false)
-                .setPositioning(18f, Pos.ParentPixels, 14f, Pos.ParentPixels)
-                .childOf(card)
-            val labelInput = TextInput(initialValue = recorded.label ?: "", placeholder = "Shown on the button", fontSize = 13f)
-                .setSizing(220f, Size.Pixels, 36f, Size.Pixels)
-                .setPositioning(18f, Pos.ParentPixels, 38f, Pos.ParentPixels)
-                .backgroundColor(SettingsUi.alpha(SettingsUi.TRACK))
-                .borderColor(SettingsUi.edge(SettingsUi.CARD_BORDER))
-                .borderRadius(9f)
-                .borderThickness(SettingsUi.EDGE_WIDTH)
-                .childOf(card)
-            labelInput.onValueChange { value ->
-                recorded.label = value as String
-                AutoForgeManager.refreshRecordedCrafts()
-            }
-
-            Text("Clicks (${recorded.steps.size})", SettingsUi.TEXT_MUTED, 12f, false)
-                .setPositioning(256f, Pos.ParentPixels, 14f, Pos.ParentPixels)
-                .childOf(card)
-            Text(recorded.summary(), SettingsUi.TEXT_SECONDARY, 12f, false)
-                .setPositioning(256f, Pos.ParentPixels, 48f, Pos.ParentPixels)
-                .childOf(card)
-
-            // Show/hide on the picker without losing the recording.
-            val shownColor = if (recorded.shown) SettingsUi.GREEN else SettingsUi.TEXT_DIM
-            Button(if (recorded.shown) "Shown" else "Hidden", SettingsUi.TEXT_PRIMARY, fontSize = 12f)
-                .setSizing(70f, Size.Pixels, 40f, Size.Pixels)
-                .setPositioning(-70f, Pos.ParentPixels, 0f, Pos.ParentCenter)
-                .alignRight()
-                .backgroundColor(SettingsUi.tint(shownColor, if (recorded.shown) 0.16f else 0.08f))
-                .borderColor(SettingsUi.edge(shownColor, if (recorded.shown) 0.8f else 0.4f))
-                .borderRadius(9f)
-                .borderThickness(SettingsUi.EDGE_WIDTH)
-                .hoverColors(SettingsUi.tint(shownColor, 0.26f), SettingsUi.TEXT_PRIMARY)
-                .onClick { _ ->
-                    recorded.shown = !recorded.shown
-                    AutoForgeManager.refreshRecordedCrafts()
-                    host.refreshDetail()
-                    true
-                }
-                .childOf(card)
-
-            Button("x", SettingsUi.RED, fontSize = 20f)
-                .setSizing(40f, Size.Pixels, 40f, Size.Pixels)
-                .setPositioning(-18f, Pos.ParentPixels, 0f, Pos.ParentCenter)
-                .alignRight()
-                .backgroundColor(SettingsUi.alpha(SettingsUi.TRACK))
-                .borderColor(SettingsUi.edge(SettingsUi.RED, 0.6f))
-                .borderRadius(9f)
-                .borderThickness(SettingsUi.EDGE_WIDTH)
-                .hoverColors(SettingsUi.alpha(SettingsUi.CARD_HOVER), SettingsUi.RED)
-                .onClick { _ ->
-                    AutoForgeManager.removeRecordedCraft(recorded)
-                    host.refreshDetail()
-                    true
-                }
-                .childOf(card)
-
-            y += 104f
-        }
-
         return y
     }
 }
