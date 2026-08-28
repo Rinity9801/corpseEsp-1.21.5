@@ -404,13 +404,14 @@ public class AutoForgeManager {
         int w = client.getWindow().getGuiScaledWidth();
         int h = client.getWindow().getGuiScaledHeight();
 
-        int bw = 200, bh = 50;
+        int bw = 200, bh = 46;
         int bx = (w - bw) / 2, by = (h - bh) / 2;
-        vanillaPanel(ctx, bx, by, bw, bh);
-        ctx.text(font, "Auto Forge", bx + 8, by + 8, TITLE_COLOR, false);
-        String progress = runCount > 1 ? " (" + (runsDone + 1) + "/" + runCount + ")" : "";
-        ctx.text(font, "Starting: " + craft.label + progress, bx + 8, by + 22, TITLE_COLOR, false);
-        ctx.text(font, "Esc to cancel", bx + 8, by + 34, 0x808080, false);
+        ctx.fill(bx, by, bx + bw, by + bh, 0xF0101018);
+        ctx.outline(bx, by, bw, bh, 0xFF404050);
+        ctx.centeredText(font, "§6Auto Forge", w / 2, by + 8, 0xFFFFFFFF);
+        String progress = runCount > 1 ? " §7(" + (runsDone + 1) + "/" + runCount + ")" : "";
+        ctx.centeredText(font, "§fStarting: " + craft.label + progress, w / 2, by + 20, 0xFFFFFFFF);
+        ctx.centeredText(font, "§8Esc to cancel", w / 2, by + 32, 0xFFFFFFFF);
         return true;
     }
 
